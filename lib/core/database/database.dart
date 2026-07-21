@@ -7,12 +7,13 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../features/players/data/data_sources/local/player_dao.dart';
 import 'tables/players_table.dart';
-
+import 'tables/tournaments_table.dart';
 part 'database.g.dart';
 
 @DriftDatabase(
   tables: [
     Players,
+    Tournaments,
   ],
   daos: [
     PlayerDao,
