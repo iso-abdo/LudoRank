@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:ludo_rank/app/app_routes.dart';
+import 'package:ludo_rank/features/players/presentation/widgets/app_loading.dart';
 import 'package:provider/provider.dart';
 
 import 'package:ludo_rank/shared/widgets/app_scaffold.dart';
@@ -31,9 +33,7 @@ class _HomePageState extends State<HomePage> {
           title: 'LudoRank',
 
           body: provider.isLoading
-              ? const Center(
-            child: CircularProgressIndicator(),
-          )
+              ? const AppLoading()
               : SingleChildScrollView(
             padding: const EdgeInsets.all(16),
 
@@ -67,6 +67,9 @@ class _HomePageState extends State<HomePage> {
                       icon: Icons.people,
                       title: 'اللاعبون',
                       value: provider.playersCount,
+                      onTap: () {
+                        context.push(AppRoutes.players);
+                      },
                     ),
 
                     DashboardCard(
