@@ -77,6 +77,8 @@ class _HomePageState extends State<HomePage> {
                       icon: Icons.emoji_events,
                       title: 'البطولات',
                       value: provider.tournamentsCount,
+                      onTap: () {
+                        context.push(AppRoutes.tournaments);},
                     ),
 
                     DashboardCard(

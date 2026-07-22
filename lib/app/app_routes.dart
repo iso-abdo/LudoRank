@@ -7,6 +7,7 @@ class AppRoutes {
 
   static const String tournaments = '/tournaments';
 
+
   static const String matches = '/matches';
 
   static const String leaderboard = '/leaderboard';

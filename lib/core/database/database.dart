@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:ludo_rank/features/tournaments/data/datasources/local/tournament_dao.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -17,6 +18,7 @@ part 'database.g.dart';
   ],
   daos: [
     PlayerDao,
+    TournamentDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -31,22 +33,17 @@ class AppDatabase extends _$AppDatabase {
 
 
 LazyDatabase _openConnection() {
-
   return LazyDatabase(() async {
+    final dir = await getApplicationDocumentsDirectory();
 
-    final dir =
-    await getApplicationDocumentsDirectory();
-
+    print("Database Path = ${dir.path}");
 
     final file = File(
-      p.join(
-        dir.path,
-        'ludorank.db',
-      ),
+      p.join(dir.path, 'ludorank.db'),
     );
 
+    print(file.path);
 
     return NativeDatabase(file);
-
   });
 }
