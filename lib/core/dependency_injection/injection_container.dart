@@ -65,9 +65,10 @@ Future<void> initDependencies() async {
     ),
   );
 
-}
+
 sl.registerFactory<TournamentProvider>(
 () => TournamentProvider(
 sl<TournamentRepository>(),
 ),
 );
+}
