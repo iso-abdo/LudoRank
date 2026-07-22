@@ -4,7 +4,10 @@ import 'package:ludo_rank/core/database/database.dart';
 import 'package:ludo_rank/core/database/tables/players_table.dart';
 
 part 'player_dao.g.dart';
-@DriftAccessor(tables: [Players])
+@DriftAccessor(tables: [
+  Players,
+  ],
+)
 class PlayerDao extends DatabaseAccessor<AppDatabase>
     with _$PlayerDaoMixin {
 
