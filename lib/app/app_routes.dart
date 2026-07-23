@@ -15,4 +15,5 @@ class AppRoutes {
   static const String statistics = '/statistics';
 
   static const String settings = '/settings';
+  static const String tournament_details_page = '/tournament_details_page';
 }
