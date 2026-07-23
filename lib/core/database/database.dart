@@ -9,7 +9,10 @@ import 'package:path_provider/path_provider.dart';
 import '../../features/players/data/data_sources/local/player_dao.dart';
 import 'tables/players_table.dart';
 import 'tables/tournaments_table.dart';
+import 'package:flutter/foundation.dart';
+
 part 'database.g.dart';
+
 
 @DriftDatabase(
   tables: [
@@ -36,13 +39,13 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dir = await getApplicationDocumentsDirectory();
 
-    print("Database Path = ${dir.path}");
+    debugPrint("Database Path = ${dir.path}");
 
     final file = File(
       p.join(dir.path, 'ludorank.db'),
     );
 
-    print(file.path);
+    debugPrint(file.path);
 
     return NativeDatabase(file);
   });
