@@ -15,7 +15,7 @@ class MatchDao extends DatabaseAccessor<AppDatabase>
     with _$MatchDaoMixin {
   MatchDao(super.db);
 
-  Future<List<db.Matche>> getTournamentMatches(
+  Future<List<db.Match>> getTournamentMatches(
       String tournamentId,
       ) {
     return (select(matches)
