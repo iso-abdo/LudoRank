@@ -24,6 +24,7 @@ part 'database.g.dart';
   daos: [
     PlayerDao,
     TournamentDao,
+
   ],
 )
 class AppDatabase extends _$AppDatabase {

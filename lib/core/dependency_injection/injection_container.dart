@@ -14,8 +14,15 @@ import 'package:ludo_rank/features/tournaments/data/datasources/local/tournament
 import 'package:ludo_rank/features/tournaments/data/repositories/tournament_repository_impl.dart';
 
 import 'package:ludo_rank/features/tournaments/domain/repositories/tournament_repository.dart';
-
 import 'package:ludo_rank/features/tournaments/presentation/providers/tournament_provider.dart';
+
+// Tournament Players.
+import 'package:ludo_rank/features/tournament_players/data/datasources/local/tournament_player_dao.dart';
+import 'package:ludo_rank/features/tournament_players/data/repositories/tournament_player_repository_impl.dart';
+import 'package:ludo_rank/features/tournament_players/domain/repositories/tournament_player_repository.dart';
+import 'package:ludo_rank/features/tournament_players/presentation/providers/tournament_player_provider.dart';
+
+
 
 final sl = GetIt.instance;
 
@@ -41,6 +48,11 @@ Future<void> initDependencies() async {
       sl<AppDatabase>(),
     ),
   );
+  sl.registerLazySingleton<TournamentPlayerDao>(
+        () => TournamentPlayerDao(
+      sl<AppDatabase>(),
+    ),
+  );
 
 
   // Repository
@@ -55,6 +67,11 @@ Future<void> initDependencies() async {
       sl<TournamentDao>(),
     ),
   );
+  sl.registerLazySingleton<TournamentPlayerRepository>(
+        () => TournamentPlayerRepositoryImpl(
+      sl<TournamentPlayerDao>(),
+    ),
+  );
 
 
   // Provider
@@ -65,10 +82,14 @@ Future<void> initDependencies() async {
     ),
   );
 
-
-sl.registerFactory<TournamentProvider>(
-() => TournamentProvider(
-sl<TournamentRepository>(),
-),
-);
+  sl.registerFactory<TournamentProvider>(
+    () => TournamentProvider(
+      sl<TournamentRepository>(),
+    ),
+  );
+  sl.registerFactory<TournamentPlayerProvider>(
+    () => TournamentPlayerProvider(
+      sl<TournamentPlayerRepository>(),
+    ),
+  );
 }
