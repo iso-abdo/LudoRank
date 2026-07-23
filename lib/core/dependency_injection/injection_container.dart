@@ -23,7 +23,7 @@ import 'package:ludo_rank/features/tournament_players/domain/repositories/tourna
 import 'package:ludo_rank/features/tournament_players/presentation/providers/tournament_player_provider.dart';
 
 // Matches
-import 'package:ludo_rank/features/matches/data/datasources/local/match_dao.dart';
+import 'package:ludo_rank/features/matches/data/data_sources/local/match_dao.dart';
 import 'package:ludo_rank/features/matches/data/repositories/match_repository_impl.dart';
 import 'package:ludo_rank/features/matches/domain/repositories/match_repository.dart';
 import 'package:ludo_rank/features/matches/presentation/providers/match_provider.dart';
