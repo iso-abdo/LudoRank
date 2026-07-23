@@ -12,6 +12,9 @@ import 'tables/players_table.dart';
 import 'tables/tournaments_table.dart';
 import 'package:flutter/foundation.dart';
 
+import 'tables/matches_table.dart';
+import 'tables/match_players_table.dart';
+
 part 'database.g.dart';
 
 
@@ -20,6 +23,8 @@ part 'database.g.dart';
     Players,
     Tournaments,
     TournamentPlayers,
+    Matches,
+    MatchPlayers,
   ],
   daos: [
     PlayerDao,
