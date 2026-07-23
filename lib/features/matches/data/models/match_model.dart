@@ -2,7 +2,6 @@ import 'package:drift/drift.dart';
 
 import 'package:ludo_rank/core/database/database.dart' as db;
 import 'package:ludo_rank/features/matches/domain/entities/match.dart';
-import 'package:ludo_rank/features/matches/domain/entities/match.dart' as db;
 
 class MatchModel extends Match {
   const MatchModel({
@@ -10,18 +9,18 @@ class MatchModel extends Match {
     required super.tournamentId,
     required super.round,
     required super.status,
-    required super.winnerId,
+    super.winnerId,
     required super.createdAt,
     required super.updatedAt,
   });
 
-  factory MatchModel.fromDrift(db.Match row) {
+  factory MatchModel.fromDrift(db.Matche row) {
     return MatchModel(
       id: row.id,
       tournamentId: row.tournamentId,
       round: row.round,
       status: MatchStatus.values.firstWhere(
-            (e) => e.name == row.status,
+        (e) => e.name == row.status,
       ),
       winnerId: row.winnerId,
       createdAt: row.createdAt,
