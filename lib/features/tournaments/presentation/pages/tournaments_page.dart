@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:ludo_rank/shared/widgets/app_scaffold.dart';
@@ -9,6 +10,8 @@ import 'package:ludo_rank/shared/widgets/app_error_widget.dart';
 import 'package:ludo_rank/features/tournaments/presentation/providers/tournament_provider.dart';
 import 'package:ludo_rank/features/tournaments/presentation/widgets/tournament_card.dart';
 import 'package:ludo_rank/features/tournaments/presentation/widgets/create_tournament_dialog.dart';
+
+import '../../../../app/app_routes.dart';
 
 class TournamentsPage extends StatefulWidget {
   const TournamentsPage({super.key});
@@ -79,15 +82,18 @@ class _TournamentsPageState extends State<TournamentsPage> {
         return const SizedBox(height: 12);
       },
 
-      itemBuilder: (_, index) {
-        return TournamentCard(
-          tournament: provider.tournaments[index],
+        itemBuilder: (_, index) {
+          final tournament = provider.tournaments[index];
 
-          onTap: () {
-            // Sprint القادم
-          },
-        );
-      },
+          return TournamentCard(
+            tournament: tournament,
+            onTap: () {
+              context.push(
+                '${AppRoutes.tournaments}/${tournament.id}',
+              );
+            },
+          );
+        }
     );
   }
 }
