@@ -1,4 +1,4 @@
-import 'package:ludo_rank/features/match_players/data/datasources/local/match_player_dao.dart';
+import 'package:ludo_rank/features/match_players/data/data_sources/local/match_player_dao.dart';
 import 'package:ludo_rank/features/match_players/data/models/match_player_model.dart';
 import 'package:ludo_rank/features/match_players/domain/entities/match_player.dart';
 import 'package:ludo_rank/features/match_players/domain/repositories/match_player_repository.dart';
