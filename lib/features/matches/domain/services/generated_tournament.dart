@@ -1,9 +1,9 @@
-import 'package:ludo_rank/core/database/database.dart';
-
-import '../entities/match.dart';
+import 'package:ludo_rank/features/matches/domain/entities/match.dart';
+import 'package:ludo_rank/features/match_players/domain/entities/match_player.dart';
 
 class GeneratedTournament {
   final List<Match> matches;
+
   final List<MatchPlayer> matchPlayers;
 
   const GeneratedTournament({

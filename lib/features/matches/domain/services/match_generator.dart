@@ -1,16 +1,17 @@
-/*import 'package:uuid/uuid.dart';
+import 'package:uuid/uuid.dart';
 
-import '../../tournament_players/domain/entities/tournament_player.dart';
-
-import '../entities/match.dart';
-import '../entities/match_player.dart';
+import 'package:ludo_rank/features/matches/domain/entities/match.dart';
+import 'package:ludo_rank/features/match_players/domain/entities/match_player.dart';
+import 'package:ludo_rank/features/tournament_players/domain/entities/tournament_player.dart';
 
 import 'generated_tournament.dart';
 
 class MatchGenerator {
-  MatchGenerator();
+  MatchGenerator({
+    Uuid? uuid,
+  }) : _uuid = uuid ?? const Uuid();
 
-  final _uuid = const Uuid();
+  final Uuid _uuid;
 
   GeneratedTournament generate({
     required String tournamentId,
@@ -30,7 +31,11 @@ class MatchGenerator {
 
     int round = 1;
 
-    for (int i = 0; i < players.length; i += playersPerMatch) {
+    for (
+    int i = 0;
+    i < players.length;
+    i += playersPerMatch
+    ) {
       final group = players.skip(i).take(playersPerMatch).toList();
 
       final matchId = _uuid.v4();
@@ -39,8 +44,8 @@ class MatchGenerator {
         Match(
           id: matchId,
           tournamentId: tournamentId,
-          round: round++,
-          status: MatchStatus.pending,
+          round: round,
+          status: MatchStatus.waiting,
           winnerId: null,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
@@ -48,11 +53,13 @@ class MatchGenerator {
       );
 
       for (int seat = 0; seat < group.length; seat++) {
+        final player = group[seat];
+
         matchPlayers.add(
           MatchPlayer(
             id: _uuid.v4(),
             matchId: matchId,
-            playerId: group[seat].playerId,
+            playerId: player.playerId,
             seat: seat + 1,
             rank: null,
             points: 0,
@@ -60,6 +67,8 @@ class MatchGenerator {
           ),
         );
       }
+
+      round++;
     }
 
     return GeneratedTournament(
@@ -67,4 +76,4 @@ class MatchGenerator {
       matchPlayers: matchPlayers,
     );
   }
-}*/
+}

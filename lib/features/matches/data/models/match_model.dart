@@ -3,6 +3,8 @@ import 'package:drift/drift.dart';
 import 'package:ludo_rank/core/database/database.dart' as db;
 import 'package:ludo_rank/features/matches/domain/entities/match.dart';
 
+
+
 class MatchModel extends Match {
   const MatchModel({
     required super.id,
@@ -14,7 +16,7 @@ class MatchModel extends Match {
     required super.updatedAt,
   });
 
-  factory MatchModel.fromDrift(db.Matche row) {
+  factory MatchModel.fromDrift(db.MatchData  row) {
     return MatchModel(
       id: row.id,
       tournamentId: row.tournamentId,

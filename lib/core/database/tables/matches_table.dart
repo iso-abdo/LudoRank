@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+@DataClassName('MatchData')
 class Matches extends Table {
   TextColumn get id => text()();
 

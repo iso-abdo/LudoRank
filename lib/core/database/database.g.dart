@@ -1230,7 +1230,7 @@ class TournamentPlayersCompanion extends UpdateCompanion<TournamentPlayer> {
   }
 }
 
-class $MatchesTable extends Matches with TableInfo<$MatchesTable, Matche> {
+class $MatchesTable extends Matches with TableInfo<$MatchesTable, MatchData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -1323,7 +1323,7 @@ class $MatchesTable extends Matches with TableInfo<$MatchesTable, Matche> {
   static const String $name = 'matches';
   @override
   VerificationContext validateIntegrity(
-    Insertable<Matche> instance, {
+    Insertable<MatchData> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -1388,9 +1388,9 @@ class $MatchesTable extends Matches with TableInfo<$MatchesTable, Matche> {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Matche map(Map<String, dynamic> data, {String? tablePrefix}) {
+  MatchData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Matche(
+    return MatchData(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -1428,7 +1428,7 @@ class $MatchesTable extends Matches with TableInfo<$MatchesTable, Matche> {
   }
 }
 
-class Matche extends DataClass implements Insertable<Matche> {
+class MatchData extends DataClass implements Insertable<MatchData> {
   final String id;
   final String tournamentId;
   final int round;
@@ -1436,7 +1436,7 @@ class Matche extends DataClass implements Insertable<Matche> {
   final String? winnerId;
   final DateTime createdAt;
   final DateTime updatedAt;
-  const Matche({
+  const MatchData({
     required this.id,
     required this.tournamentId,
     required this.round,
@@ -1474,12 +1474,12 @@ class Matche extends DataClass implements Insertable<Matche> {
     );
   }
 
-  factory Matche.fromJson(
+  factory MatchData.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Matche(
+    return MatchData(
       id: serializer.fromJson<String>(json['id']),
       tournamentId: serializer.fromJson<String>(json['tournamentId']),
       round: serializer.fromJson<int>(json['round']),
@@ -1503,7 +1503,7 @@ class Matche extends DataClass implements Insertable<Matche> {
     };
   }
 
-  Matche copyWith({
+  MatchData copyWith({
     String? id,
     String? tournamentId,
     int? round,
@@ -1511,7 +1511,7 @@ class Matche extends DataClass implements Insertable<Matche> {
     Value<String?> winnerId = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) => Matche(
+  }) => MatchData(
     id: id ?? this.id,
     tournamentId: tournamentId ?? this.tournamentId,
     round: round ?? this.round,
@@ -1520,8 +1520,8 @@ class Matche extends DataClass implements Insertable<Matche> {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
-  Matche copyWithCompanion(MatchesCompanion data) {
-    return Matche(
+  MatchData copyWithCompanion(MatchesCompanion data) {
+    return MatchData(
       id: data.id.present ? data.id.value : this.id,
       tournamentId: data.tournamentId.present
           ? data.tournamentId.value
@@ -1536,7 +1536,7 @@ class Matche extends DataClass implements Insertable<Matche> {
 
   @override
   String toString() {
-    return (StringBuffer('Matche(')
+    return (StringBuffer('MatchData(')
           ..write('id: $id, ')
           ..write('tournamentId: $tournamentId, ')
           ..write('round: $round, ')
@@ -1561,7 +1561,7 @@ class Matche extends DataClass implements Insertable<Matche> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Matche &&
+      (other is MatchData &&
           other.id == this.id &&
           other.tournamentId == this.tournamentId &&
           other.round == this.round &&
@@ -1571,7 +1571,7 @@ class Matche extends DataClass implements Insertable<Matche> {
           other.updatedAt == this.updatedAt);
 }
 
-class MatchesCompanion extends UpdateCompanion<Matche> {
+class MatchesCompanion extends UpdateCompanion<MatchData> {
   final Value<String> id;
   final Value<String> tournamentId;
   final Value<int> round;
@@ -1605,7 +1605,7 @@ class MatchesCompanion extends UpdateCompanion<Matche> {
        status = Value(status),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
-  static Insertable<Matche> custom({
+  static Insertable<MatchData> custom({
     Expression<String>? id,
     Expression<String>? tournamentId,
     Expression<int>? round,
@@ -2163,6 +2163,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $MatchPlayersTable matchPlayers = $MatchPlayersTable(this);
   late final PlayerDao playerDao = PlayerDao(this as AppDatabase);
   late final TournamentDao tournamentDao = TournamentDao(this as AppDatabase);
+  late final MatchDao matchDao = MatchDao(this as AppDatabase);
+  late final MatchPlayerDao matchPlayerDao = MatchPlayerDao(
+    this as AppDatabase,
+  );
+  late final TournamentPlayerDao tournamentPlayerDao = TournamentPlayerDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2993,14 +3000,14 @@ class $$MatchesTableTableManager
         RootTableManager<
           _$AppDatabase,
           $MatchesTable,
-          Matche,
+          MatchData,
           $$MatchesTableFilterComposer,
           $$MatchesTableOrderingComposer,
           $$MatchesTableAnnotationComposer,
           $$MatchesTableCreateCompanionBuilder,
           $$MatchesTableUpdateCompanionBuilder,
-          (Matche, BaseReferences<_$AppDatabase, $MatchesTable, Matche>),
-          Matche,
+          (MatchData, BaseReferences<_$AppDatabase, $MatchesTable, MatchData>),
+          MatchData,
           PrefetchHooks Function()
         > {
   $$MatchesTableTableManager(_$AppDatabase db, $MatchesTable table)
@@ -3066,14 +3073,14 @@ typedef $$MatchesTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
       $MatchesTable,
-      Matche,
+      MatchData,
       $$MatchesTableFilterComposer,
       $$MatchesTableOrderingComposer,
       $$MatchesTableAnnotationComposer,
       $$MatchesTableCreateCompanionBuilder,
       $$MatchesTableUpdateCompanionBuilder,
-      (Matche, BaseReferences<_$AppDatabase, $MatchesTable, Matche>),
-      Matche,
+      (MatchData, BaseReferences<_$AppDatabase, $MatchesTable, MatchData>),
+      MatchData,
       PrefetchHooks Function()
     >;
 typedef $$MatchPlayersTableCreateCompanionBuilder =

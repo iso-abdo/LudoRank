@@ -24,7 +24,7 @@ class MatchProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      final result = await repository.getMatchesByTournament(tournamentId);
+      final result = await repository.getTournamentMatches(tournamentId);
 
       _matches
         ..clear()
