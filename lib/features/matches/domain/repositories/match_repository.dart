@@ -1,13 +1,28 @@
-import 'package:ludo_rank/features/matches/domain/entities/match.dart';
+import '../entities/match.dart';
 
-abstract class MatchRepository {
-  Future<List<Match>> getTournamentMatches(String tournamentId);
+abstract interface class MatchRepository {
+  /// جميع مباريات بطولة معينة
+  Future<List<Match>> getTournamentMatches(
+      String tournamentId,
+      );
 
-  Future<void> addMatch(Match match);
+  /// مباراة واحدة
+  Future<Match?> getById(
+      String id,
+      );
 
-  Future<void> addMatches(List<Match> matches);
+  /// إنشاء مباراة جديدة
+  Future<void> create(
+      Match match,
+      );
 
-  Future<void> updateMatch(Match match);
+  /// تحديث المباراة
+  Future<void> update(
+      Match match,
+      );
 
-  Future<void> deleteMatch(String id);
+  /// حذف المباراة
+  Future<void> delete(
+      String id,
+      );
 }
