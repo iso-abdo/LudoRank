@@ -22,7 +22,17 @@ import 'package:ludo_rank/features/tournament_players/data/repositories/tourname
 import 'package:ludo_rank/features/tournament_players/domain/repositories/tournament_player_repository.dart';
 import 'package:ludo_rank/features/tournament_players/presentation/providers/tournament_player_provider.dart';
 
+// Matches
+import 'package:ludo_rank/features/matches/data/data_sources/local/match_dao.dart';
+import 'package:ludo_rank/features/matches/data/repositories/match_repository_impl.dart';
+import 'package:ludo_rank/features/matches/domain/repositories/match_repository.dart';
+import 'package:ludo_rank/features/matches/presentation/providers/match_provider.dart';
 
+//matches_players
+import 'package:ludo_rank/features/match_players/data/data_sources/local/match_player_dao.dart';
+import 'package:ludo_rank/features/match_players/data/repositories/match_player_repository_impl.dart';
+import 'package:ludo_rank/features/match_players/domain/repositories/match_player_repository.dart';
+import 'package:ludo_rank/features/match_players/presentation/providers/match_player_provider.dart';
 
 final sl = GetIt.instance;
 
@@ -53,6 +63,16 @@ Future<void> initDependencies() async {
       sl<AppDatabase>(),
     ),
   );
+  sl.registerLazySingleton<MatchDao>(
+        () => MatchDao(
+      sl<AppDatabase>(),
+    ),
+  );
+  sl.registerLazySingleton<MatchPlayerDao>(
+        () => MatchPlayerDao(
+      sl<AppDatabase>(),
+    ),
+  );
 
 
   // Repository
@@ -70,6 +90,16 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<TournamentPlayerRepository>(
         () => TournamentPlayerRepositoryImpl(
       sl<TournamentPlayerDao>(),
+    ),
+  );
+  sl.registerLazySingleton<MatchRepository>(
+        () => MatchRepositoryImpl(
+      sl<MatchDao>(),
+    ),
+  );
+  sl.registerLazySingleton<MatchPlayerRepository>(
+        () => MatchPlayerRepositoryImpl(
+      sl<MatchPlayerDao>(),
     ),
   );
 
@@ -90,6 +120,16 @@ Future<void> initDependencies() async {
   sl.registerFactory<TournamentPlayerProvider>(
     () => TournamentPlayerProvider(
       sl<TournamentPlayerRepository>(),
+    ),
+  );
+  sl.registerFactory<MatchProvider>(
+    () => MatchProvider(
+      sl<MatchRepository>(),
+    ),
+  );
+  sl.registerFactory<MatchPlayerProvider>(
+    () => MatchPlayerProvider(
+      sl<MatchPlayerRepository>(),
     ),
   );
 }
