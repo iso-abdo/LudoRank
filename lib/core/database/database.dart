@@ -3,8 +3,7 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:ludo_rank/core/database/tables/tournament_players_table.dart';
-import 'package:ludo_rank/features/match_players/data/data_sources/local/match_player_dao.dart';
-import 'package:ludo_rank/features/tournament_players/data/data_sources/local/tournament_player_dao.dart';
+
 import 'package:ludo_rank/features/tournaments/data/data_sources/local/tournament_dao.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
