@@ -1,4 +1,4 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
+/*/ GENERATED CODE - DO NOT MODIFY BY HAND
 
 part of 'match_dao.dart';
 
@@ -14,3 +14,4 @@ class MatchDaoManager {
   $$MatchesTableTableManager get matches =>
       $$MatchesTableTableManager(_db.attachedDatabase, _db.matches);
 }
+*/

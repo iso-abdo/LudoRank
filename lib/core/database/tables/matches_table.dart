@@ -1,20 +1,32 @@
 import 'package:drift/drift.dart';
 
+import 'tournaments_table.dart';
+
 @DataClassName('MatchData')
 class Matches extends Table {
+  /// Match ID (UUID)
   TextColumn get id => text()();
 
-  TextColumn get tournamentId => text()();
+  /// Tournament ID
+  TextColumn get tournamentId =>
+      text().references(Tournaments, #id)();
 
-  IntColumn get round => integer()();
+  /// Match number داخل البطولة
+  IntColumn get matchNumber => integer()();
 
+  /// pending
+  /// playing
+  /// finished
+  /// cancelled
   TextColumn get status => text()();
 
-  TextColumn get winnerId => text().nullable()();
+  /// Created At
+  DateTimeColumn get createdAt =>
+      dateTime().withDefault(currentDateAndTime)();
 
-  DateTimeColumn get createdAt => dateTime()();
-
-  DateTimeColumn get updatedAt => dateTime()();
+  /// Updated At
+  DateTimeColumn get updatedAt =>
+      dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};

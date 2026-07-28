@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+/*import 'package:drift/drift.dart';
 
 import 'package:ludo_rank/core/database/database.dart' as db;
 import 'package:ludo_rank/features/matches/domain/entities/match.dart';
@@ -53,4 +53,4 @@ class MatchModel extends Match {
       updatedAt: Value(updatedAt),
     );
   }
-}
+}*/

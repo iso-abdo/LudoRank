@@ -1,5 +1,5 @@
 
-import 'package:ludo_rank/features/tournaments/data/datasources/local/tournament_dao.dart';
+import 'package:ludo_rank/features/tournaments/data/data_sources/local/tournament_dao.dart';
 import 'package:ludo_rank/features/tournaments/data/models/tournament_model.dart';
 
 import 'package:ludo_rank/features/tournaments/domain/entities/tournament.dart';

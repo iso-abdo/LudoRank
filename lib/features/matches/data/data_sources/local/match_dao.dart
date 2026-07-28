@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+/*import 'package:drift/drift.dart';
 
 import 'package:ludo_rank/core/database/database.dart' as db;
 import 'package:ludo_rank/core/database/tables/matches_table.dart';
@@ -34,4 +34,4 @@ class MatchDao extends DatabaseAccessor<db.AppDatabase>
   Future<int> deleteMatch(String id) {
     return (delete(matches)..where((tbl) => tbl.id.equals(id))).go();
   }
-}
+}*/

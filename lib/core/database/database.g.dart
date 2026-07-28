@@ -2163,7 +2163,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $MatchPlayersTable matchPlayers = $MatchPlayersTable(this);
   late final PlayerDao playerDao = PlayerDao(this as AppDatabase);
   late final TournamentDao tournamentDao = TournamentDao(this as AppDatabase);
-  late final MatchDao matchDao = MatchDao(this as AppDatabase);
+  //late final MatchDao matchDao = MatchDao(this as AppDatabase);
   late final MatchPlayerDao matchPlayerDao = MatchPlayerDao(
     this as AppDatabase,
   );

@@ -1,4 +1,4 @@
-import 'package:ludo_rank/features/tournament_players/data/datasources/local/tournament_player_dao.dart';
+import 'package:ludo_rank/features/tournament_players/data/data_sources/local/tournament_player_dao.dart';
 import 'package:ludo_rank/features/tournament_players/data/models/tournament_player_model.dart';
 import 'package:ludo_rank/features/tournament_players/domain/entities/tournament_player.dart';
 import 'package:ludo_rank/features/tournament_players/domain/repositories/tournament_player_repository.dart';
