@@ -4,6 +4,8 @@ part of 'match_player_dao.dart';
 
 // ignore_for_file: type=lint
 mixin _$MatchPlayerDaoMixin on DatabaseAccessor<AppDatabase> {
+  $TournamentsTable get tournaments => attachedDatabase.tournaments;
+  $MatchesTable get matches => attachedDatabase.matches;
   $MatchPlayersTable get matchPlayers => attachedDatabase.matchPlayers;
   MatchPlayerDaoManager get managers => MatchPlayerDaoManager(this);
 }
@@ -11,6 +13,10 @@ mixin _$MatchPlayerDaoMixin on DatabaseAccessor<AppDatabase> {
 class MatchPlayerDaoManager {
   final _$MatchPlayerDaoMixin _db;
   MatchPlayerDaoManager(this._db);
+  $$TournamentsTableTableManager get tournaments =>
+      $$TournamentsTableTableManager(_db.attachedDatabase, _db.tournaments);
+  $$MatchesTableTableManager get matches =>
+      $$MatchesTableTableManager(_db.attachedDatabase, _db.matches);
   $$MatchPlayersTableTableManager get matchPlayers =>
       $$MatchPlayersTableTableManager(_db.attachedDatabase, _db.matchPlayers);
 }

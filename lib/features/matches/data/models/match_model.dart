@@ -1,56 +1,51 @@
-/*import 'package:drift/drift.dart';
+import 'package:drift/drift.dart';
 
-import 'package:ludo_rank/core/database/database.dart' as db;
+import 'package:ludo_rank/core/database/database.dart';
 import 'package:ludo_rank/features/matches/domain/entities/match.dart';
-
-
+import 'package:ludo_rank/features/matches/domain/entities/match_status.dart';
 
 class MatchModel extends Match {
   const MatchModel({
     required super.id,
     required super.tournamentId,
-    required super.round,
+    required super.playersCount,
     required super.status,
-    super.winnerId,
     required super.createdAt,
     required super.updatedAt,
   });
 
-  factory MatchModel.fromDrift(db.MatchData  row) {
+  factory MatchModel.fromDrift(MatchData row) {
     return MatchModel(
       id: row.id,
       tournamentId: row.tournamentId,
-      round: row.round,
+      playersCount: 0, // سيتم حسابها من MatchPlayers
       status: MatchStatus.values.firstWhere(
-        (e) => e.name == row.status,
+            (e) => e.name == row.status,
       ),
-      winnerId: row.winnerId,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     );
   }
 
-  factory MatchModel.fromEntity(Match entity) {
+  factory MatchModel.fromEntity(Match match) {
     return MatchModel(
-      id: entity.id,
-      tournamentId: entity.tournamentId,
-      round: entity.round,
-      status: entity.status,
-      winnerId: entity.winnerId,
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
+      id: match.id,
+      tournamentId: match.tournamentId,
+      playersCount: match.playersCount,
+      status: match.status,
+      createdAt: match.createdAt,
+      updatedAt: match.updatedAt,
     );
   }
 
-  db.MatchesCompanion toCompanion() {
-    return db.MatchesCompanion(
+  MatchesCompanion toCompanion() {
+    return MatchesCompanion(
       id: Value(id),
       tournamentId: Value(tournamentId),
-      round: Value(round),
+      matchNumber: const Value(0),
       status: Value(status.name),
-      winnerId: Value(winnerId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
   }
-}*/
+}

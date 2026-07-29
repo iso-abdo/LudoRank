@@ -28,7 +28,7 @@ class TournamentPlayerRepositoryImpl
   Future<void> addPlayer(
       TournamentPlayer player,
       ) {
-    return dao.insertPlayer(
+    return dao.insertTournamentPlayer(
       TournamentPlayerModel
           .fromEntity(player)
           .toCompanion(),

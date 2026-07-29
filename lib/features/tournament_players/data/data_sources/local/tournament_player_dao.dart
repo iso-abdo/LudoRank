@@ -14,33 +14,61 @@ class TournamentPlayerDao extends DatabaseAccessor<AppDatabase>
     with _$TournamentPlayerDaoMixin {
   TournamentPlayerDao(super.db);
 
+  /// جميع لاعبى البطولة
   Future<List<TournamentPlayer>> getTournamentPlayers(
       String tournamentId,
       ) {
     return (select(tournamentPlayers)
-      ..where((t) => t.tournamentId.equals(tournamentId)))
+      ..where(
+            (tbl) => tbl.tournamentId.equals(tournamentId),
+      ))
         .get();
   }
 
-  Future<void> insertPlayer(
-      TournamentPlayersCompanion companion,
+  /// لاعب واحد داخل البطولة
+  Future<TournamentPlayer?> getTournamentPlayer(
+      String id,
       ) {
-    return into(tournamentPlayers).insert(companion);
+    return (select(tournamentPlayers)
+      ..where(
+            (tbl) => tbl.id.equals(id),
+      ))
+        .getSingleOrNull();
   }
 
+  /// إضافة لاعب للبطولة
+  Future<void> insertTournamentPlayer(
+      TournamentPlayersCompanion player,
+      ) {
+    return into(tournamentPlayers).insert(player);
+  }
+
+  /// تحديث بيانات لاعب البطولة
+  Future<bool> updateTournamentPlayer(
+      TournamentPlayersCompanion player,
+      ) {
+    return update(tournamentPlayers).replace(player);
+  }
+
+  /// حذف لاعب من البطولة
   Future<int> removePlayer(
       String id,
       ) {
     return (delete(tournamentPlayers)
-      ..where((t) => t.id.equals(id)))
+      ..where(
+            (tbl) => tbl.id.equals(id),
+      ))
         .go();
   }
 
-  Future<void> removeTournamentPlayers(
+  /// حذف جميع لاعبى البطولة
+  Future<int> removeTournamentPlayers(
       String tournamentId,
       ) {
     return (delete(tournamentPlayers)
-      ..where((t) => t.tournamentId.equals(tournamentId)))
+      ..where(
+            (tbl) => tbl.tournamentId.equals(tournamentId),
+      ))
         .go();
   }
 }
