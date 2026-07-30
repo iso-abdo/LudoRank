@@ -15,20 +15,44 @@ class TournamentDao extends DatabaseAccessor<AppDatabase>
 
   TournamentDao(super.db);
 
+  /// جميع البطولات
   Future<List<Tournament>> getAllTournaments() {
     return select(tournaments).get();
   }
 
-  Future<Tournament?> getTournamentById(String id) {
+  /// بطولة واحدة
+  Future<Tournament?> getTournamentById(
+      String id,
+      ) {
     return (select(tournaments)
-      ..where((tbl) => tbl.id.equals(id)))
+      ..where(
+            (tbl) => tbl.id.equals(id),
+      ))
         .getSingleOrNull();
   }
 
+  /// إضافة بطولة
   Future<void> insertTournament(
       TournamentsCompanion tournament,
       ) {
     return into(tournaments).insert(tournament);
   }
 
+  /// تعديل بطولة
+  Future<bool> updateTournament(
+      TournamentsCompanion tournament,
+      ) {
+    return update(tournaments).replace(tournament);
+  }
+
+  /// حذف بطولة
+  Future<int> deleteTournament(
+      String id,
+      ) {
+    return (delete(tournaments)
+      ..where(
+            (tbl) => tbl.id.equals(id),
+      ))
+        .go();
+  }
 }
