@@ -3,6 +3,7 @@ import 'package:ludo_rank/features/tournament_players/data/models/tournament_pla
 import 'package:ludo_rank/features/tournament_players/domain/entities/tournament_player.dart';
 import 'package:ludo_rank/features/tournament_players/domain/repositories/tournament_player_repository.dart';
 
+
 class TournamentPlayerRepositoryImpl
     implements TournamentPlayerRepository {
   final TournamentPlayerDao dao;
@@ -49,5 +50,11 @@ class TournamentPlayerRepositoryImpl
     return dao.removeTournamentPlayers(
       tournamentId,
     );
+  }
+
+  @override
+  Future<void> updatePlayer(TournamentPlayer player) {
+    // TODO: implement updatePlayer
+    throw UnimplementedError();
   }
 }

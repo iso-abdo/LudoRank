@@ -16,4 +16,8 @@ abstract class TournamentPlayerRepository {
   Future<void> removeTournamentPlayers(
       String tournamentId,
       );
+
+  Future<void> updatePlayer(TournamentPlayer player
+
+      ) async {}
 }

@@ -66,4 +66,5 @@ class TournamentPlayerProvider extends ChangeNotifier {
       player.tournamentId,
     );
   }
+
 }
