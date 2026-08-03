@@ -53,8 +53,13 @@ class TournamentPlayerRepositoryImpl
   }
 
   @override
-  Future<void> updatePlayer(TournamentPlayer player) {
-    // TODO: implement updatePlayer
-    throw UnimplementedError();
+  Future<void> updatePlayer(
+      TournamentPlayer player,
+      ) {
+    return dao.updateTournamentPlayer(
+      TournamentPlayerModel
+          .fromEntity(player)
+          .toCompanion(),
+    );
   }
 }

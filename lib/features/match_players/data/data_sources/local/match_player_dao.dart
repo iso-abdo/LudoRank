@@ -74,4 +74,6 @@ class MatchPlayerDao extends DatabaseAccessor<AppDatabase>
       ))
         .go();
   }
+
+
 }
