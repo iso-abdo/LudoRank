@@ -22,9 +22,7 @@ class MatchRepositoryImpl implements MatchRepository {
   }
 
   @override
-  Future<Match?> getById(
-      String id,
-      ) async {
+  Future<Match?> getById(String id) async {
     final row = await dao.getMatchById(id);
 
     if (row == null) {

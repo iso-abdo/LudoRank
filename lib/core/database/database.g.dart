@@ -1705,6 +1705,9 @@ class $MatchPlayersTable extends MatchPlayers
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES players (id)',
+    ),
   );
   static const VerificationMeta _seatMeta = const VerificationMeta('seat');
   @override
@@ -2137,6 +2140,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $MatchPlayersTable matchPlayers = $MatchPlayersTable(this);
   late final PlayerDao playerDao = PlayerDao(this as AppDatabase);
   late final TournamentDao tournamentDao = TournamentDao(this as AppDatabase);
+  late final TournamentPlayerDao tournamentPlayerDao = TournamentPlayerDao(
+    this as AppDatabase,
+  );
+  late final MatchDao matchDao = MatchDao(this as AppDatabase);
+  late final MatchPlayerDao matchPlayerDao = MatchPlayerDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2195,6 +2205,24 @@ final class $$PlayersTableReferences
     final cache = $_typedResult.readTableOrNull(
       _tournamentPlayersRefsTable($_db),
     );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$MatchPlayersTable, List<MatchPlayer>>
+  _matchPlayersRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.matchPlayers,
+    aliasName: 'players__id__match_players__player_id',
+  );
+
+  $$MatchPlayersTableProcessedTableManager get matchPlayersRefs {
+    final manager = $$MatchPlayersTableTableManager(
+      $_db,
+      $_db.matchPlayers,
+    ).filter((f) => f.playerId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_matchPlayersRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -2266,6 +2294,31 @@ class $$PlayersTableFilterComposer
           }) => $$TournamentPlayersTableFilterComposer(
             $db: $db,
             $table: $db.tournamentPlayers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> matchPlayersRefs(
+    Expression<bool> Function($$MatchPlayersTableFilterComposer f) f,
+  ) {
+    final $$MatchPlayersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.matchPlayers,
+      getReferencedColumn: (t) => t.playerId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MatchPlayersTableFilterComposer(
+            $db: $db,
+            $table: $db.matchPlayers,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -2384,6 +2437,31 @@ class $$PlayersTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> matchPlayersRefs<T extends Object>(
+    Expression<T> Function($$MatchPlayersTableAnnotationComposer a) f,
+  ) {
+    final $$MatchPlayersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.matchPlayers,
+      getReferencedColumn: (t) => t.playerId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MatchPlayersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.matchPlayers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$PlayersTableTableManager
@@ -2399,7 +2477,10 @@ class $$PlayersTableTableManager
           $$PlayersTableUpdateCompanionBuilder,
           (Player, $$PlayersTableReferences),
           Player,
-          PrefetchHooks Function({bool tournamentPlayersRefs})
+          PrefetchHooks Function({
+            bool tournamentPlayersRefs,
+            bool matchPlayersRefs,
+          })
         > {
   $$PlayersTableTableManager(_$AppDatabase db, $PlayersTable table)
     : super(
@@ -2464,37 +2545,63 @@ class $$PlayersTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({tournamentPlayersRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (tournamentPlayersRefs) db.tournamentPlayers,
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (tournamentPlayersRefs)
-                    await $_getPrefetchedData<
-                      Player,
-                      $PlayersTable,
-                      TournamentPlayer
-                    >(
-                      currentTable: table,
-                      referencedTable: $$PlayersTableReferences
-                          ._tournamentPlayersRefsTable(db),
-                      managerFromTypedResult: (p0) => $$PlayersTableReferences(
-                        db,
-                        table,
-                        p0,
-                      ).tournamentPlayersRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.playerId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({tournamentPlayersRefs = false, matchPlayersRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (tournamentPlayersRefs) db.tournamentPlayers,
+                    if (matchPlayersRefs) db.matchPlayers,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (tournamentPlayersRefs)
+                        await $_getPrefetchedData<
+                          Player,
+                          $PlayersTable,
+                          TournamentPlayer
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PlayersTableReferences
+                              ._tournamentPlayersRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PlayersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).tournamentPlayersRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.playerId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (matchPlayersRefs)
+                        await $_getPrefetchedData<
+                          Player,
+                          $PlayersTable,
+                          MatchPlayer
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PlayersTableReferences
+                              ._matchPlayersRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PlayersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).matchPlayersRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.playerId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -2511,7 +2618,10 @@ typedef $$PlayersTableProcessedTableManager =
       $$PlayersTableUpdateCompanionBuilder,
       (Player, $$PlayersTableReferences),
       Player,
-      PrefetchHooks Function({bool tournamentPlayersRefs})
+      PrefetchHooks Function({
+        bool tournamentPlayersRefs,
+        bool matchPlayersRefs,
+      })
     >;
 typedef $$TournamentsTableCreateCompanionBuilder =
     TournamentsCompanion Function({
@@ -3810,6 +3920,23 @@ final class $$MatchPlayersTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static $PlayersTable _playerIdTable(_$AppDatabase db) =>
+      db.players.createAlias('match_players__player_id__players__id');
+
+  $$PlayersTableProcessedTableManager get playerId {
+    final $_column = $_itemColumn<String>('player_id')!;
+
+    final manager = $$PlayersTableTableManager(
+      $_db,
+      $_db.players,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_playerIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
 }
 
 class $$MatchPlayersTableFilterComposer
@@ -3823,11 +3950,6 @@ class $$MatchPlayersTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get playerId => $composableBuilder(
-    column: $table.playerId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3873,6 +3995,29 @@ class $$MatchPlayersTableFilterComposer
     );
     return composer;
   }
+
+  $$PlayersTableFilterComposer get playerId {
+    final $$PlayersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.playerId,
+      referencedTable: $db.players,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PlayersTableFilterComposer(
+            $db: $db,
+            $table: $db.players,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$MatchPlayersTableOrderingComposer
@@ -3886,11 +4031,6 @@ class $$MatchPlayersTableOrderingComposer
   });
   ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get playerId => $composableBuilder(
-    column: $table.playerId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3936,6 +4076,29 @@ class $$MatchPlayersTableOrderingComposer
     );
     return composer;
   }
+
+  $$PlayersTableOrderingComposer get playerId {
+    final $$PlayersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.playerId,
+      referencedTable: $db.players,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PlayersTableOrderingComposer(
+            $db: $db,
+            $table: $db.players,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$MatchPlayersTableAnnotationComposer
@@ -3949,9 +4112,6 @@ class $$MatchPlayersTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get playerId =>
-      $composableBuilder(column: $table.playerId, builder: (column) => column);
 
   GeneratedColumn<int> get seat =>
       $composableBuilder(column: $table.seat, builder: (column) => column);
@@ -3987,6 +4147,29 @@ class $$MatchPlayersTableAnnotationComposer
     );
     return composer;
   }
+
+  $$PlayersTableAnnotationComposer get playerId {
+    final $$PlayersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.playerId,
+      referencedTable: $db.players,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PlayersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.players,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$MatchPlayersTableTableManager
@@ -4002,7 +4185,7 @@ class $$MatchPlayersTableTableManager
           $$MatchPlayersTableUpdateCompanionBuilder,
           (MatchPlayer, $$MatchPlayersTableReferences),
           MatchPlayer,
-          PrefetchHooks Function({bool matchId})
+          PrefetchHooks Function({bool matchId, bool playerId})
         > {
   $$MatchPlayersTableTableManager(_$AppDatabase db, $MatchPlayersTable table)
     : super(
@@ -4063,7 +4246,7 @@ class $$MatchPlayersTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({matchId = false}) {
+          prefetchHooksCallback: ({matchId = false, playerId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -4096,6 +4279,19 @@ class $$MatchPlayersTableTableManager
                               )
                               as T;
                     }
+                    if (playerId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.playerId,
+                                referencedTable: $$MatchPlayersTableReferences
+                                    ._playerIdTable(db),
+                                referencedColumn: $$MatchPlayersTableReferences
+                                    ._playerIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
 
                     return state;
                   },
@@ -4120,7 +4316,7 @@ typedef $$MatchPlayersTableProcessedTableManager =
       $$MatchPlayersTableUpdateCompanionBuilder,
       (MatchPlayer, $$MatchPlayersTableReferences),
       MatchPlayer,
-      PrefetchHooks Function({bool matchId})
+      PrefetchHooks Function({bool matchId, bool playerId})
     >;
 
 class $AppDatabaseManager {

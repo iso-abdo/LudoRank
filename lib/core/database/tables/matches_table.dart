@@ -30,4 +30,9 @@ class Matches extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+  // داخل كلاس Matches
+  List<Index> get indexes => [
+    Index('idx_matches_tournament',
+        'CREATE INDEX idx_matches_tournament ON matches (tournament_id)'),
+  ];
 }

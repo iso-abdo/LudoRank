@@ -15,9 +15,12 @@ import 'package:flutter/foundation.dart';
 
 import 'tables/matches_table.dart';
 import 'tables/match_players_table.dart';
+import 'package:ludo_rank/features/matches/data/data_sources/local/match_dao.dart';
+import 'package:ludo_rank/features/match_players/data/data_sources/local/match_player_dao.dart';
+import 'package:ludo_rank/features/tournament_players/data/data_sources/local/tournament_player_dao.dart';
+
 
 part 'database.g.dart';
-
 
 @DriftDatabase(
   tables: [
@@ -27,12 +30,13 @@ part 'database.g.dart';
     Matches,
     MatchPlayers,
   ],
-  daos: [
-    PlayerDao,
-    TournamentDao,
-
-
-  ],
+    daos: [
+      PlayerDao,
+      TournamentDao,
+      TournamentPlayerDao,
+      MatchDao,
+      MatchPlayerDao,
+    ],
 )
 class AppDatabase extends _$AppDatabase {
 
