@@ -23,7 +23,7 @@ class MatchPlayers extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
-// داخل كلاس MatchPlayers
+// /داخل كلاس MatchPlayers
   List<Index> get indexes => [
     Index('idx_match_players_match',
         'CREATE INDEX idx_match_players_match ON match_players (match_id)'),
