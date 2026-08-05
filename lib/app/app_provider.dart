@@ -10,7 +10,7 @@ import 'package:ludo_rank/features/tournament_players/presentation/providers/tou
 class AppProviders {
   static final providers = [
     ChangeNotifierProvider<HomeProvider>(
-      create: (_) => HomeProvider(),
+      create: (_) => sl<HomeProvider>(),
     ),
     ChangeNotifierProvider<PlayerProvider>(
       create: (_) => sl<PlayerProvider>(),

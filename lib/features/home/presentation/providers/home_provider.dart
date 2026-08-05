@@ -1,36 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:ludo_rank/features/home/domain/use_cases/get_dashboard.dart';
+
+import '../../domain/entities/dashboard_summary.dart';
+
 
 class HomeProvider extends ChangeNotifier {
-  int _playersCount = 0;
-  int _tournamentsCount = 0;
-  int _matchesCount = 0;
-  int _finishedTournamentsCount = 0;
+  final GetDashboard getDashboard;
+
+  HomeProvider(this.getDashboard);
+
+  DashboardSummary? _dashboard;
+
+  DashboardSummary? get dashboard => _dashboard;
 
   bool _isLoading = false;
-
-  int get playersCount => _playersCount;
-  int get tournamentsCount => _tournamentsCount;
-  int get matchesCount => _matchesCount;
-  int get finishedTournamentsCount => _finishedTournamentsCount;
 
   bool get isLoading => _isLoading;
 
   Future<void> loadDashboard() async {
-    _isLoading = true;
-    notifyListeners();
+    try {
+      _isLoading = true;
+      notifyListeners();
 
-    // TODO:
-    // اقرأ البيانات من قاعدة البيانات
-    // حاليا بيانات مؤقتة
-
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    _playersCount = 0;
-    _tournamentsCount = 0;
-    _matchesCount = 0;
-    _finishedTournamentsCount = 0;
-
-    _isLoading = false;
-    notifyListeners();
+      _dashboard = await getDashboard();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
+
+  int get playersCount => _dashboard?.playersCount ?? 0;
+
+  int get tournamentsCount => _dashboard?.tournamentsCount ?? 0;
+
+  int get matchesCount => _dashboard?.matchesCount ?? 0;
+
+  int get finishedTournamentsCount =>
+      _dashboard?.finishedTournamentsCount ?? 0;
 }
