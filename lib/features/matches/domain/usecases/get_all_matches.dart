@@ -6,7 +6,7 @@ class GetAllMatches {
 
   GetAllMatches(this.repository);
 
-  Future<List<Match>> call(String tournamentId) {
-    return repository.getTournamentMatches(tournamentId);
+  Future<List<Match>> call() {
+    return repository.getAllMatches();
   }
 }

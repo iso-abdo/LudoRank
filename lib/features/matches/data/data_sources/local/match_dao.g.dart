@@ -3,7 +3,7 @@
 part of 'match_dao.dart';
 
 // ignore_for_file: type=lint
-mixin _$MatchDaoMixin on DatabaseAccessor<AppDatabase> {
+mixin _$MatchDaoMixin on DatabaseAccessor<db.AppDatabase> {
   $TournamentsTable get tournaments => attachedDatabase.tournaments;
   $MatchesTable get matches => attachedDatabase.matches;
   MatchDaoManager get managers => MatchDaoManager(this);

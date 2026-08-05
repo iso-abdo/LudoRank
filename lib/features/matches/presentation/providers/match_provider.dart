@@ -1,4 +1,4 @@
-/*import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../domain/entities/match.dart';
 import '../../domain/repositories/match_repository.dart';
@@ -36,13 +36,31 @@ class MatchProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+  Future<void> loadAllMatches() async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
 
-  Future<void> addMatch(Match match) async {
+      final result = await repository.getAllMatches();
+
+      _matches
+        ..clear()
+        ..addAll(result);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> createMatch(Match match) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      await repository.addMatch(match);
+      await repository.create(match);
 
       await loadMatches(match.tournamentId);
     } catch (e) {
@@ -57,7 +75,7 @@ class MatchProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      await repository.updateMatch(match);
+      await repository.update(match);
 
       await loadMatches(match.tournamentId);
     } catch (e) {
@@ -72,7 +90,7 @@ class MatchProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      await repository.deleteMatch(id);
+      await repository.delete(id);
 
       await loadMatches(tournamentId);
     } catch (e) {
@@ -86,4 +104,4 @@ class MatchProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
   }
-}*/
+}

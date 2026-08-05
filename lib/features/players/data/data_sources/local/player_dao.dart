@@ -45,4 +45,13 @@ class PlayerDao extends DatabaseAccessor<AppDatabase>
       ..where((tbl) => tbl.id.equals(id)))
         .go();
   }
+  //
+  Future<int> getPlayersCount() async {
+    final query = selectOnly(players)
+      ..addColumns([players.id.count()]);
+
+    final result = await query.getSingle();
+
+    return result.read(players.id.count()) ?? 0;
+  }
 }

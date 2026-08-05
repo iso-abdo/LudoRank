@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'package:ludo_rank/core/database/database.dart';
+import 'package:ludo_rank/core/database/database.dart' as db;
 import 'package:ludo_rank/core/database/tables/matches_table.dart';
 
 part 'match_dao.g.dart';
@@ -15,13 +16,7 @@ class MatchDao extends DatabaseAccessor<AppDatabase>
 
   MatchDao(super.db);
 
-  Future<List<MatchData>> getTournamentMatches(
-      String tournamentId,
-      ) {
-    return (select(matches)
-      ..where((tbl) => tbl.tournamentId.equals(tournamentId)))
-        .get();
-  }
+
 
   Future<MatchData?> getMatchById(
       String id,
@@ -57,5 +52,17 @@ class MatchDao extends DatabaseAccessor<AppDatabase>
     return (delete(matches)
       ..where((tbl) => tbl.id.equals(id)))
         .go();
+  }
+
+  Future<List<db.MatchData>> getTournamentMatches(
+      String tournamentId,
+      ) {
+    return (select(matches)
+      ..where((tbl) => tbl.tournamentId.equals(tournamentId)))
+        .get();
+  }
+
+  Future<List<db.MatchData>> getAllMatches() {
+    return select(matches).get();
   }
 }

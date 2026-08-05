@@ -5,6 +5,7 @@ abstract interface class MatchRepository {
   Future<List<Match>> getTournamentMatches(
       String tournamentId,
       );
+  Future<List<Match>> getAllMatches();
 
   /// مباراة واحدة
   Future<Match?> getById(
@@ -25,4 +26,6 @@ abstract interface class MatchRepository {
   Future<void> delete(
       String id,
       );
+
+
 }

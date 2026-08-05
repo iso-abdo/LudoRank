@@ -7,7 +7,14 @@ class MatchRepositoryImpl implements MatchRepository {
   final MatchDao dao;
 
   MatchRepositoryImpl(this.dao);
+  @override
+  Future<List<Match>> getAllMatches() async {
+    final rows = await dao.getAllMatches();
 
+    return rows
+        .map(MatchModel.fromDrift)
+        .toList();
+  }
   @override
   Future<List<Match>> getTournamentMatches(
       String tournamentId,
@@ -60,4 +67,6 @@ class MatchRepositoryImpl implements MatchRepository {
       ) async {
     await dao.deleteMatch(id);
   }
+
+
 }
