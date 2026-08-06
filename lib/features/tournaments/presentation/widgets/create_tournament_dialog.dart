@@ -84,10 +84,16 @@ class _CreateTournamentDialogState
               ),
 
               items: const [
+                DropdownMenuItem(value: 1, child: Text("1")),
+                DropdownMenuItem(value: 2, child: Text("2")),
                 DropdownMenuItem(value: 3, child: Text("3")),
+                DropdownMenuItem(value: 4, child: Text("4")),
                 DropdownMenuItem(value: 5, child: Text("5")),
+                DropdownMenuItem(value: 6, child: Text("6")),
                 DropdownMenuItem(value: 7, child: Text("7")),
+                DropdownMenuItem(value: 8, child: Text("8")),
                 DropdownMenuItem(value: 9, child: Text("9")),
+                DropdownMenuItem(value: 10, child: Text("10")),
               ],
 
               onChanged: (value) {
