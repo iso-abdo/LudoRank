@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ludo_rank/features/tournaments/presentation/providers/tournament_provider.dart';
 import 'package:ludo_rank/shared/widgets/app_scaffold.dart';
 
 import 'package:ludo_rank/core/dependency_injection/injection_container.dart';
@@ -25,6 +26,8 @@ class TournamentDetailsPage extends StatefulWidget {
 class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
   final TournamentPlayerProvider tournamentPlayerProvider =
       sl<TournamentPlayerProvider>();
+  final TournamentProvider tournamentProvider =
+      sl<TournamentProvider>();
 
   final uuid = const Uuid();
 
@@ -33,7 +36,10 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
     super.initState();
     tournamentPlayerProvider.loadPlayers(
       widget.tournamentId,
+
     );
+    tournamentProvider.loadTournament(
+        widget.tournamentId);
   }
 
   Future<void> _addPlayers() async {
