@@ -46,6 +46,11 @@ import 'package:ludo_rank/features/matches/presentation/providers/match_provider
 
 import 'package:ludo_rank/shared/widgets/app_scaffold.dart';
 
+
+
+import 'package:ludo_rank/features/matches/domain/entities/match_status.dart';
+
+
 class TournamentMatchesPage extends StatefulWidget {
   final String tournamentId;
 
@@ -61,19 +66,24 @@ class TournamentMatchesPage extends StatefulWidget {
 
 class _TournamentMatchesPageState
     extends State<TournamentMatchesPage> {
-  final MatchProvider matchProvider =
-  sl<MatchProvider>();
+  late final MatchProvider matchProvider;
 
   @override
   void initState() {
     super.initState();
 
-    matchProvider.loadMatches(
+    matchProvider = sl<MatchProvider>();
+
+    _loadMatches();
+  }
+
+  Future<void> _loadMatches() async {
+    await matchProvider.loadMatches(
       widget.tournamentId,
     );
   }
 
-  Future<void> _openCreateMatchPage() async {
+  Future<void> _createNewMatch() async {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -88,10 +98,12 @@ class _TournamentMatchesPageState
     }
 
     if (result == true) {
-      await matchProvider.loadMatches(
-        widget.tournamentId,
-      );
+      await _loadMatches();
     }
+  }
+
+  Future<void> _refreshMatches() async {
+    await _loadMatches();
   }
 
   @override
@@ -101,65 +113,109 @@ class _TournamentMatchesPageState
       body: ListenableBuilder(
         listenable: matchProvider,
         builder: (context, _) {
-          if (matchProvider.isLoading) {
+          if (matchProvider.isLoading &&
+              matchProvider.matches.isEmpty) {
             return const Center(
               child: CircularProgressIndicator(),
             );
           }
 
-          if (matchProvider.error != null) {
+          if (matchProvider.error != null &&
+              matchProvider.matches.isEmpty) {
             return _ErrorView(
               message: matchProvider.error!,
-              onRetry: () {
-                matchProvider.loadMatches(
-                  widget.tournamentId,
-                );
-              },
+              onRetry: _loadMatches,
             );
           }
 
-          if (matchProvider.matches.isEmpty) {
-            return _EmptyMatchesView(
-              onCreateMatch: _openCreateMatchPage,
-            );
-          }
+          final matches = matchProvider.matches;
 
-          return Column(
-            children: [
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: matchProvider.matches.length,
-                  separatorBuilder: (_,_) =>
-                  const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final match =
-                    matchProvider.matches[index];
+          if (matches.isEmpty) {
+            return RefreshIndicator(
+              onRefresh: _refreshMatches,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24),
+                children: [
+                  const SizedBox(height: 80),
 
-                    return _MatchCard(
-                      match: match,
-                    );
-                  },
-                ),
-              ),
+                  Icon(
+                    Icons.sports_esports_outlined,
+                    size: 80,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary,
+                  ),
 
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _openCreateMatchPage,
-                      icon: const Icon(Icons.add),
-                      label: const Text(
-                        'مباراة جديدة',
-                      ),
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    'لا توجد مباريات حتى الآن',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
+
+                  const SizedBox(height: 12),
+
+                  const Text(
+                    'قم بإنشاء مباراة جديدة واختار اللاعبين المشاركين فيها.',
+                    textAlign: TextAlign.center,
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  ElevatedButton.icon(
+                    onPressed: _createNewMatch,
+                    icon: const Icon(Icons.add),
+                    label: const Text(
+                      'مباراة جديدة',
+                    ),
+                  ),
+                ],
               ),
-            ],
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: _refreshMatches,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _MatchesHeader(
+                  matchesCount: matches.length,
+                  onAddMatch: _createNewMatch,
+                ),
+
+                const SizedBox(height: 16),
+
+                ...matches.map(
+                      (match) => _MatchCard(
+                    match: match,
+                    onTap: () {
+                      // المرحلة القادمة:
+                      // فتح تفاصيل المباراة.
+                    },
+                  ),
+                ),
+
+                if (matchProvider.error != null) ...[
+                  const SizedBox(height: 12),
+
+                  Text(
+                    matchProvider.error!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .error,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           );
         },
       ),
@@ -167,11 +223,13 @@ class _TournamentMatchesPageState
   }
 }
 
-class _MatchCard extends StatelessWidget {
-  final Match match;
+class _MatchesHeader extends StatelessWidget {
+  final int matchesCount;
+  final VoidCallback onAddMatch;
 
-  const _MatchCard({
-    required this.match,
+  const _MatchesHeader({
+    required this.matchesCount,
+    required this.onAddMatch,
   });
 
   @override
@@ -185,23 +243,32 @@ class _MatchCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const CircleAvatar(
-                  child: Icon(
-                    Icons.sports_esports,
-                  ),
+                const Icon(
+                  Icons.sports_esports,
+                  size: 32,
                 ),
+
                 const SizedBox(width: 12),
+
                 Expanded(
-                  child: Text(
-                    'مباراة',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium,
-                  ),
-                ),
-                Chip(
-                  label: Text(
-                    match.status.name,
+                  child: Column(
+                    crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'مباريات البطولة',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      const SizedBox(height: 4),
+
+                      Text(
+                        'عدد المباريات: $matchesCount',
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -209,34 +276,12 @@ class _MatchCard extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            Row(
-              children: [
-                const Icon(
-                  Icons.people_outline,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${match.playersCount} لاعبين',
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            Row(
-              children: [
-                const Icon(
-                  Icons.fingerprint,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    match.id,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+            ElevatedButton.icon(
+              onPressed: onAddMatch,
+              icon: const Icon(Icons.add),
+              label: const Text(
+                'مباراة جديدة',
+              ),
             ),
           ],
         ),
@@ -245,61 +290,136 @@ class _MatchCard extends StatelessWidget {
   }
 }
 
-class _EmptyMatchesView extends StatelessWidget {
-  final VoidCallback onCreateMatch;
+class _MatchCard extends StatelessWidget {
+  final Match match;
+  final VoidCallback onTap;
 
-  const _EmptyMatchesView({
-    required this.onCreateMatch,
+  const _MatchCard({
+    required this.match,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment:
-          MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.sports_esports_outlined,
-              size: 72,
-              color: Theme.of(context)
-                  .colorScheme
-                  .primary,
-            ),
+    return Card(
+      margin: const EdgeInsets.only(
+        bottom: 12,
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment:
+            CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    child: Text(
+                      '#',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
 
-            const SizedBox(height: 20),
+                  const SizedBox(width: 12),
 
-            Text(
-              'لا توجد مباريات حتى الآن',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge,
-              textAlign: TextAlign.center,
-            ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'مباراة ${match.id.substring(0, 8)}',
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
 
-            const SizedBox(height: 8),
+                        const SizedBox(height: 4),
 
-            const Text(
-              'قم بإنشاء أول مباراة واختيار '
-                  'اللاعبين المشاركين فيها.',
-              textAlign: TextAlign.center,
-            ),
+                        Text(
+                          'عدد اللاعبين: ${match.playersCount}',
+                        ),
+                      ],
+                    ),
+                  ),
 
-            const SizedBox(height: 24),
-
-            ElevatedButton.icon(
-              onPressed: onCreateMatch,
-              icon: const Icon(Icons.add),
-              label: const Text(
-                'إنشاء أول مباراة',
+                  _MatchStatusChip(
+                    status: match.status,
+                  ),
+                ],
               ),
-            ),
-          ],
+
+              const SizedBox(height: 16),
+
+              const Divider(),
+
+              const SizedBox(height: 8),
+
+              Row(
+                children: [
+                  const Icon(
+                    Icons.people,
+                    size: 20,
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  Text(
+                    '${match.playersCount} لاعبين',
+                  ),
+
+                  const Spacer(),
+
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+}
+
+class _MatchStatusChip extends StatelessWidget {
+  final MatchStatus status;
+
+  const _MatchStatusChip({
+    required this.status,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      label: Text(
+        _statusText(status),
+      ),
+    );
+  }
+
+  String _statusText(MatchStatus status) {
+    switch (status) {
+      case MatchStatus.pending:
+        return 'معلقة';
+
+      case MatchStatus.playing:
+        return 'جارية';
+
+      case MatchStatus.finished:
+        return 'منتهية';
+
+      case MatchStatus.cancelled:
+        return 'ملغاة';
+    }
   }
 }
 
@@ -318,12 +438,11 @@ class _ErrorView extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
-          mainAxisAlignment:
-          MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
               Icons.error_outline,
-              size: 64,
+              size: 60,
             ),
 
             const SizedBox(height: 16),
@@ -331,6 +450,10 @@ class _ErrorView extends StatelessWidget {
             const Text(
               'حدث خطأ أثناء تحميل المباريات',
               textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
 
             const SizedBox(height: 8),
@@ -345,7 +468,9 @@ class _ErrorView extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
+              label: const Text(
+                'إعادة المحاولة',
+              ),
             ),
           ],
         ),

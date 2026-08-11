@@ -6,6 +6,7 @@ import 'package:ludo_rank/features/home/data/repositories/home_repository_impl.d
 import 'package:ludo_rank/features/home/domain/repositories/home_repository.dart';
 import 'package:ludo_rank/features/home/domain/use_cases/get_dashboard.dart';
 import 'package:ludo_rank/features/home/presentation/providers/home_provider.dart';
+
 import 'package:ludo_rank/features/match_players/data/data_sources/local/match_player_dao.dart';
 import 'package:ludo_rank/features/match_players/data/repositories/match_player_repository_impl.dart';
 import 'package:ludo_rank/features/match_players/domain/repositories/match_player_repository.dart';
@@ -18,10 +19,12 @@ import 'package:ludo_rank/features/players/data/repositories/player_repository_i
 import 'package:ludo_rank/features/players/domain/repositories/player_repository.dart';
 
 import 'package:ludo_rank/features/players/presentation/providers/player_provider.dart';
-import 'package:ludo_rank/features/tournaments/data/data_sources/local/tournament_dao.dart';
+
+
 // أضف الـ imports الخاصة بالـ tournament
 
 import 'package:ludo_rank/features/tournaments/data/repositories/tournament_repository_impl.dart';
+import 'package:ludo_rank/features/tournaments/data/data_sources/local/tournament_dao.dart';
 
 import 'package:ludo_rank/features/tournaments/domain/repositories/tournament_repository.dart';
 import 'package:ludo_rank/features/tournaments/domain/services/tournament_validator.dart';
@@ -38,7 +41,7 @@ import 'package:ludo_rank/features/matches/data/data_sources/local/match_dao.dar
 import 'package:ludo_rank/features/matches/data/repositories/match_repository_impl.dart';
 import 'package:ludo_rank/features/matches/domain/repositories/match_repository.dart';
 import 'package:ludo_rank/features/matches/presentation/providers/match_provider.dart';
-
+import 'package:ludo_rank/features/matches/domain/usecases/create_match.dart';
 
 final sl = GetIt.instance;
 
@@ -97,6 +100,12 @@ Future<void> initDependencies() async {
 
 
   // Repository
+  sl.registerLazySingleton<CreateMatch>(
+        () => CreateMatch(
+      matchRepository: sl<MatchRepository>(),
+      matchPlayerRepository: sl<MatchPlayerRepository>(),
+    ),
+  );
 
   sl.registerLazySingleton<PlayerRepository>(
         () => PlayerRepositoryImpl(
@@ -118,14 +127,15 @@ Future<void> initDependencies() async {
       sl<HomeDao>(),
     ),
   );
-  sl.registerLazySingleton<MatchRepository>(
-        () => MatchRepositoryImpl(
-      sl<MatchDao>(),
-    ),
-  );
+
   sl.registerLazySingleton<MatchPlayerRepository>(
         () => MatchPlayerRepositoryImpl(
       sl<MatchPlayerDao>(),
+    ),
+  );
+  sl.registerLazySingleton<MatchRepository>(
+        () => MatchRepositoryImpl(
+      sl<MatchDao>(),
     ),
   );
 

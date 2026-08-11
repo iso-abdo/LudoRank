@@ -1,3 +1,4 @@
+import 'package:ludo_rank/features/match_players/presentation/providers/match_player_provider.dart';
 import 'package:ludo_rank/features/matches/presentation/providers/match_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -25,5 +26,9 @@ class AppProviders {
    ChangeNotifierProvider<MatchProvider>(
       create: (_) => sl<MatchProvider>(),
     ),
+    ChangeNotifierProvider<MatchPlayerProvider>(
+      create: (_) => sl<MatchPlayerProvider>(),
+    ),
+
   ];
 }
