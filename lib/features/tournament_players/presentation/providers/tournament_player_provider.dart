@@ -48,11 +48,31 @@ class TournamentPlayerProvider extends ChangeNotifier {
   Future<void> addPlayer(
       TournamentPlayer player,
       ) async {
-    await repository.addPlayer(player);
-
-    await loadPlayers(
-      player.tournamentId,
+    final alreadyExists = _players.any(
+          (existingPlayer) =>
+      existingPlayer.playerId == player.playerId,
     );
+
+    if (alreadyExists) {
+      _error = 'اللاعب موجود بالفعل في هذه البطولة';
+      notifyListeners();
+      return;
+    }
+
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      await repository.addPlayer(player);
+
+      await loadPlayers(player.tournamentId);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> removePlayer(

@@ -14,14 +14,29 @@ class TournamentPlayers extends Table {
   DateTimeColumn get joinedAt =>
       dateTime().withDefault(currentDateAndTime)();
 
-  @override
-  Set<Column> get primaryKey => {id};
-
-  // إضافة الفهارس لتحسين أداء البحث والـ Joins
   List<Index> get indexes => [
-    Index('idx_tournament_players_tournament',
-        'CREATE INDEX idx_tournament_players_tournament ON tournament_players (tournament_id)'),
-    Index('idx_tournament_players_player',
-        'CREATE INDEX idx_tournament_players_player ON tournament_players (player_id)'),
+    Index(
+      'idx_tournament_players_tournament',
+      '''
+    CREATE INDEX idx_tournament_players_tournament
+    ON tournament_players (tournament_id)
+    ''',
+    ),
+
+    Index(
+      'idx_tournament_players_player',
+      '''
+    CREATE INDEX idx_tournament_players_player
+    ON tournament_players (player_id)
+    ''',
+    ),
+
+    Index(
+      'ux_tournament_players_tournament_player',
+      '''
+    CREATE UNIQUE INDEX ux_tournament_players_tournament_player
+    ON tournament_players (tournament_id, player_id)
+    ''',
+    ),
   ];
 }

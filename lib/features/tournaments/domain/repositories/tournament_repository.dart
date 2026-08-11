@@ -10,5 +10,4 @@ abstract interface class TournamentRepository {
   Future<void> updateTournament(Tournament tournament);
 
   Future<void> deleteTournament(String id);
-
 }

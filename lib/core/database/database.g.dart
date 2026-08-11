@@ -1019,7 +1019,7 @@ class $TournamentPlayersTable extends TournamentPlayers
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {id};
+  Set<GeneratedColumn> get $primaryKey => const {};
   @override
   TournamentPlayer map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';

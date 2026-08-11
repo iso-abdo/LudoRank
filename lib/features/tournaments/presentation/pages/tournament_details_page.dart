@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:ludo_rank/features/matches/presentation/pages/tournament_matches_page.dart';
 import 'package:ludo_rank/features/tournaments/presentation/providers/tournament_provider.dart';
 import 'package:ludo_rank/shared/widgets/app_scaffold.dart';
-
 import 'package:ludo_rank/core/dependency_injection/injection_container.dart';
 
 import 'package:ludo_rank/features/tournament_players/domain/entities/tournament_player.dart';
@@ -174,7 +174,15 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
             ),
             const SizedBox(height: 12),
             ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(context,
+                    MaterialPageRoute(
+                      builder: (_) => TournamentMatchesPage(
+                        tournamentId: widget.tournamentId,
+                        ),
+                      ),
+                    );
+              },
               icon: const Icon(Icons.play_arrow),
               label: const Text("استكمال البطولة"),
             ),
@@ -184,3 +192,5 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
     );
   }
 }
+
+
