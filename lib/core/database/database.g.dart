@@ -25,6 +25,7 @@ class $PlayersTable extends Players with TableInfo<$PlayersTable, Player> {
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
   static const VerificationMeta _nicknameMeta = const VerificationMeta(
     'nickname',
