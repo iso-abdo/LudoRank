@@ -1,55 +1,13 @@
-/* وظيفتها:
-
-تجيب مباريات البطولة.
-تعرض المباريات السابقة.
-تعرض حالة كل مباراة.
-تحتوي على زر:
-+ مباراة جديدة
-
-final MatchProvider matchProvider =
-    sl<MatchProvider>();
-
-    @override
-void initState() {
-  super.initState();
-
-  matchProvider.loadMatches(
-    widget.tournamentId,
-  );
-}
-
-
-في TournamentDetailsPage:
-
-ElevatedButton.icon(
-  onPressed: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => TournamentMatchesPage(
-          tournamentId: widget.tournamentId,
-        ),
-      ),
-    );
-  },
-  icon: const Icon(Icons.play_arrow),
-  label: const Text('استكمال البطولة'),
-),
-*/
 import 'package:flutter/material.dart';
 
 import 'package:ludo_rank/core/dependency_injection/injection_container.dart';
 
 import 'package:ludo_rank/features/matches/domain/entities/match.dart';
-import 'package:ludo_rank/features/matches/presentation/pages/create_match_page.dart';
+import 'package:ludo_rank/features/matches/domain/entities/match_status.dart';
 import 'package:ludo_rank/features/matches/presentation/providers/match_provider.dart';
+import 'package:ludo_rank/features/matches/presentation/pages/create_match_page.dart';
 
 import 'package:ludo_rank/shared/widgets/app_scaffold.dart';
-
-
-
-import 'package:ludo_rank/features/matches/domain/entities/match_status.dart';
-
 
 class TournamentMatchesPage extends StatefulWidget {
   final String tournamentId;

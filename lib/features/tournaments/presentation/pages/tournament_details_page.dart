@@ -8,6 +8,7 @@ import 'package:ludo_rank/features/tournament_players/domain/entities/tournament
 import 'package:ludo_rank/features/tournament_players/presentation/providers/tournament_player_provider.dart';
 
 import 'package:ludo_rank/features/tournament_players/presentation/pages/select_players_page.dart';
+import 'package:ludo_rank/features/players/presentation/providers/player_provider.dart';
 
 import 'package:uuid/uuid.dart';
 
@@ -28,6 +29,9 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
       sl<TournamentPlayerProvider>();
   final TournamentProvider tournamentProvider =
       sl<TournamentProvider>();
+  final PlayerProvider playerProvider =
+      sl<PlayerProvider>();
+
 
   final uuid = const Uuid();
 
@@ -38,6 +42,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
       widget.tournamentId,
 
     );
+    playerProvider.loadPlayers();
     tournamentProvider.loadTournament(
         widget.tournamentId);
   }
@@ -160,7 +165,11 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                       leading: const CircleAvatar(
                         child: Icon(Icons.person),
                       ),
-                      title: Text(player.playerId),
+                      title: Text(
+                        playerProvider.getPlayerName(
+                          player.playerId,
+                        ),
+                      ),
                     );
                   },
                 );

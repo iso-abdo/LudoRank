@@ -9,7 +9,7 @@ import 'package:ludo_rank/features/match_players/domain/entities/match_player.da
 import 'package:ludo_rank/features/matches/domain/usecases/create_match.dart';
 
 import 'package:ludo_rank/features/tournament_players/presentation/providers/tournament_player_provider.dart';
-
+import 'package:ludo_rank/features/players/presentation/providers/player_provider.dart';
 import 'package:ludo_rank/shared/widgets/app_scaffold.dart';
 
 class CreateMatchPage extends StatefulWidget {
@@ -26,10 +26,12 @@ class CreateMatchPage extends StatefulWidget {
 
 class _CreateMatchPageState extends State<CreateMatchPage> {
   final TournamentPlayerProvider tournamentPlayerProvider =
-  sl<TournamentPlayerProvider>();
+      sl<TournamentPlayerProvider>();
 
-  final CreateMatch createMatch = sl<CreateMatch>();
-
+  final CreateMatch createMatch =
+      sl<CreateMatch>();
+  final PlayerProvider playerProvider =
+      sl<PlayerProvider>();
   final Uuid uuid = const Uuid();
 
   int? _playersCount;
@@ -45,6 +47,8 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
     tournamentPlayerProvider.loadPlayers(
       widget.tournamentId,
     );
+    playerProvider.loadPlayers();
+
   }
 
   void _selectPlayersCount(int count) {
@@ -288,7 +292,7 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
                             );
                           },
                           title: Text(
-                            playerId,
+                            playerProvider.getPlayerName(playerId),
                           ),
                           subtitle: Text(
                             'المقعد: ${selected ? _getSeat(playerId) : '-'}',

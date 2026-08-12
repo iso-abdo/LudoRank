@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../domain/entities/player.dart';
 import '../../domain/repositories/player_repository.dart';
 
@@ -10,22 +9,34 @@ class PlayerProvider extends ChangeNotifier {
 
   final List<Player> _players = [];
 
+  // 1. Getters (مستخرجات البيانات)
   List<Player> get players => List.unmodifiable(_players);
-
   bool _isLoading = false;
   bool get isLoading => _isLoading;
-
   String? _error;
   String? get error => _error;
 
+  // المكان الأنسب للدالة الجديدة لتوحيد عمليات جلب وقراءة البيانات
+  Player? getPlayerById(String id) {
+    try {
+      return _players.firstWhere(
+            (player) => player.id == id,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String getPlayerName(String playerId) {
+    return getPlayerById(playerId)?.name ?? 'لاعب غير معروف';
+  }
+  // 2. Actions / Futures (العمليات والمزامنة)
   Future<void> loadPlayers() async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
-
       final result = await repository.getAllPlayers();
-
       _players
         ..clear()
         ..addAll(result);
@@ -41,9 +52,7 @@ class PlayerProvider extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
-
       await repository.addPlayer(player);
-
       await loadPlayers();
     } catch (e) {
       _error = e.toString();
@@ -56,9 +65,7 @@ class PlayerProvider extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
-
       await repository.updatePlayer(player);
-
       await loadPlayers();
     } catch (e) {
       _error = e.toString();
@@ -71,9 +78,7 @@ class PlayerProvider extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
-
       await repository.deletePlayer(id);
-
       await loadPlayers();
     } catch (e) {
       _error = e.toString();
