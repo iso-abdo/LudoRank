@@ -1,33 +1,17 @@
 import 'package:equatable/equatable.dart';
-import 'package:ludo_rank/features/ludo_game/domain/entities/ludo_player.dart';
 
+import '../entities/ludo_player.dart';
+import 'turn_state.dart';
 
-
-/// الحالة الحالية للعبة Ludo.
-///
-/// مهم:
-/// هذا الكلاس مسؤول عن تخزين حالة اللعبة فقط.
-/// لا يحتوي على Logic للحركة أو النرد أو الأكل أو الفوز.
-///
-/// كل الـ game rules سيتم تنفيذها داخل:
-/// LudoGameEngine
 class LudoGameState extends Equatable {
-  /// جميع لاعبي اللعبة.
+  /// لاعبو لعبة Ludo.
   final List<LudoPlayer> players;
 
-  /// رقم اللاعب صاحب الدور الحالي.
-  ///
-  /// مثال:
-  /// 0 = اللاعب الأول
-  /// 1 = اللاعب الثاني
-  /// 2 = اللاعب الثالث
-  /// 3 = اللاعب الرابع
+  /// Index اللاعب صاحب الدور الحالي.
   final int currentPlayerIndex;
 
-  /// آخر نتيجة للنرد.
-  ///
-  /// null معناها إن مفيش رمية نرد حاليًا.
-  final int? diceValue;
+  /// حالة الدور الحالي بالكامل.
+  final TurnState turnState;
 
   /// هل اللعبة بدأت؟
   final bool isStarted;
@@ -35,49 +19,118 @@ class LudoGameState extends Equatable {
   /// هل اللعبة انتهت؟
   final bool isFinished;
 
-  /// ترتيب اللاعبين الذين أنهوا اللعبة.
+  /// IDs اللاعبين الذين أنهوا اللعبة بالترتيب.
   ///
   /// مثال:
-  /// [2, 0, 1]
   ///
-  /// معناه:
-  /// اللاعب رقم 2 جاء أولًا
-  /// اللاعب رقم 0 جاء ثانيًا
-  /// اللاعب رقم 1 جاء ثالثًا
-  final List<int> finishedPlayerIndexes;
+  /// [
+  ///   'player-c',
+  ///   'player-a',
+  ///   'player-d',
+  /// ]
+  ///
+  /// معناها:
+  /// C = Rank 1
+  /// A = Rank 2
+  /// D = Rank 3
+  final List<String> finishedPlayerIds;
 
   const LudoGameState({
     required this.players,
     required this.currentPlayerIndex,
-    this.diceValue,
+    required this.turnState,
     this.isStarted = false,
     this.isFinished = false,
-    this.finishedPlayerIndexes = const [],
+    this.finishedPlayerIds = const [],
   });
 
-  /// الحالة الابتدائية للعبة.
+  /// الحالة الأولية للعبة.
   factory LudoGameState.initial({
     required List<LudoPlayer> players,
   }) {
+    if (players.isEmpty) {
+      throw ArgumentError(
+        'يجب أن تحتوي اللعبة على لاعب واحد على الأقل.',
+      );
+    }
+
+    final sortedPlayers = [...players]
+      ..sort(
+            (a, b) => a.seat.compareTo(b.seat),
+      );
+
     return LudoGameState(
-      players: List.unmodifiable(players),
+      players: List.unmodifiable(sortedPlayers),
       currentPlayerIndex: 0,
-      diceValue: null,
+      turnState: TurnState.initial(
+        sortedPlayers.first.playerId,
+      ),
       isStarted: false,
       isFinished: false,
-      finishedPlayerIndexes: const [],
+      finishedPlayerIds: const [],
     );
   }
 
-  /// إنشاء نسخة جديدة من الحالة مع تغيير بعض القيم فقط.
+  /// اللاعب صاحب الدور الحالي.
+  LudoPlayer get currentPlayer {
+    return players[currentPlayerIndex];
+  }
+
+  /// عدد اللاعبين.
+  int get playersCount => players.length;
+
+  /// عدد اللاعبين الذين أنهوا اللعبة.
+  int get finishedPlayersCount {
+    return finishedPlayerIds.length;
+  }
+
+  /// هل ما زال هناك لاعبون لم ينهوا اللعبة؟
+  bool get hasUnfinishedPlayers {
+    return finishedPlayerIds.length < players.length;
+  }
+
+  /// هل اللاعب الحالي أنهى اللعبة؟
+  bool get currentPlayerFinished {
+    return finishedPlayerIds.contains(
+      currentPlayer.playerId,
+    );
+  }
+
+  /// ترتيب لاعب أنهى اللعبة.
+  ///
+  /// أول لاعب = 1
+  /// ثاني لاعب = 2
+  /// ...
+  int? getRankForPlayer(String playerId) {
+    final index = finishedPlayerIds.indexOf(
+      playerId,
+    );
+
+    if (index == -1) {
+      return null;
+    }
+
+    return index + 1;
+  }
+
+  /// البحث عن لاعب بالـ playerId.
+  LudoPlayer? getPlayerById(String playerId) {
+    try {
+      return players.firstWhere(
+            (player) => player.playerId == playerId,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   LudoGameState copyWith({
     List<LudoPlayer>? players,
     int? currentPlayerIndex,
-    int? diceValue,
-    bool clearDiceValue = false,
+    TurnState? turnState,
     bool? isStarted,
     bool? isFinished,
-    List<int>? finishedPlayerIndexes,
+    List<String>? finishedPlayerIds,
   }) {
     return LudoGameState(
       players: List.unmodifiable(
@@ -85,46 +138,26 @@ class LudoGameState extends Equatable {
       ),
       currentPlayerIndex:
       currentPlayerIndex ?? this.currentPlayerIndex,
-      diceValue: clearDiceValue
-          ? null
-          : diceValue ?? this.diceValue,
+      turnState:
+      turnState ?? this.turnState,
       isStarted:
       isStarted ?? this.isStarted,
       isFinished:
       isFinished ?? this.isFinished,
-      finishedPlayerIndexes:
-      List.unmodifiable(
-        finishedPlayerIndexes ??
-            this.finishedPlayerIndexes,
+      finishedPlayerIds: List.unmodifiable(
+        finishedPlayerIds ??
+            this.finishedPlayerIds,
       ),
     );
   }
-
-  /// اللاعب صاحب الدور الحالي.
-  LudoPlayer get currentPlayer =>
-      players[currentPlayerIndex];
-
-  /// هل اللاعب الحالي أنهى اللعبة؟
-  bool get currentPlayerFinished =>
-      finishedPlayerIndexes.contains(
-        currentPlayerIndex,
-      );
-
-  /// عدد اللاعبين الذين أنهوا اللعبة.
-  int get finishedPlayersCount =>
-      finishedPlayerIndexes.length;
-
-  /// هل ما زال هناك لاعبون يمكنهم اللعب؟
-  bool get hasRemainingPlayers =>
-      finishedPlayersCount < players.length;
 
   @override
   List<Object?> get props => [
     players,
     currentPlayerIndex,
-    diceValue,
+    turnState,
     isStarted,
     isFinished,
-    finishedPlayerIndexes,
+    finishedPlayerIds,
   ];
 }

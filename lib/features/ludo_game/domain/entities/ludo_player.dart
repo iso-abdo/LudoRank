@@ -1,12 +1,13 @@
 import 'package:equatable/equatable.dart';
+import 'package:ludo_rank/features/ludo_game/domain/entities/ludo_token.dart';
 
-import 'ludo_token.dart';
+
 
 class LudoPlayer extends Equatable {
   final String id;
 
   /// الـ playerId الأصلي من LudoRank
-  final String tournamentPlayerId;
+  final String playerId;
 
   /// اسم اللاعب للعرض
   final String name;
@@ -22,7 +23,7 @@ class LudoPlayer extends Equatable {
 
   const LudoPlayer({
     required this.id,
-    required this.tournamentPlayerId,
+    required this.playerId,
     required this.name,
     required this.color,
     required this.seat,
@@ -31,7 +32,7 @@ class LudoPlayer extends Equatable {
 
   LudoPlayer copyWith({
     String? id,
-    String? tournamentPlayerId,
+    String? playerId,
     String? name,
     LudoPlayerColor? color,
     int? seat,
@@ -39,8 +40,8 @@ class LudoPlayer extends Equatable {
   }) {
     return LudoPlayer(
       id: id ?? this.id,
-      tournamentPlayerId:
-      tournamentPlayerId ?? this.tournamentPlayerId,
+      playerId:
+      playerId ?? this.playerId,
       name: name ?? this.name,
       color: color ?? this.color,
       seat: seat ?? this.seat,
@@ -51,7 +52,7 @@ class LudoPlayer extends Equatable {
   @override
   List<Object?> get props => [
     id,
-    tournamentPlayerId,
+    playerId,
     name,
     color,
     seat,
