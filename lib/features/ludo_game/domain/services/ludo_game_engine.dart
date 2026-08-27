@@ -27,17 +27,16 @@ class LudoGameEngine {
   // STATE
   // ============================================================
 
-  /// الحالة الحالية للعبة.
   LudoGameState get state => _state;
 
-  /// اللاعب الحالي.
-  LudoPlayer get currentPlayer => _state.currentPlayer;
+  LudoPlayer get currentPlayer =>
+      _state.currentPlayer;
 
-  /// هل اللعبة بدأت؟
-  bool get isStarted => _state.isStarted;
+  bool get isStarted =>
+      _state.isStarted;
 
-  /// هل اللعبة انتهت؟
-  bool get isFinished => _state.isFinished;
+  bool get isFinished =>
+      _state.isFinished;
 
   // ============================================================
   // GAME START
@@ -60,7 +59,7 @@ class LudoGameEngine {
 
     final players = _state.players
         .map(_prepareFastModePlayer)
-        .toList();
+        .toList(growable: false);
 
     final firstPlayer = players.first;
 
@@ -82,13 +81,14 @@ class LudoGameEngine {
   // TURN
   // ============================================================
 
-  /// بدء دور اللاعب الحالي.
   LudoGameState startTurn() {
-    if (!_state.isStarted || _state.isFinished) {
+    if (!_state.isStarted ||
+        _state.isFinished) {
       return _state;
     }
 
-    final player = _state.currentPlayer;
+    final player =
+        _state.currentPlayer;
 
     if (_state.finishedPlayerIds.contains(
       player.playerId,
@@ -109,25 +109,10 @@ class LudoGameEngine {
   // DICE
   // ============================================================
 
-  /// رمي النرد.
+  /// رمية فعلية باستخدام Random.
   ///
-  /// القواعد الحالية:
-  ///
-  /// 1..5:
-  ///   - تصبح الرمية متاحة.
-  ///   - ينتقل الدور إلى Playing.
-  ///
-  /// 6:
-  ///   - الرمية تضاف إلى الرميات المتاحة.
-  ///   - لا يتم اللعب مباشرة.
-  ///   - ننتظر الرمية التالية.
-  ///
-  /// 6 + 6 + 6:
-  ///   - يتم إلغاء الدور بالكامل.
-  ///   - تنتقل السيطرة للاعب التالي.
-  ///
-  /// ترجع هذه الدالة الحركات القانونية المتاحة
-  /// بعد اكتمال مرحلة الرمي.
+  /// في الاختبارات يفضل استخدام:
+  /// registerDiceRoll()
   List<MoveOption> rollDice() {
     if (!_state.isStarted) {
       throw StateError(
@@ -152,41 +137,34 @@ class LudoGameEngine {
       return const [];
     }
 
-    final sequence = turn.rolls.length + 1;
-    final value = _random.nextInt(6) + 1;
+    final sequence =
+        turn.rolls.length + 1;
+
+    final value =
+        _random.nextInt(6) + 1;
 
     registerDiceRoll(
       value: value,
       sequence: sequence,
     );
 
-    // في حالة 6، الحالة تظل Rolling
-    // وبالتالي لا توجد حركة بعد.
-    if (_state.turnState.phase != TurnPhase.playing) {
+    if (_state.turnState.phase !=
+        TurnPhase.playing) {
       return const [];
     }
 
-    final moves = getValidMoves();
-
-    // إذا لم توجد أي حركة قانونية،
-    // ينتهي الدور تلقائيًا.
-    if (moves.isEmpty) {
-      _finishTurnWithoutMove();
-      return const [];
-    }
-
-    return moves;
+    return _handleAvailableMovesAfterRoll();
   }
 
-  /// تسجيل نتيجة نرد محددة.
+  /// تسجيل رمية محددة.
   ///
-  /// هذه الدالة مفيدة جدًا للاختبارات:
+  /// هذه الدالة مناسبة جدًا للـ Unit Tests.
+  ///
+  /// مثال:
   ///
   /// registerDiceRoll(value: 6, sequence: 1)
   /// registerDiceRoll(value: 6, sequence: 2)
   /// registerDiceRoll(value: 4, sequence: 3)
-  ///
-  /// ترجع الحالة الجديدة للعبة.
   LudoGameState registerDiceRoll({
     required int value,
     required int sequence,
@@ -199,7 +177,8 @@ class LudoGameEngine {
 
     final turn = _state.turnState;
 
-    if (sequence != turn.rolls.length + 1) {
+    if (sequence !=
+        turn.rolls.length + 1) {
       throw ArgumentError(
         'تسلسل الرميات غير صحيح.',
       );
@@ -216,25 +195,29 @@ class LudoGameEngine {
     ];
 
     // ==========================================================
-    // THREE SIXES
+    // SIX
     // ==========================================================
 
     if (roll.isSix) {
-      final sixCount =
-          turn.consecutiveSixes + 1;
+      final updatedSixCount =
+          turn.sixRollCount + 1;
 
-      // ثالث 6 متتالية:
+      // ثالث 6 داخل نفس الـ Turn.
       //
-      // إلغاء الدور بالكامل
-      // وعدم استخدام أي رمية
-      // والانتقال للاعب التالي.
-      if (sixCount >= 3) {
+      // لا يشترط أن تكون الثلاث 6 متتالية.
+      //
+      // مثال:
+      // 6 → 4 → 6 → 3 → 6
+      //
+      // = 3 sixRollCount
+      if (updatedSixCount >= 3) {
         _state = _state.copyWith(
           turnState: turn.copyWith(
             rolls: updatedRolls,
             availableRolls:
             const AvailableRolls(),
-            consecutiveSixes: sixCount,
+            sixRollCount:
+            updatedSixCount,
             phase: TurnPhase.cancelled,
           ),
         );
@@ -244,11 +227,13 @@ class LudoGameEngine {
 
       final nextTurn = turn.copyWith(
         rolls: updatedRolls,
-        availableRolls: _addAvailableRoll(
+        availableRolls:
+        _addAvailableRoll(
           turn,
           roll,
         ),
-        consecutiveSixes: sixCount,
+        sixRollCount:
+        updatedSixCount,
         phase: TurnPhase.rolling,
       );
 
@@ -260,16 +245,25 @@ class LudoGameEngine {
     }
 
     // ==========================================================
-    // NON-SIX ROLL
+    // NON-SIX
     // ==========================================================
 
     final nextTurn = turn.copyWith(
       rolls: updatedRolls,
-      availableRolls: _addAvailableRoll(
+      availableRolls:
+      _addAvailableRoll(
         turn,
         roll,
       ),
-      consecutiveSixes: 0,
+
+      // مهم:
+      // لا نصفر sixRollCount.
+      //
+      // لأن القاعدة عندنا تحسب عدد الـ 6
+      // داخل الـ Turn كله، وليس المتتالية فقط.
+      sixRollCount:
+      turn.sixRollCount,
+
       phase: TurnPhase.playing,
     );
 
@@ -284,11 +278,11 @@ class LudoGameEngine {
   // VALID MOVES
   // ============================================================
 
-  /// جميع الحركات القانونية المتاحة حاليًا.
   List<MoveOption> getValidMoves() {
     final turn = _state.turnState;
 
-    if (turn.phase != TurnPhase.playing) {
+    if (turn.phase !=
+        TurnPhase.playing) {
       return const [];
     }
 
@@ -296,13 +290,18 @@ class LudoGameEngine {
       return const [];
     }
 
-    final player = _state.currentPlayer;
+    final player =
+        _state.currentPlayer;
 
-    final moves = <MoveOption>[];
+    final moves =
+    <MoveOption>[];
 
-    for (final roll in turn.availableRolls.rolls) {
-      for (final token in player.tokens) {
-        final option = _getMoveOptionForToken(
+    for (final roll
+    in turn.availableRolls.rolls) {
+      for (final token
+      in player.tokens) {
+        final option =
+        _getMoveOptionForToken(
           player: player,
           token: token,
           roll: roll,
@@ -314,14 +313,15 @@ class LudoGameEngine {
       }
     }
 
-    return List.unmodifiable(moves);
+    return List.unmodifiable(
+      moves,
+    );
   }
 
   // ============================================================
   // EXECUTE MOVE
   // ============================================================
 
-  /// تنفيذ حركة اختارها اللاعب.
   LudoGameState executeMove(
       MoveOption move,
       ) {
@@ -337,9 +337,11 @@ class LudoGameEngine {
       );
     }
 
-    final validMoves = getValidMoves();
+    final validMoves =
+    getValidMoves();
 
-    final isValid = validMoves.any(
+    final isValid =
+    validMoves.any(
           (option) => _sameMove(
         option,
         move,
@@ -362,19 +364,21 @@ class LudoGameEngine {
       );
     }
 
-    // إعادة قراءة Player الحالي بعد تحديث الـ State.
     final updatedPlayer =
         _state.currentPlayer;
 
     // ==========================================================
-    // FINISH PLAYER
+    // FAST MODE FINISH
     // ==========================================================
 
     final hasFinished =
-    _hasPlayerFinished(updatedPlayer);
+    _hasPlayerFinished(
+      updatedPlayer,
+    );
 
     if (hasFinished &&
-        !_state.finishedPlayerIds.contains(
+        !_state.finishedPlayerIds
+            .contains(
           updatedPlayer.playerId,
         )) {
       _registerPlayerFinished(
@@ -386,7 +390,8 @@ class LudoGameEngine {
     // CONSUME ROLL
     // ==========================================================
 
-    final updatedTurn = _consumeRoll(
+    final updatedTurn =
+    _consumeRoll(
       move.rollSequence,
     );
 
@@ -398,12 +403,15 @@ class LudoGameEngine {
     // GAME FINISHED
     // ==========================================================
 
-    if (_state.finishedPlayerIds.length ==
+    if (_state.finishedPlayerIds
+        .length ==
         _state.players.length) {
       _state = _state.copyWith(
         isFinished: true,
-        turnState: updatedTurn.copyWith(
-          phase: TurnPhase.completed,
+        turnState:
+        updatedTurn.copyWith(
+          phase:
+          TurnPhase.completed,
         ),
       );
 
@@ -411,14 +419,16 @@ class LudoGameEngine {
     }
 
     // ==========================================================
-    // MORE ROLLS AVAILABLE
+    // MORE ROLLS
     // ==========================================================
 
-    if (_state.turnState.availableRolls.isNotEmpty) {
-      final validMovesAfterMove =
+    if (_state.turnState
+        .availableRolls.isNotEmpty) {
+      final remainingMoves =
       getValidMoves();
 
-      if (validMovesAfterMove.isEmpty) {
+      if (remainingMoves
+          .isEmpty) {
         return _finishTurnWithoutMove();
       }
 
@@ -426,7 +436,7 @@ class LudoGameEngine {
     }
 
     // ==========================================================
-    // TURN FINISHED
+    // TURN END
     // ==========================================================
 
     return _moveToNextPlayer();
@@ -441,14 +451,13 @@ class LudoGameEngine {
     required LudoToken token,
     required DiceRoll roll,
   }) {
-    // Token أنهى بالفعل.
     if (token.state ==
         LudoTokenState.finished) {
       return null;
     }
 
     // ==========================================================
-    // EXIT TOKEN FROM HOME
+    // EXIT TOKEN
     // ==========================================================
 
     if (token.state ==
@@ -459,7 +468,8 @@ class LudoGameEngine {
 
       return ExitToken(
         tokenId: token.id,
-        rollSequence: roll.sequence,
+        rollSequence:
+        roll.sequence,
       );
     }
 
@@ -473,22 +483,23 @@ class LudoGameEngine {
             LudoTokenState.safe ||
         token.state ==
             LudoTokenState.safeInPair) {
+      final path =
+      _pathFor(player.color);
+
       final destinationIndex =
           token.positionInPath +
               roll.value;
 
-      final path =
-      _pathFor(player.color);
-
-      // لا يسمح بتجاوز نهاية المسار.
-      if (destinationIndex >= path.length) {
+      if (destinationIndex >=
+          path.length) {
         return null;
       }
 
       return MoveToken(
         tokenId: token.id,
         steps: roll.value,
-        rollSequence: roll.sequence,
+        rollSequence:
+        roll.sequence,
       );
     }
 
@@ -496,7 +507,7 @@ class LudoGameEngine {
   }
 
   // ============================================================
-  // EXECUTE EXIT TOKEN
+  // EXECUTE EXIT
   // ============================================================
 
   void _executeExitToken(
@@ -510,7 +521,8 @@ class LudoGameEngine {
 
     final tokenIndex =
     player.tokens.indexWhere(
-          (token) => token.id == move.tokenId,
+          (token) =>
+      token.id == move.tokenId,
     );
 
     if (tokenIndex == -1) {
@@ -531,19 +543,16 @@ class LudoGameEngine {
       );
     }
 
-    final startingPosition =
-        path.first;
-
     final updatedToken =
     token.copyWith(
-      position: startingPosition,
+      position: path.first,
       positionInPath: 0,
-      state: LudoTokenState.normal,
+      state:
+      LudoTokenState.normal,
     );
 
-    final updatedTokens = [
-      ...player.tokens,
-    ];
+    final updatedTokens =
+    [...player.tokens];
 
     updatedTokens[tokenIndex] =
         updatedToken;
@@ -553,9 +562,8 @@ class LudoGameEngine {
       tokens: updatedTokens,
     );
 
-    final updatedPlayers = [
-      ..._state.players,
-    ];
+    final updatedPlayers =
+    [..._state.players];
 
     updatedPlayers[playerIndex] =
         updatedPlayer;
@@ -566,7 +574,7 @@ class LudoGameEngine {
   }
 
   // ============================================================
-  // EXECUTE NORMAL TOKEN MOVEMENT
+  // EXECUTE NORMAL MOVEMENT
   // ============================================================
 
   void _executeMoveToken(
@@ -580,7 +588,8 @@ class LudoGameEngine {
 
     final tokenIndex =
     player.tokens.indexWhere(
-          (token) => token.id == move.tokenId,
+          (token) =>
+      token.id == move.tokenId,
     );
 
     if (tokenIndex == -1) {
@@ -592,21 +601,19 @@ class LudoGameEngine {
     final token =
     player.tokens[tokenIndex];
 
+    final path =
+    _pathFor(player.color);
+
     final newPathIndex =
         token.positionInPath +
             move.steps;
 
-    final path =
-    _pathFor(player.color);
-
-    if (newPathIndex >= path.length) {
+    if (newPathIndex >=
+        path.length) {
       throw StateError(
         'الحركة تتجاوز نهاية المسار.',
       );
     }
-
-    final newPosition =
-    path[newPathIndex];
 
     final reachesFinish =
         newPathIndex ==
@@ -614,16 +621,17 @@ class LudoGameEngine {
 
     final updatedToken =
     token.copyWith(
-      position: newPosition,
-      positionInPath: newPathIndex,
+      position:
+      path[newPathIndex],
+      positionInPath:
+      newPathIndex,
       state: reachesFinish
           ? LudoTokenState.finished
           : LudoTokenState.normal,
     );
 
-    final updatedTokens = [
-      ...player.tokens,
-    ];
+    final updatedTokens =
+    [...player.tokens];
 
     updatedTokens[tokenIndex] =
         updatedToken;
@@ -633,9 +641,8 @@ class LudoGameEngine {
       tokens: updatedTokens,
     );
 
-    final updatedPlayers = [
-      ..._state.players,
-    ];
+    final updatedPlayers =
+    [..._state.players];
 
     updatedPlayers[playerIndex] =
         updatedPlayer;
@@ -644,20 +651,25 @@ class LudoGameEngine {
       players: updatedPlayers,
     );
 
-    // Capture هيتضاف بعد تثبيت:
-    // - Safe Cells
-    // - Blocks
-    // - Capture Rules
+    // Capture سيتم إضافته بعد تثبيت:
+    // Safe Cells
+    // Blocks
+    // Capture Rules
+    //
+    // وعند Capture:
+    // لا نزود sixRollCount هنا.
+    //
+    // إنما نمنح رمية فورية جديدة،
+    // والـ registerDiceRoll() هو الذي
+    // سيزيد sixRollCount لو الرمية الجديدة = 6.
   }
 
   // ============================================================
   // FINISH PLAYER
   // ============================================================
 
-  /// في Fast Mode:
-  ///
-  /// أول Token يصل للنهاية
-  /// = اللاعب Finished.
+  /// Fast Mode:
+  /// أول Token يصل للنهاية = Player Finished.
   bool _hasPlayerFinished(
       LudoPlayer player,
       ) {
@@ -719,7 +731,9 @@ class LudoGameEngine {
       _state.players[nextIndex];
 
       if (!_state.finishedPlayerIds
-          .contains(nextPlayer.playerId)) {
+          .contains(
+        nextPlayer.playerId,
+      )) {
         _state = _state.copyWith(
           currentPlayerIndex:
           nextIndex,
@@ -733,12 +747,12 @@ class LudoGameEngine {
       }
     }
 
-    // كل اللاعبين انتهوا.
     _state = _state.copyWith(
       isFinished: true,
       turnState:
       _state.turnState.copyWith(
-        phase: TurnPhase.completed,
+        phase:
+        TurnPhase.completed,
       ),
     );
 
@@ -746,7 +760,7 @@ class LudoGameEngine {
   }
 
   // ============================================================
-  // ROLL MANAGEMENT
+  // ROLL HELPERS
   // ============================================================
 
   AvailableRolls _addAvailableRoll(
@@ -763,17 +777,33 @@ class LudoGameEngine {
       ) {
     return _state.turnState.copyWith(
       availableRolls:
-      _state
-          .turnState
-          .availableRolls
+      _state.turnState.availableRolls
           .removeBySequence(
         rollSequence,
       ),
     );
   }
 
+  List<MoveOption>
+  _handleAvailableMovesAfterRoll() {
+    if (_state.turnState.phase !=
+        TurnPhase.playing) {
+      return const [];
+    }
+
+    final moves =
+    getValidMoves();
+
+    if (moves.isEmpty) {
+      _finishTurnWithoutMove();
+      return const [];
+    }
+
+    return moves;
+  }
+
   // ============================================================
-  // PATH HELPERS
+  // PATH
   // ============================================================
 
   List<Position> _pathFor(
@@ -828,7 +858,7 @@ class LudoGameEngine {
   }
 
   // ============================================================
-  // FAST MODE INITIALIZATION
+  // FAST MODE
   // ============================================================
 
   LudoPlayer _prepareFastModePlayer(
@@ -845,11 +875,9 @@ class LudoGameEngine {
       return player;
     }
 
-    final updatedTokens = [
-      ...player.tokens,
-    ];
+    final updatedTokens =
+    [...player.tokens];
 
-    // أول Token فقط يبدأ خارج البيت.
     final firstTokenIndex =
     updatedTokens.indexWhere(
           (token) =>
@@ -889,12 +917,12 @@ class LudoGameEngine {
 
     for (var index = 0;
     index <
-        _state
-            .finishedPlayerIds
+        _state.finishedPlayerIds
             .length;
     index++) {
       final playerId =
-      _state.finishedPlayerIds[index];
+      _state.finishedPlayerIds[
+      index];
 
       results.add(
         GamePlayerResult(

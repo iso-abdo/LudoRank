@@ -80,33 +80,31 @@ void main() {
     // ==========================================================
 
     test(
-      'Roll 4 gives valid moves for the current player',
+      'Roll 4 starts the playing phase and creates valid moves',
           () {
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-        ];
-
         final engine = createEngine(
-          players: players,
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
         );
 
-        final moves = engine.registerDiceRoll(
+        engine.registerDiceRoll(
           value: 4,
           sequence: 1,
         );
 
         expect(
-          engine.state.turnState.isPlaying,
-          isTrue,
+          engine.state.turnState.phase,
+          TurnPhase.playing,
         );
 
         expect(
@@ -115,20 +113,29 @@ void main() {
         );
 
         expect(
+          engine.state.turnState.rolls.first.value,
+          4,
+        );
+
+        expect(
           engine.state.turnState.availableRolls.count,
           1,
         );
 
-        final validMoves =
-        engine.getValidMoves();
+        expect(
+          engine.state.turnState.sixRollCount,
+          0,
+        );
+
+        final moves = engine.getValidMoves();
 
         expect(
-          validMoves,
+          moves,
           isNotEmpty,
         );
 
         expect(
-          validMoves.whereType<MoveToken>().any(
+          moves.whereType<MoveToken>().any(
                 (move) =>
             move.tokenId ==
                 'player-1-token-0' &&
@@ -136,12 +143,6 @@ void main() {
                 move.rollSequence == 1,
           ),
           isTrue,
-        );
-
-        // registerDiceRoll itself now returns state.
-        expect(
-          moves,
-          isNotNull,
         );
       },
     );
@@ -151,23 +152,21 @@ void main() {
     // ==========================================================
 
     test(
-      'Roll 6 then Roll 4 keeps both rolls available',
+      'Roll 6 then 4 keeps both rolls available',
           () {
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-        ];
-
         final engine = createEngine(
-          players: players,
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
         );
 
         engine.registerDiceRoll(
@@ -181,13 +180,13 @@ void main() {
         );
 
         expect(
-          engine.state.turnState.rolls.length,
-          1,
+          engine.state.turnState.availableRolls.values,
+          [6],
         );
 
         expect(
-          engine.state.turnState.availableRolls.values,
-          [6],
+          engine.state.turnState.sixRollCount,
+          1,
         );
 
         engine.registerDiceRoll(
@@ -201,17 +200,16 @@ void main() {
         );
 
         expect(
-          engine.state.turnState.rolls.length,
-          2,
-        );
-
-        expect(
           engine.state.turnState.availableRolls.values,
           [6, 4],
         );
 
-        final moves =
-        engine.getValidMoves();
+        expect(
+          engine.state.turnState.sixRollCount,
+          1,
+        );
+
+        final moves = engine.getValidMoves();
 
         expect(
           moves,
@@ -245,21 +243,19 @@ void main() {
     test(
       'Roll 6 -> 6 -> 4 creates three available rolls',
           () {
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-        ];
-
         final engine = createEngine(
-          players: players,
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
         );
 
         engine.registerDiceRoll(
@@ -273,13 +269,18 @@ void main() {
         );
 
         expect(
-          engine.state.turnState.consecutiveSixes,
+          engine.state.turnState.availableRolls.count,
           2,
         );
 
         expect(
           engine.state.turnState.phase,
           TurnPhase.rolling,
+        );
+
+        expect(
+          engine.state.turnState.sixRollCount,
+          2,
         );
 
         engine.registerDiceRoll(
@@ -294,13 +295,19 @@ void main() {
 
         expect(
           engine.state.turnState.rolls
-              .map((roll) => roll.value),
+              .map((roll) => roll.value)
+              .toList(),
           [6, 6, 4],
         );
 
         expect(
           engine.state.turnState.availableRolls.values,
           [6, 6, 4],
+        );
+
+        expect(
+          engine.state.turnState.sixRollCount,
+          2,
         );
 
         expect(
@@ -311,27 +318,25 @@ void main() {
     );
 
     // ==========================================================
-    // 4. Roll 6 -> Roll 6 -> Roll 6
+    // 4. Roll 6 -> 6 -> 6
     // ==========================================================
 
     test(
-      'Three consecutive sixes cancel the turn and move to next player',
+      'Three six rolls in the same turn cancel the turn',
           () {
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-        ];
-
         final engine = createEngine(
-          players: players,
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
         );
 
         expect(
@@ -375,34 +380,32 @@ void main() {
         );
 
         expect(
-          engine.state.turnState.consecutiveSixes,
+          engine.state.turnState.sixRollCount,
           0,
         );
       },
     );
 
     // ==========================================================
-    // 5. Player can choose more than one token
+    // 5. 6 -> 4 -> 6
     // ==========================================================
 
     test(
-      'Player can use different rolls on different tokens',
+      'Six roll count continues even when a non-six roll appears',
           () {
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-        ];
-
         final engine = createEngine(
-          players: players,
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
         );
 
         engine.registerDiceRoll(
@@ -415,40 +418,168 @@ void main() {
           sequence: 2,
         );
 
-        final moves =
-        engine.getValidMoves();
+        expect(
+          engine.state.turnState.sixRollCount,
+          1,
+        );
 
-        final tokenZeroSixMove =
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 3,
+        );
+
+        expect(
+          engine.state.turnState.phase,
+          TurnPhase.rolling,
+        );
+
+        expect(
+          engine.state.turnState.sixRollCount,
+          2,
+        );
+
+        expect(
+          engine.state.turnState.availableRolls.values,
+          [6, 4, 6],
+        );
+      },
+    );
+
+    // ==========================================================
+    // 6. 6 -> 4 -> 6 -> 3 -> 6
+    // ==========================================================
+
+    test(
+      'Three six rolls cancel the turn even when they are not consecutive',
+          () {
+        final engine = createEngine(
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 2,
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 3,
+        );
+
+        expect(
+          engine.state.turnState.sixRollCount,
+          2,
+        );
+
+        engine.registerDiceRoll(
+          value: 3,
+          sequence: 4,
+        );
+
+        // 3 does not reset sixRollCount.
+        expect(
+          engine.state.turnState.sixRollCount,
+          2,
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 5,
+        );
+
+        expect(
+          engine.state.turnState.sixRollCount,
+          0,
+        );
+
+        expect(
+          engine.currentPlayer.playerId,
+          'player-2',
+        );
+
+        expect(
+          engine.state.turnState.availableRolls.isEmpty,
+          isTrue,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 7. Player can use different rolls
+    // ==========================================================
+
+    test(
+      'Player can use different rolls on different tokens',
+          () {
+        final engine = createEngine(
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 2,
+        );
+
+        final moves = engine.getValidMoves();
+
+        final moveSix =
         moves.whereType<MoveToken>().firstWhere(
               (move) =>
           move.tokenId ==
               'player-1-token-0' &&
-              move.steps == 6,
+              move.steps == 6 &&
+              move.rollSequence == 1,
         );
 
-        engine.executeMove(
-          tokenZeroSixMove,
-        );
+        engine.executeMove(moveSix);
 
         expect(
           engine.state.turnState.availableRolls.values,
           [4],
         );
 
-        final tokenZero =
-        engine.state.currentPlayer.tokens
-            .firstWhere(
-              (token) =>
-          token.tokenIndex == 0,
-        );
-
         expect(
-          tokenZero.positionInPath,
+          engine.state.currentPlayer.tokens
+              .firstWhere(
+                (token) =>
+            token.tokenIndex == 0,
+          )
+              .positionInPath,
           6,
         );
 
-        // The second roll can now be used
-        // independently.
         final nextMoves =
         engine.getValidMoves();
 
@@ -464,27 +595,25 @@ void main() {
     );
 
     // ==========================================================
-    // 6. Consume rolls one by one
+    // 8. Consume rolls one by one
     // ==========================================================
 
     test(
       'Available rolls are consumed one by one',
           () {
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-        ];
-
         final engine = createEngine(
-          players: players,
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
         );
 
         engine.registerDiceRoll(
@@ -503,8 +632,7 @@ void main() {
         );
 
         final moveSix =
-        engine
-            .getValidMoves()
+        engine.getValidMoves()
             .whereType<MoveToken>()
             .firstWhere(
               (move) =>
@@ -522,8 +650,7 @@ void main() {
         );
 
         final moveFour =
-        engine
-            .getValidMoves()
+        engine.getValidMoves()
             .whereType<MoveToken>()
             .firstWhere(
               (move) =>
@@ -548,32 +675,30 @@ void main() {
     );
 
     // ==========================================================
-    // 7. Turn moves to next player
+    // 9. Turn order by seat
     // ==========================================================
 
     test(
       'Turn moves according to seat order',
           () {
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-          createPlayer(
-            playerId: 'player-3',
-            seat: 3,
-            color: LudoPlayerColor.blue,
-          ),
-        ];
-
         final engine = createEngine(
-          players: players,
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+            createPlayer(
+              playerId: 'player-3',
+              seat: 3,
+              color: LudoPlayerColor.blue,
+            ),
+          ],
         );
 
         expect(
@@ -587,8 +712,7 @@ void main() {
         );
 
         final move =
-        engine
-            .getValidMoves()
+        engine.getValidMoves()
             .whereType<MoveToken>()
             .firstWhere(
               (move) =>
@@ -610,8 +734,7 @@ void main() {
         );
 
         final moveTwo =
-        engine
-            .getValidMoves()
+        engine.getValidMoves()
             .whereType<MoveToken>()
             .firstWhere(
               (move) =>
@@ -630,77 +753,59 @@ void main() {
     );
 
     // ==========================================================
-    // 8. Player finishes with first token
+    // 10. First token finishes player
     // ==========================================================
 
     test(
-      'Player gets rank when the first token reaches finish',
+      'First token reaching finish gives the player a rank',
           () {
-        final playerOneTokens =
-        <LudoToken>[];
-
         final greenPath = LudoPaths.green;
-
         final finishIndex =
             greenPath.length - 1;
 
-        final startPosition =
+        final tokenPosition =
         greenPath[finishIndex - 4];
 
-        // Token 0 is four steps away from finish.
-        playerOneTokens.add(
+        final playerOneTokens = <LudoToken>[
           createToken(
             playerId: 'player-1',
             tokenIndex: 0,
             state: LudoTokenState.normal,
             positionInPath: finishIndex - 4,
-            position: startPosition,
+            position: tokenPosition,
           ),
-        );
-
-        // Remaining tokens stay in initial state.
-        for (var index = 1; index < 4; index++) {
-          playerOneTokens.add(
-            createToken(
+          ...List.generate(
+            3,
+                (index) => createToken(
               playerId: 'player-1',
-              tokenIndex: index,
+              tokenIndex: index + 1,
             ),
-          );
-        }
-
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-            tokens: playerOneTokens,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
           ),
         ];
 
         final engine = createEngine(
-          players: players,
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+              tokens: playerOneTokens,
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
         );
 
-        // The player starts with token 0
-        // already on the board.
-        final moves = engine.registerDiceRoll(
+        engine.registerDiceRoll(
           value: 4,
           sequence: 1,
         );
 
-        expect(
-          moves,
-          isNotNull,
-        );
-
         final finishMove =
-        engine
-            .getValidMoves()
+        engine.getValidMoves()
             .whereType<MoveToken>()
             .firstWhere(
               (move) =>
@@ -724,7 +829,7 @@ void main() {
         );
 
         expect(
-          engine.state.currentPlayer.playerId,
+          engine.currentPlayer.playerId,
           'player-2',
         );
       },
