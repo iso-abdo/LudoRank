@@ -5,8 +5,7 @@ import 'package:ludo_rank/features/ludo_game/domain/models/available_rolls.dart'
 import '../constants/ludo_paths.dart';
 import '../entities/ludo_player.dart';
 import '../entities/ludo_token.dart';
-import '../entities/position.dart';
-import '../models/dice_roll.dart';
+import 'package:ludo_rank/features/ludo_game/domain/models/dice_roll.dart';
 import '../models/game_result.dart';
 import '../models/ludo_game_state.dart';
 import '../models/move_option.dart';
@@ -483,8 +482,7 @@ class LudoGameEngine {
             LudoTokenState.safe ||
         token.state ==
             LudoTokenState.safeInPair) {
-      final path =
-      _pathFor(player.color);
+      final path = LudoPaths.forColor(player.color);
 
       final destinationIndex =
           token.positionInPath +
@@ -534,8 +532,7 @@ class LudoGameEngine {
     final token =
     player.tokens[tokenIndex];
 
-    final path =
-    _pathFor(player.color);
+    final path = LudoPaths.forColor(player.color);
 
     if (path.isEmpty) {
       throw StateError(
@@ -601,8 +598,7 @@ class LudoGameEngine {
     final token =
     player.tokens[tokenIndex];
 
-    final path =
-    _pathFor(player.color);
+    final path = LudoPaths.forColor(player.color);
 
     final newPathIndex =
         token.positionInPath +
@@ -806,23 +802,11 @@ class LudoGameEngine {
   // PATH
   // ============================================================
 
-  List<Position> _pathFor(
+  /*LudoPath _pathFor(
       LudoPlayerColor color,
       ) {
-    switch (color) {
-      case LudoPlayerColor.green:
-        return LudoPaths.green;
-
-      case LudoPlayerColor.yellow:
-        return LudoPaths.yellow;
-
-      case LudoPlayerColor.blue:
-        return LudoPaths.blue;
-
-      case LudoPlayerColor.red:
-        return LudoPaths.red;
-    }
-  }
+    return LudoPaths.forColor(color);
+  }*/
 
   // ============================================================
   // MOVE COMPARISON
@@ -868,8 +852,7 @@ class LudoGameEngine {
       return player;
     }
 
-    final path =
-    _pathFor(player.color);
+    final path = LudoPaths.forColor(player.color);
 
     if (path.isEmpty) {
       return player;
