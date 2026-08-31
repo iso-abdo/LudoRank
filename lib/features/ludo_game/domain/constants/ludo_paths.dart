@@ -1,34 +1,17 @@
 import '../entities/ludo_player.dart';
 import '../entities/position.dart';
 
-/// Route definition for one Ludo player.
-///
-/// The logical route uses one step numbering system:
-///
-/// BEFORE CAPTURE
-/// 0 .. 51 = Main Loop
-/// 51 -> 0
-///
-/// AFTER CAPTURE
-/// 0 .. 50 = Main Loop
-/// 51 .. 55 = Home Lane
-/// 56 = Finish
 class LudoPath {
-  /// Main loop positions.
+  /// Main Loop before/around the capture transition.
   ///
-  /// Contains steps 0..51.
+  /// Logical steps:
+  /// 0 .. 51
   final List<Position> mainLoopPath;
 
-  /// Home path after capture.
+  /// Path after capture:
   ///
-  /// Index mapping:
-  ///
-  /// homePath[0] = logical step 51
-  /// homePath[1] = logical step 52
-  /// homePath[2] = logical step 53
-  /// homePath[3] = logical step 54
-  /// homePath[4] = logical step 55
-  /// homePath[5] = logical step 56 / Finish
+  /// 51 .. 55 = Home Lane
+  /// 56       = Finish
   final List<Position> homePath;
 
   const LudoPath({
@@ -36,39 +19,91 @@ class LudoPath {
     required this.homePath,
   });
 
-  // ==========================================================
-  // LOGICAL STEP DEFINITIONS
-  // ==========================================================
+  // ============================================================
+  // LOGICAL CONSTANTS
+  // ============================================================
 
-  /// Main Loop contains steps 0..51.
+  /// Main Loop steps: 0..51
   static const int mainLoopLength = 52;
 
-  /// Last step of Main Loop.
+  /// Last Main Loop step.
   static const int lastMainLoopStep = 51;
 
-  /// First Home Lane step after capture.
+  /// First Home Lane step after Capture.
   static const int homeLaneStartStep = 51;
 
-  /// Last Home Lane step.
+  /// Last Home Lane step before Finish.
   static const int homeLaneLastStep = 55;
 
-  /// Final step.
+  /// Finish.
   static const int finishStep = 56;
 
-  // ==========================================================
-  // POSITION
-  // ==========================================================
+  // ============================================================
+  // BACKWARD COMPATIBILITY
+  // ============================================================
 
-  /// Returns the physical board position for a logical step.
+  /// Compatibility with the previous tests/API.
   ///
-  /// Before capture:
+  /// Before Capture:
+  /// 0..51
+  List<Position> get beforeCapture => mainLoopPath;
+
+  /// Compatibility with the previous tests/API.
   ///
-  ///   step 0..51 -> Main Loop
+  /// 0..50  = Main Loop
+  /// 51..56 = Home Lane + Finish
+  List<Position> get afterCapture => [
+    ...mainLoopPath.take(51),
+    ...homePath,
+  ];
+
+  // ============================================================
+  // COMMON LIST-LIKE API
+  // ============================================================
+
+  int get length => mainLoopPath.length;
+
+  bool get isEmpty => mainLoopPath.isEmpty;
+
+  bool get isNotEmpty => mainLoopPath.isNotEmpty;
+
+  Position get first => mainLoopPath.first;
+
+  Position get last => mainLoopPath.last;
+
+  /// List-like access.
   ///
-  /// After capture:
+  /// 0..51  -> Main Loop
+  /// 52..56 -> Home Lane + Finish
   ///
-  ///   step 0..50 -> Main Loop
-  ///   step 51..56 -> Home Lane / Finish
+  /// NOTE:
+  /// Step 51 is ambiguous by design:
+  /// - before Capture -> mainLoopPath[51]
+  /// - after Capture  -> homePath[0]
+  ///
+  /// لذلك الـEngine الجديد يفضل استخدام positionAt().
+  Position operator [](int index) {
+    if (index < 0 || index > finishStep) {
+      throw RangeError.range(
+        index,
+        0,
+        finishStep,
+        'index',
+      );
+    }
+
+    if (index <= lastMainLoopStep) {
+      return mainLoopPath[index];
+    }
+
+    return homePath[index - homeLaneStartStep];
+  }
+
+  // ============================================================
+  // POSITION RESOLUTION
+  // ============================================================
+
+  /// Physical board position according to player state.
   Position positionAt({
     required int step,
     required bool hasCaptured,
@@ -87,20 +122,14 @@ class LudoPath {
     // ----------------------------------------------------------
 
     if (!hasCaptured) {
-      if (step <= lastMainLoopStep) {
-        return mainLoopPath[step];
-      }
-
-      throw StateError(
-        'Step $step is not available before capture.',
-      );
+      return mainLoopPath[step];
     }
 
     // ----------------------------------------------------------
     // AFTER CAPTURE
     // ----------------------------------------------------------
 
-    if (step <= lastMainLoopStep - 1) {
+    if (step <= 50) {
       return mainLoopPath[step];
     }
 
@@ -109,20 +138,10 @@ class LudoPath {
     ];
   }
 
-  // ==========================================================
+  // ============================================================
   // NEXT STEP
-  // ==========================================================
+  // ============================================================
 
-  /// Returns the next logical step.
-  ///
-  /// Before capture:
-  ///
-  /// 50 -> 51
-  /// 51 -> 0
-  ///
-  /// After capture:
-  ///
-  /// 50 -> 51 -> 52 -> 53 -> 54 -> 55 -> 56
   int nextStep({
     required int currentStep,
     required bool hasCaptured,
@@ -160,9 +179,9 @@ class LudoPath {
     return currentStep + 1;
   }
 
-  // ==========================================================
+  // ============================================================
   // STEP TYPE
-  // ==========================================================
+  // ============================================================
 
   bool isMainLoopStep(int step) {
     return step >= 0 &&
@@ -178,9 +197,22 @@ class LudoPath {
     return step == finishStep;
   }
 
-  // ==========================================================
+  // ============================================================
+  // STARTING CELLS
+  // ============================================================
+
+  bool isStartingStep(int step) {
+    return const {
+      0,
+      13,
+      26,
+      39,
+    }.contains(step);
+  }
+
+  // ============================================================
   // COMMON POSITIONS
-  // ==========================================================
+  // ============================================================
 
   Position get startingPosition =>
       mainLoopPath.first;
@@ -189,13 +221,12 @@ class LudoPath {
       homePath.last;
 }
 
-/// All player routes.
 class LudoPaths {
   const LudoPaths._();
 
-  // ==========================================================
+  // ============================================================
   // RED
-  // ==========================================================
+  // ============================================================
 
   static const red = LudoPath(
     mainLoopPath: [
@@ -258,13 +289,13 @@ class LudoPaths {
       Position(row: 12, column: 8), // 53
       Position(row: 11, column: 8), // 54
       Position(row: 10, column: 8), // 55
-      Position(row: 9, column: 8), // 56 Finish
+      Position(row: 9, column: 8),  // 56 Finish
     ],
   );
 
-  // ==========================================================
+  // ============================================================
   // GREEN
-  // ==========================================================
+  // ============================================================
 
   static const green = LudoPath(
     mainLoopPath: [
@@ -331,9 +362,9 @@ class LudoPaths {
     ],
   );
 
-  // ==========================================================
+  // ============================================================
   // YELLOW
-  // ==========================================================
+  // ============================================================
 
   static const yellow = LudoPath(
     mainLoopPath: [
@@ -400,9 +431,9 @@ class LudoPaths {
     ],
   );
 
-  // ==========================================================
+  // ============================================================
   // BLUE
-  // ==========================================================
+  // ============================================================
 
   static const blue = LudoPath(
     mainLoopPath: [
@@ -469,9 +500,9 @@ class LudoPaths {
     ],
   );
 
-  // ==========================================================
+  // ============================================================
   // COLOR LOOKUP
-  // ==========================================================
+  // ============================================================
 
   static LudoPath forColor(
       LudoPlayerColor color,

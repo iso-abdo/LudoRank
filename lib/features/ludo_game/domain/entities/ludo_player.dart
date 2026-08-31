@@ -20,6 +20,7 @@ class LudoPlayer extends Equatable {
 
   /// الـ tokens الخاصة باللاعب
   final List<LudoToken> tokens;
+  final bool hasCaptured;
 
   const LudoPlayer({
     required this.id,
@@ -28,6 +29,7 @@ class LudoPlayer extends Equatable {
     required this.color,
     required this.seat,
     required this.tokens,
+    this.hasCaptured = false,
   });
 
   LudoPlayer copyWith({
@@ -37,6 +39,7 @@ class LudoPlayer extends Equatable {
     LudoPlayerColor? color,
     int? seat,
     List<LudoToken>? tokens,
+    bool? hasCaptured,
   }) {
     return LudoPlayer(
       id: id ?? this.id,
@@ -46,6 +49,7 @@ class LudoPlayer extends Equatable {
       color: color ?? this.color,
       seat: seat ?? this.seat,
       tokens: tokens ?? this.tokens,
+      hasCaptured: hasCaptured ?? this.hasCaptured,
     );
   }
 
@@ -57,6 +61,7 @@ class LudoPlayer extends Equatable {
     color,
     seat,
     tokens,
+    hasCaptured,
   ];
 }
 
