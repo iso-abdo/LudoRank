@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'available_rolls.dart';
 import 'dice_roll.dart';
 
@@ -15,7 +16,7 @@ enum TurnPhase {
   completed,
 }
 
-class TurnState {
+class TurnState extends Equatable {
   /// اللاعب صاحب الدور الحالي.
   final String playerId;
 
@@ -91,6 +92,15 @@ class TurnState {
 
     return rolls.last;
   }
+
+  @override
+  List<Object?> get props => [
+        playerId,
+        rolls,
+        availableRolls,
+        sixRollCount,
+        phase,
+      ];
 
   TurnState copyWith({
     String? playerId,

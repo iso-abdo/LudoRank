@@ -1,812 +1,883 @@
-import 'dart:math';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'package:ludo_rank/features/ludo_game/domain/constants/ludo_paths.dart';
 import 'package:ludo_rank/features/ludo_game/domain/entities/ludo_player.dart';
 import 'package:ludo_rank/features/ludo_game/domain/entities/ludo_token.dart';
 import 'package:ludo_rank/features/ludo_game/domain/entities/position.dart';
-import 'package:ludo_rank/features/ludo_game/domain/models/available_rolls.dart';
-import 'package:ludo_rank/features/ludo_game/domain/models/dice_roll.dart';
-import 'package:ludo_rank/features/ludo_game/domain/models/game_result.dart';
 import 'package:ludo_rank/features/ludo_game/domain/models/ludo_game_state.dart';
 import 'package:ludo_rank/features/ludo_game/domain/models/move_option.dart';
 import 'package:ludo_rank/features/ludo_game/domain/models/turn_state.dart';
+import 'package:ludo_rank/features/ludo_game/domain/services/ludo_game_engine.dart';
 
+void main() {
+  group('LudoGameEngine - Fast Mode', () {
+    // ==========================================================
+    // Helpers
+    // ==========================================================
 
-class LudoGameEngine {
-  LudoGameState _state;
-
-  final Random _random;
-
-  LudoGameEngine({
-    required LudoGameState initialState,
-    Random? random,
-  })  : _state = initialState,
-        _random = random ?? Random();
-
-  /// الحالة الحالية للعبة.
-  LudoGameState get state => _state;
-
-  /// اللاعب الحالي.
-  LudoPlayer get currentPlayer => _state.currentPlayer;
-
-  /// هل اللعبة بدأت؟
-  bool get isStarted => _state.isStarted;
-
-  /// هل اللعبة انتهت؟
-  bool get isFinished => _state.isFinished;
-
-  // ============================================================
-  // GAME START
-  // ============================================================
-
-  /// بدء المباراة في Fast Mode.
-  ///
-  /// كل لاعب يبدأ بـ Token واحد خارج البيت
-  /// على Starting Cell الخاصة به.
-  LudoGameState startGame() {
-    if (_state.isStarted) {
-      return _state;
-    }
-
-    final players = _state.players.map(
-      _prepareFastModePlayer,
-    ).toList();
-
-    final firstPlayer = players.first;
-
-    _state = _state.copyWith(
-      players: players,
-      currentPlayerIndex: 0,
-      turnState: TurnState.initial(
-        firstPlayer.playerId,
-      ),
-      isStarted: true,
-      isFinished: false,
-      finishedPlayerIds: const [],
-    );
-
-    return _state;
-  }
-
-  // ============================================================
-  // TURN
-  // ============================================================
-
-  /// بدء دور اللاعب الحالي.
-  LudoGameState startTurn() {
-    if (!_state.isStarted || _state.isFinished) {
-      return _state;
-    }
-
-    final player = _state.currentPlayer;
-
-    if (_state.finishedPlayerIds.contains(
-      player.playerId,
-    )) {
-      return _moveToNextPlayer();
-    }
-
-    _state = _state.copyWith(
-      turnState: TurnState.initial(
-        player.playerId,
-      ),
-    );
-
-    return _state;
-  }
-
-  // ============================================================
-  // DICE
-  // ============================================================
-
-  /// رمي النرد.
-  ///
-  /// القاعدة:
-  ///
-  /// 1..5:
-  ///     تتحول الحالة إلى Playing
-  ///     وتصبح الرمية متاحة للحركة.
-  ///
-  /// 6:
-  ///     لا يتم اللعب مباشرة.
-  ///     ننتظر الرمية التالية.
-  ///
-  /// 6 + 6 + 6:
-  ///     إلغاء الدور بالكامل والانتقال للاعب التالي.
-  List<MoveOption> rollDice() {
-    if (!_state.isStarted) {
-      throw StateError(
-        'لا يمكن رمي النرد قبل بدء اللعبة.',
+    LudoToken createToken({
+      required String playerId,
+      required int tokenIndex,
+      LudoTokenState state = LudoTokenState.initial,
+      int positionInPath = -1,
+      Position? position,
+    }) {
+      return LudoToken(
+        id: '$playerId-token-$tokenIndex',
+        playerId: playerId,
+        tokenIndex: tokenIndex,
+        position: position ??
+            const Position(
+              row: 0,
+              column: 0,
+            ),
+        positionInPath: positionInPath,
+        state: state,
       );
     }
 
-    if (_state.isFinished) {
-      return const [];
-    }
-
-    final turn = _state.turnState;
-
-    if (turn.phase == TurnPhase.playing) {
-      throw StateError(
-        'يجب تنفيذ الحركات المتاحة قبل رمي النرد مرة أخرى.',
+    LudoPlayer createPlayer({
+      required String playerId,
+      required int seat,
+      LudoPlayerColor color = LudoPlayerColor.green,
+      List<LudoToken>? tokens,
+    }) {
+      return LudoPlayer(
+        id: playerId,
+        playerId: playerId,
+        name: playerId,
+        color: color,
+        seat: seat,
+        tokens: tokens ??
+            List.generate(
+              4,
+                  (index) => createToken(
+                playerId: playerId,
+                tokenIndex: index,
+              ),
+            ),
       );
     }
 
-    if (turn.phase == TurnPhase.cancelled ||
-        turn.phase == TurnPhase.completed) {
-      return const [];
-    }
-
-    final sequence = turn.rolls.length + 1;
-    final value = _random.nextInt(6) + 1;
-
-    registerDiceRoll(
-      value: value,
-      sequence: sequence,
-    );
-
-    return getValidMoves();
-  }
-
-  /// مفيدة للاختبارات و Debugging.
-  ///
-  /// تسمح لنا بإدخال نتيجة نرد محددة بدل Random.
-  Object registerDiceRoll({
-    required int value,
-    required int sequence,
-  }) {
-    if (value < 1 || value > 6) {
-      throw ArgumentError(
-        'قيمة النرد يجب أن تكون من 1 إلى 6.',
-      );
-    }
-
-    final turn = _state.turnState;
-
-    if (sequence != turn.rolls.length + 1) {
-      throw ArgumentError(
-        'تسلسل الرميات غير صحيح.',
-      );
-    }
-
-    final roll = DiceRoll(
-      value: value,
-      sequence: sequence,
-    );
-
-    final updatedRolls = [
-      ...turn.rolls,
-      roll,
-    ];
-
-    // ----------------------------------------------------------
-    // THREE SIXES
-    // ----------------------------------------------------------
-
-    if (roll.isSix) {
-      final sixCount = turn.consecutiveSixes + 1;
-
-      if (sixCount >= 3) {
-        _state = _state.copyWith(
-          turnState: turn.copyWith(
-            rolls: updatedRolls,
-            availableRolls:
-            AvailableRolls(),
-            consecutiveSixes: sixCount,
-            phase: TurnPhase.cancelled,
-          ),
-        );
-
-        return _cancelTurnAndMoveNext();
-      }
-
-      final nextTurn = turn.copyWith(
-        rolls: updatedRolls,
-        availableRolls: _addAvailableRoll(
-          turn,
-          roll,
-        ),
-        consecutiveSixes: sixCount,
-        phase: TurnPhase.rolling,
+    LudoGameEngine createEngine({
+      required List<LudoPlayer> players,
+    }) {
+      final state = LudoGameState.initial(
+        players: players,
       );
 
-      _state = _state.copyWith(
-        turnState: nextTurn,
+      final engine = LudoGameEngine(
+        initialState: state,
       );
 
-      return const [];
+      engine.startGame();
+
+      return engine;
     }
+    LudoGameEngine createCaptureEngine({
+      required int attackerStep,
+      required int defenderStep,
+    }) {
+      final attackerPath = LudoPaths.green;
 
-    // ----------------------------------------------------------
-    // NON-SIX ROLL
-    // ----------------------------------------------------------
-
-    final nextTurn = turn.copyWith(
-      rolls: updatedRolls,
-      availableRolls: _addAvailableRoll(
-        turn,
-        roll,
-      ),
-      consecutiveSixes: 0,
-      phase: TurnPhase.playing,
-    );
-
-    _state = _state.copyWith(
-      turnState: nextTurn,
-    );
-
-    final moves = getValidMoves();
-
-    // لو مفيش أي حركة قانونية،
-    // الدور ينتهي تلقائيًا.
-    if (moves.isEmpty) {
-      return _finishTurnWithoutMove();
-    }
-
-    return moves;
-  }
-
-  // ============================================================
-  // VALID MOVES
-  // ============================================================
-
-  /// جميع الحركات القانونية المتاحة حاليًا.
-  List<MoveOption> getValidMoves() {
-    final turn = _state.turnState;
-
-    if (turn.phase != TurnPhase.playing) {
-      return const [];
-    }
-
-    if (turn.availableRolls.isEmpty) {
-      return const [];
-    }
-
-    final player = _state.currentPlayer;
-
-    final moves = <MoveOption>[];
-
-    for (final roll in turn.availableRolls.rolls) {
-      for (final token in player.tokens) {
-        final option = _getMoveOptionForToken(
-          player: player,
-          token: token,
-          roll: roll,
-        );
-
-        if (option != null) {
-          moves.add(option);
-        }
-      }
-    }
-
-    return List.unmodifiable(moves);
-  }
-
-  // ============================================================
-  // EXECUTE MOVE
-  // ============================================================
-
-  /// تنفيذ حركة اختارها اللاعب.
-  LudoGameState executeMove(
-      MoveOption move,
-      ) {
-    if (!_state.isStarted) {
-      throw StateError(
-        'اللعبة لم تبدأ.',
-      );
-    }
-
-    if (_state.isFinished) {
-      throw StateError(
-        'اللعبة انتهت بالفعل.',
-      );
-    }
-
-    final validMoves = getValidMoves();
-
-    final isValid = validMoves.any(
-          (option) => _sameMove(
-        option,
-        move,
-      ),
-    );
-
-    if (!isValid) {
-      throw StateError(
-        'الحركة المحددة غير قانونية.',
-      );
-    }
-
-    if (move is ExitToken) {
-      _executeExitToken(move);
-    } else if (move is MoveToken) {
-      _executeMoveToken(move);
-    } else {
-      throw StateError(
-        'نوع الحركة غير مدعوم.',
-      );
-    }
-
-    // إعادة قراءة Player الحالي بعد تحديث الـ State.
-    final updatedPlayer = _state.currentPlayer;
-
-    // التحقق من إنهاء اللاعب.
-    final hasFinished = _hasPlayerFinished(
-      updatedPlayer,
-    );
-
-    if (hasFinished &&
-        !_state.finishedPlayerIds.contains(
-          updatedPlayer.playerId,
-        )) {
-      _registerPlayerFinished(
-        updatedPlayer.playerId,
-      );
-    }
-
-    // استهلاك الرمية المستخدمة.
-    final updatedTurn = _consumeRoll(
-      move.rollSequence,
-    );
-
-    _state = _state.copyWith(
-      turnState: updatedTurn,
-    );
-
-    // هل اللعبة انتهت؟
-    if (_state.finishedPlayerIds.length ==
-        _state.players.length) {
-      _state = _state.copyWith(
-        isFinished: true,
-        turnState: updatedTurn.copyWith(
-          phase: TurnPhase.completed,
+      final attacker = createToken(
+        playerId: 'player-1',
+        tokenIndex: 0,
+        state: LudoTokenState.normal,
+        positionInPath: attackerStep,
+        position: attackerPath.positionAt(
+          step: attackerStep,
+          hasCaptured: false,
         ),
       );
 
-      return _state;
-    }
+      final destination =
+      attackerPath.positionAt(
+        step: attackerStep + 4,
+        hasCaptured: false,
+      );
 
-    // لو لسه فيه رميات متاحة،
-    // نفضل في نفس الدور.
-    if (_state.turnState.availableRolls.isNotEmpty) {
-      final validMovesAfterMove =
-      getValidMoves();
+      final defender = createToken(
+        playerId: 'player-2',
+        tokenIndex: 0,
+        state: LudoTokenState.normal,
+        positionInPath: defenderStep,
+        position: destination,
+      );
 
-      if (validMovesAfterMove.isEmpty) {
-        return _finishTurnWithoutMove();
-      }
+      final players = [
+        createPlayer(
+          playerId: 'player-1',
+          seat: 1,
+          color: LudoPlayerColor.green,
+          tokens: [
+            attacker,
+            ...List.generate(
+              3,
+                  (index) => createToken(
+                playerId: 'player-1',
+                tokenIndex: index + 1,
+              ),
+            ),
+          ],
+        ),
+        createPlayer(
+          playerId: 'player-2',
+          seat: 2,
+          color: LudoPlayerColor.yellow,
+          tokens: [
+            defender,
+            ...List.generate(
+              3,
+                  (index) => createToken(
+                playerId: 'player-2',
+                tokenIndex: index + 1,
+              ),
+            ),
+          ],
+        ),
+      ];
 
-      return _state;
-    }
-
-    // كل الرميات تم استخدامها.
-    return _moveToNextPlayer();
-  }
-
-  // ============================================================
-  // MOVE CALCULATION
-  // ============================================================
-
-  MoveOption? _getMoveOptionForToken({
-    required LudoPlayer player,
-    required LudoToken token,
-    required DiceRoll roll,
-  }) {
-    // Token أنهى بالفعل.
-    if (token.state == LudoTokenState.finished) {
-      return null;
-    }
-
-    // ----------------------------------------------------------
-    // EXIT TOKEN FROM HOME
-    // ----------------------------------------------------------
-
-    if (token.state == LudoTokenState.initial) {
-      if (roll.value != 6) {
-        return null;
-      }
-
-      return ExitToken(
-        tokenId: token.id,
-        rollSequence: roll.sequence,
+      return createEngine(
+        players: players,
       );
     }
 
-    // ----------------------------------------------------------
-    // NORMAL MOVEMENT
-    // ----------------------------------------------------------
+    // ==========================================================
+    // 1. Roll 4
+    // ==========================================================
 
-    if (token.state == LudoTokenState.normal ||
-        token.state == LudoTokenState.safe ||
-        token.state == LudoTokenState.safeInPair) {
-      final destinationIndex =
-          token.positionInPath + roll.value;
-
-      // Exact finish rule:
-      // يجب الوصول للـ final cell بالضبط.
-      if (destinationIndex >
-          _pathFor(player.color).length - 1) {
-        return null;
-      }
-
-      return MoveToken(
-        tokenId: token.id,
-        steps: roll.value,
-        rollSequence: roll.sequence,
-      );
-    }
-
-    return null;
-  }
-
-  // ============================================================
-  // EXECUTE TOKEN MOVEMENT
-  // ============================================================
-
-  void _executeExitToken(
-      ExitToken move,
-      ) {
-    final playerIndex =
-        _state.currentPlayerIndex;
-
-    final player =
-    _state.players[playerIndex];
-
-    final tokenIndex = player.tokens.indexWhere(
-          (token) => token.id == move.tokenId,
-    );
-
-    if (tokenIndex == -1) {
-      throw StateError(
-        'الـ Token غير موجود.',
-      );
-    }
-
-    final token = player.tokens[tokenIndex];
-
-    final path = _pathFor(player.color);
-
-    if (path.isEmpty) {
-      throw StateError(
-        'مسار اللاعب غير موجود.',
-      );
-    }
-
-    final startingPosition = path.first;
-
-    final updatedToken = token.copyWith(
-      position: startingPosition,
-      positionInPath: 0,
-      state: LudoTokenState.normal,
-    );
-
-    final updatedTokens = [
-      ...player.tokens,
-    ];
-
-    updatedTokens[tokenIndex] = updatedToken;
-
-    final updatedPlayer = player.copyWith(
-      tokens: updatedTokens,
-    );
-
-    final updatedPlayers = [
-      ..._state.players,
-    ];
-
-    updatedPlayers[playerIndex] =
-        updatedPlayer;
-
-    _state = _state.copyWith(
-      players: updatedPlayers,
-    );
-  }
-
-  void _executeMoveToken(
-      MoveToken move,
-      ) {
-    final playerIndex =
-        _state.currentPlayerIndex;
-
-    final player =
-    _state.players[playerIndex];
-
-    final tokenIndex = player.tokens.indexWhere(
-          (token) => token.id == move.tokenId,
-    );
-
-    if (tokenIndex == -1) {
-      throw StateError(
-        'الـ Token غير موجود.',
-      );
-    }
-
-    final token = player.tokens[tokenIndex];
-
-    final newPathIndex =
-        token.positionInPath + move.steps;
-
-    final path = _pathFor(player.color);
-
-    if (newPathIndex >= path.length) {
-      throw StateError(
-        'الحركة تتجاوز نهاية المسار.',
-      );
-    }
-
-    final newPosition =
-    path[newPathIndex];
-
-    final reachesFinish =
-        newPathIndex == path.length - 1;
-
-    final updatedToken = token.copyWith(
-      position: newPosition,
-      positionInPath: newPathIndex,
-      state: reachesFinish
-          ? LudoTokenState.finished
-          : LudoTokenState.normal,
-    );
-
-    final updatedTokens = [
-      ...player.tokens,
-    ];
-
-    updatedTokens[tokenIndex] =
-        updatedToken;
-
-    final updatedPlayer = player.copyWith(
-      tokens: updatedTokens,
-    );
-
-    final updatedPlayers = [
-      ..._state.players,
-    ];
-
-    updatedPlayers[playerIndex] =
-        updatedPlayer;
-
-    _state = _state.copyWith(
-      players: updatedPlayers,
-    );
-
-    // Capture هيتضاف هنا بعد تثبيت
-    // قواعد الـ Safe Cells والـ Blocks.
-  }
-
-  // ============================================================
-  // FINISH PLAYER
-  // ============================================================
-
-  /// في Fast Mode:
-  /// أول Token يصل للنهاية = اللاعب Finished.
-  bool _hasPlayerFinished(
-      LudoPlayer player,
-      ) {
-    return player.tokens.any(
-          (token) =>
-      token.state == LudoTokenState.finished,
-    );
-  }
-
-  void _registerPlayerFinished(
-      String playerId,
-      ) {
-    if (_state.finishedPlayerIds.contains(
-      playerId,
-    )) {
-      return;
-    }
-
-    final updatedFinished = [
-      ..._state.finishedPlayerIds,
-      playerId,
-    ];
-
-    _state = _state.copyWith(
-      finishedPlayerIds: updatedFinished,
-    );
-  }
-
-  // ============================================================
-  // TURN MANAGEMENT
-  // ============================================================
-
-  LudoGameState _finishTurnWithoutMove() {
-    return _moveToNextPlayer();
-  }
-
-  LudoGameState _cancelTurnAndMoveNext() {
-    return _moveToNextPlayer();
-  }
-
-  LudoGameState _moveToNextPlayer() {
-    if (_state.isFinished) {
-      return _state;
-    }
-
-    final totalPlayers =
-        _state.players.length;
-
-    for (var offset = 1;
-    offset <= totalPlayers;
-    offset++) {
-      final nextIndex =
-          (_state.currentPlayerIndex + offset) %
-              totalPlayers;
-
-      final nextPlayer =
-      _state.players[nextIndex];
-
-      if (!_state.finishedPlayerIds.contains(
-        nextPlayer.playerId,
-      )) {
-        _state = _state.copyWith(
-          currentPlayerIndex: nextIndex,
-          turnState: TurnState.initial(
-            nextPlayer.playerId,
+    test(
+      'Roll 4 gives valid moves for the current player',
+          () {
+        final players = [
+          createPlayer(
+            playerId: 'player-1',
+            seat: 1,
+            color: LudoPlayerColor.green,
           ),
+          createPlayer(
+            playerId: 'player-2',
+            seat: 2,
+            color: LudoPlayerColor.yellow,
+          ),
+        ];
+
+        final engine = createEngine(
+          players: players,
         );
 
-        return _state;
-      }
-    }
+        final moves = engine.registerDiceRoll(
+          value: 4,
+          sequence: 1,
+        );
 
-    _state = _state.copyWith(
-      isFinished: true,
-      turnState: _state.turnState.copyWith(
-        phase: TurnPhase.completed,
-      ),
+        expect(
+          engine.state.turnState.isPlaying,
+          isTrue,
+        );
+
+        expect(
+          engine.state.turnState.rolls.length,
+          1,
+        );
+
+        expect(
+          engine.state.turnState.availableRolls.count,
+          1,
+        );
+
+        final validMoves =
+        engine.getValidMoves();
+
+        expect(
+          validMoves,
+          isNotEmpty,
+        );
+
+        expect(
+          validMoves.whereType<MoveToken>().any(
+                (move) =>
+            move.tokenId ==
+                'player-1-token-0' &&
+                move.steps == 4 &&
+                move.rollSequence == 1,
+          ),
+          isTrue,
+        );
+
+        // registerDiceRoll itself now returns state.
+        expect(
+          moves,
+          isNotNull,
+        );
+      },
     );
 
-    return _state;
-  }
+    // ==========================================================
+    // 2. Roll 6 -> Roll 4
+    // ==========================================================
 
-  // ============================================================
-  // ROLL MANAGEMENT
-  // ============================================================
+    test(
+      'Roll 6 then Roll 4 keeps both rolls available',
+          () {
+        final players = [
+          createPlayer(
+            playerId: 'player-1',
+            seat: 1,
+            color: LudoPlayerColor.green,
+          ),
+          createPlayer(
+            playerId: 'player-2',
+            seat: 2,
+            color: LudoPlayerColor.yellow,
+          ),
+        ];
 
-  AvailableRolls _addAvailableRoll(
-      TurnState turn,
-      DiceRoll roll,
-      ) {
-    return turn.availableRolls.add(
-      roll,
-    );
-  }
+        final engine = createEngine(
+          players: players,
+        );
 
-  TurnState _consumeRoll(
-      int rollSequence,
-      ) {
-    return _state.turnState.copyWith(
-      availableRolls:
-      _state.turnState.availableRolls
-          .removeBySequence(
-        rollSequence,
-      ),
-    );
-  }
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
+        );
 
-  // ============================================================
-  // HELPERS
-  // ============================================================
+        expect(
+          engine.state.turnState.phase,
+          TurnPhase.rolling,
+        );
 
-  List<Position> _pathFor(
-      LudoPlayerColor color,
-      ) {
-    switch (color) {
-      case LudoPlayerColor.green:
-        return LudoPaths.green;
+        expect(
+          engine.state.turnState.rolls.length,
+          1,
+        );
 
-      case LudoPlayerColor.yellow:
-        return LudoPaths.yellow;
+        expect(
+          engine.state.turnState.availableRolls.values,
+          [6],
+        );
 
-      case LudoPlayerColor.blue:
-        return LudoPaths.blue;
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 2,
+        );
 
-      case LudoPlayerColor.red:
-        return LudoPaths.red;
-    }
-  }
+        expect(
+          engine.state.turnState.phase,
+          TurnPhase.playing,
+        );
 
-  bool _sameMove(
-      MoveOption a,
-      MoveOption b,
-      ) {
-    if (a.runtimeType != b.runtimeType) {
-      return false;
-    }
+        expect(
+          engine.state.turnState.rolls.length,
+          2,
+        );
 
-    if (a is MoveToken && b is MoveToken) {
-      return a.tokenId == b.tokenId &&
-          a.steps == b.steps &&
-          a.rollSequence == b.rollSequence;
-    }
+        expect(
+          engine.state.turnState.availableRolls.values,
+          [6, 4],
+        );
 
-    if (a is ExitToken && b is ExitToken) {
-      return a.tokenId == b.tokenId &&
-          a.rollSequence == b.rollSequence;
-    }
+        final moves =
+        engine.getValidMoves();
 
-    return false;
-  }
+        expect(
+          moves,
+          isNotEmpty,
+        );
 
-  LudoPlayer _prepareFastModePlayer(
-      LudoPlayer player,
-      ) {
-    if (player.tokens.isEmpty) {
-      return player;
-    }
+        expect(
+          moves.whereType<MoveToken>().any(
+                (move) =>
+            move.steps == 6 &&
+                move.rollSequence == 1,
+          ),
+          isTrue,
+        );
 
-    final path = _pathFor(player.color);
-
-    if (path.isEmpty) {
-      return player;
-    }
-
-    final updatedTokens = [
-      ...player.tokens,
-    ];
-
-    // أول Token فقط يبدأ خارج البيت.
-    final firstTokenIndex =
-    updatedTokens.indexWhere(
-          (token) =>
-      token.tokenIndex == 0,
+        expect(
+          moves.whereType<MoveToken>().any(
+                (move) =>
+            move.steps == 4 &&
+                move.rollSequence == 2,
+          ),
+          isTrue,
+        );
+      },
     );
 
-    if (firstTokenIndex == -1) {
-      return player;
-    }
+    // ==========================================================
+    // 3. Roll 6 -> Roll 6 -> Roll 4
+    // ==========================================================
 
-    final firstToken =
-    updatedTokens[firstTokenIndex];
+    test(
+      'Roll 6 -> 6 -> 4 creates three available rolls',
+          () {
+        final players = [
+          createPlayer(
+            playerId: 'player-1',
+            seat: 1,
+            color: LudoPlayerColor.green,
+          ),
+          createPlayer(
+            playerId: 'player-2',
+            seat: 2,
+            color: LudoPlayerColor.yellow,
+          ),
+        ];
 
-    if (firstToken.state ==
-        LudoTokenState.initial) {
-      updatedTokens[firstTokenIndex] =
-          firstToken.copyWith(
-            position: path.first,
-            positionInPath: 0,
+        final engine = createEngine(
+          players: players,
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 2,
+        );
+
+        expect(
+          engine.state.turnState.availableRolls,
+          2,
+        );
+
+        expect(
+          engine.state.turnState.phase,
+          TurnPhase.rolling,
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 3,
+        );
+
+        expect(
+          engine.state.turnState.phase,
+          TurnPhase.playing,
+        );
+
+        expect(
+          engine.state.turnState.rolls
+              .map((roll) => roll.value),
+          [6, 6, 4],
+        );
+
+        expect(
+          engine.state.turnState.availableRolls.values,
+          [6, 6, 4],
+        );
+
+        expect(
+          engine.getValidMoves(),
+          isNotEmpty,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 4. Roll 6 -> Roll 6 -> Roll 6
+    // ==========================================================
+
+    test(
+      'Three consecutive sixes cancel the turn and move to next player',
+          () {
+        final players = [
+          createPlayer(
+            playerId: 'player-1',
+            seat: 1,
+            color: LudoPlayerColor.green,
+          ),
+          createPlayer(
+            playerId: 'player-2',
+            seat: 2,
+            color: LudoPlayerColor.yellow,
+          ),
+        ];
+
+        final engine = createEngine(
+          players: players,
+        );
+
+        expect(
+          engine.currentPlayer.playerId,
+          'player-1',
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 2,
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 3,
+        );
+
+        expect(
+          engine.currentPlayer.playerId,
+          'player-2',
+        );
+
+        expect(
+          engine.state.turnState.phase,
+          TurnPhase.rolling,
+        );
+
+        expect(
+          engine.state.turnState.rolls,
+          isEmpty,
+        );
+
+        expect(
+          engine.state.turnState.availableRolls.isEmpty,
+          isTrue,
+        );
+
+        expect(
+          engine.state.turnState.availableRolls,
+          0,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 5. Player can choose more than one token
+    // ==========================================================
+
+    test(
+      'Player can use different rolls on different tokens',
+          () {
+        final players = [
+          createPlayer(
+            playerId: 'player-1',
+            seat: 1,
+            color: LudoPlayerColor.green,
+          ),
+          createPlayer(
+            playerId: 'player-2',
+            seat: 2,
+            color: LudoPlayerColor.yellow,
+          ),
+        ];
+
+        final engine = createEngine(
+          players: players,
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 2,
+        );
+
+        final moves =
+        engine.getValidMoves();
+
+        final tokenZeroSixMove =
+        moves.whereType<MoveToken>().firstWhere(
+              (move) =>
+          move.tokenId ==
+              'player-1-token-0' &&
+              move.steps == 6,
+        );
+
+        engine.executeMove(
+          tokenZeroSixMove,
+        );
+
+        expect(
+          engine.state.turnState.availableRolls.values,
+          [4],
+        );
+
+        final tokenZero =
+        engine.state.currentPlayer.tokens
+            .firstWhere(
+              (token) =>
+          token.tokenIndex == 0,
+        );
+
+        expect(
+          tokenZero.positionInPath,
+          6,
+        );
+
+        // The second roll can now be used
+        // independently.
+        final nextMoves =
+        engine.getValidMoves();
+
+        expect(
+          nextMoves.whereType<MoveToken>().any(
+                (move) =>
+            move.steps == 4 &&
+                move.rollSequence == 2,
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 6. Consume rolls one by one
+    // ==========================================================
+
+    test(
+      'Available rolls are consumed one by one',
+          () {
+        final players = [
+          createPlayer(
+            playerId: 'player-1',
+            seat: 1,
+            color: LudoPlayerColor.green,
+          ),
+          createPlayer(
+            playerId: 'player-2',
+            seat: 2,
+            color: LudoPlayerColor.yellow,
+          ),
+        ];
+
+        final engine = createEngine(
+          players: players,
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 2,
+        );
+
+        expect(
+          engine.state.turnState.availableRolls.values,
+          [6, 4],
+        );
+
+        final moveSix =
+        engine
+            .getValidMoves()
+            .whereType<MoveToken>()
+            .firstWhere(
+              (move) =>
+          move.tokenId ==
+              'player-1-token-0' &&
+              move.steps == 6 &&
+              move.rollSequence == 1,
+        );
+
+        engine.executeMove(moveSix);
+
+        expect(
+          engine.state.turnState.availableRolls.values,
+          [4],
+        );
+
+        final moveFour =
+        engine
+            .getValidMoves()
+            .whereType<MoveToken>()
+            .firstWhere(
+              (move) =>
+          move.tokenId ==
+              'player-1-token-0' &&
+              move.steps == 4 &&
+              move.rollSequence == 2,
+        );
+
+        engine.executeMove(moveFour);
+
+        expect(
+          engine.state.turnState.availableRolls.isEmpty,
+          isTrue,
+        );
+
+        expect(
+          engine.currentPlayer.playerId,
+          'player-2',
+        );
+      },
+    );
+
+    // ==========================================================
+    // 7. Turn moves to next player
+    // ==========================================================
+
+    test(
+      'Turn moves according to seat order',
+          () {
+        final players = [
+          createPlayer(
+            playerId: 'player-1',
+            seat: 1,
+            color: LudoPlayerColor.green,
+          ),
+          createPlayer(
+            playerId: 'player-2',
+            seat: 2,
+            color: LudoPlayerColor.yellow,
+          ),
+          createPlayer(
+            playerId: 'player-3',
+            seat: 3,
+            color: LudoPlayerColor.blue,
+          ),
+        ];
+
+        final engine = createEngine(
+          players: players,
+        );
+
+        expect(
+          engine.currentPlayer.playerId,
+          'player-1',
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 1,
+        );
+
+        final move =
+        engine
+            .getValidMoves()
+            .whereType<MoveToken>()
+            .firstWhere(
+              (move) =>
+          move.tokenId ==
+              'player-1-token-0' &&
+              move.steps == 4,
+        );
+
+        engine.executeMove(move);
+
+        expect(
+          engine.currentPlayer.playerId,
+          'player-2',
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 1,
+        );
+
+        final moveTwo =
+        engine
+            .getValidMoves()
+            .whereType<MoveToken>()
+            .firstWhere(
+              (move) =>
+          move.tokenId ==
+              'player-2-token-0' &&
+              move.steps == 4,
+        );
+
+        engine.executeMove(moveTwo);
+
+        expect(
+          engine.currentPlayer.playerId,
+          'player-3',
+        );
+      },
+    );
+
+    // ==========================================================
+    // 8. Player finishes with first token
+    // ==========================================================
+
+    test(
+      'Player gets rank when the first token reaches finish',
+          () {
+        final playerOneTokens =
+        <LudoToken>[];
+
+        final greenPath = LudoPaths.green;
+
+        final finishIndex =
+            greenPath.length - 1;
+
+        final startPosition =
+        greenPath[finishIndex - 4];
+
+        // Token 0 is four steps away from finish.
+        playerOneTokens.add(
+          createToken(
+            playerId: 'player-1',
+            tokenIndex: 0,
             state: LudoTokenState.normal,
+            positionInPath: finishIndex - 4,
+            position: startPosition,
+          ),
+        );
+
+        // Remaining tokens stay in initial state.
+        for (var index = 1; index < 4; index++) {
+          playerOneTokens.add(
+            createToken(
+              playerId: 'player-1',
+              tokenIndex: index,
+            ),
           );
-    }
+        }
 
-    return player.copyWith(
-      tokens: updatedTokens,
+        final players = [
+          createPlayer(
+            playerId: 'player-1',
+            seat: 1,
+            color: LudoPlayerColor.green,
+            tokens: playerOneTokens,
+          ),
+          createPlayer(
+            playerId: 'player-2',
+            seat: 2,
+            color: LudoPlayerColor.yellow,
+          ),
+        ];
+
+        final engine = createEngine(
+          players: players,
+        );
+
+        // The player starts with token 0
+        // already on the board.
+        final moves = engine.registerDiceRoll(
+          value: 4,
+          sequence: 1,
+        );
+
+        expect(
+          moves,
+          isNotNull,
+        );
+
+        final finishMove =
+        engine
+            .getValidMoves()
+            .whereType<MoveToken>()
+            .firstWhere(
+              (move) =>
+          move.tokenId ==
+              'player-1-token-0' &&
+              move.steps == 4,
+        );
+
+        engine.executeMove(finishMove);
+
+        expect(
+          engine.state.finishedPlayerIds,
+          ['player-1'],
+        );
+
+        expect(
+          engine.state.getRankForPlayer(
+            'player-1',
+          ),
+          1,
+        );
+
+        expect(
+          engine.state.currentPlayer.playerId,
+          'player-2',
+        );
+      },
     );
-  }
 
-  // ============================================================
-  // GAME RESULT
-  // ============================================================
 
-  GameResult getResult() {
-    final results = <GamePlayerResult>[];
 
-    for (var index = 0;
-    index < _state.finishedPlayerIds.length;
-    index++) {
-      final playerId =
-      _state.finishedPlayerIds[index];
-
-      results.add(
-        GamePlayerResult(
-          playerId: playerId,
-          rank: index + 1,
-          finished: true,
-        ),
+  test(
+    'Capture -> 6 -> 6 counts all sixes in the same turn',
+        () {
+      final engine = createCaptureEngine(
+        attackerStep: 0,
+        defenderStep: 4,
       );
-    }
 
-    return GameResult(
-      players: results,
-      isFinished: _state.isFinished,
-    );
-  }
+      // First roll = 6.
+      engine.registerDiceRoll(
+        value: 6,
+        sequence: 1,
+      );
+
+      // Second roll = 4.
+      engine.registerDiceRoll(
+        value: 4,
+        sequence: 2,
+      );
+
+      final captureMove = engine
+          .getValidMoves()
+          .whereType<MoveToken>()
+          .firstWhere(
+            (move) =>
+        move.rollSequence == 2 &&
+            move.steps == 4,
+      );
+
+      // Capture happens here.
+      engine.executeMove(captureMove);
+
+      expect(
+        engine.currentPlayer.playerId,
+        'player-1',
+      );
+
+      expect(
+        engine.currentPlayer.hasCaptured,
+        isTrue,
+      );
+
+      expect(
+        engine.state.turnState.phase,
+        TurnPhase.rolling,
+      );
+
+      // Immediate extra roll = 6.
+      engine.registerDiceRoll(
+        value: 6,
+        sequence: 3,
+      );
+
+      expect(
+        engine.state.turnState.rolls
+            .where(
+              (roll) => roll.value == 6,
+        )
+            .length,
+        2,
+      );
+
+      // Third six in the SAME turn.
+      engine.registerDiceRoll(
+        value: 6,
+        sequence: 4,
+      );
+
+      expect(
+        engine.currentPlayer.playerId,
+        'player-2',
+      );
+
+      expect(
+        engine.state.turnState.availableRolls.values,
+        isEmpty,
+      );
+        },
+  );
+  });
 }
-
-/// Temporary helper to represent an empty
-/// AvailableRolls instance without importing
-/// another mutable implementation.
