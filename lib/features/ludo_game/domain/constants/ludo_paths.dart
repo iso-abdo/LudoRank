@@ -1,17 +1,33 @@
 import '../entities/ludo_player.dart';
 import '../entities/position.dart';
 
+/// Represents the logical movement path of one Ludo color.
+///
+/// IMPORTANT:
+/// - The main loop contains logical steps 0..51.
+/// - Before the first capture, step 51 is the last main-loop cell
+///   and the next step wraps to step 0.
+/// - After a capture, step 51 becomes the first Home Lane cell.
+/// - Step 56 is the final Finish cell.
+///
+/// Therefore:
+/// - mainLoopLength = 52
+/// - totalLength = 57
+///
+/// Step 51 is state-dependent and MUST be resolved through
+/// [positionAt] or [nextStep] when game state is relevant.
 class LudoPath {
-  /// Main Loop before/around the capture transition.
+  /// Main-loop physical positions.
   ///
   /// Logical steps:
-  /// 0 .. 51
+  /// 0..51
   final List<Position> mainLoopPath;
 
-  /// Path after capture:
+  /// Home-lane + finish physical positions.
   ///
-  /// 51 .. 55 = Home Lane
-  /// 56       = Finish
+  /// Logical steps:
+  /// 51..55 = Home Lane
+  /// 56      = Finish
   final List<Position> homePath;
 
   const LudoPath({
@@ -23,74 +39,77 @@ class LudoPath {
   // LOGICAL CONSTANTS
   // ============================================================
 
-  /// Main Loop steps: 0..51
+  /// Number of positions in the circular main loop.
   static const int mainLoopLength = 52;
 
-  /// Last Main Loop step.
+  /// Last logical step belonging to the main loop.
   static const int lastMainLoopStep = 51;
 
-  /// First Home Lane step after Capture.
+  /// First Home Lane logical step after Capture.
   static const int homeLaneStartStep = 51;
 
-  /// Last Home Lane step before Finish.
+  /// Last logical step before Finish.
   static const int homeLaneLastStep = 55;
 
-  /// Finish.
+  /// Final logical Finish step.
   static const int finishStep = 56;
 
+  /// Total logical positions in the complete path.
+  ///
+  /// Steps:
+  /// 0..50  = Main Loop
+  /// 51..55 = Home Lane
+  /// 56     = Finish
+  static const int totalLength = finishStep + 1;
+
   // ============================================================
-  // BACKWARD COMPATIBILITY
+  // PATH VIEWS
   // ============================================================
 
-  /// Compatibility with the previous tests/API.
-  ///
-  /// Before Capture:
-  /// 0..51
+  /// Main-loop path used before the first Capture.
   List<Position> get beforeCapture => mainLoopPath;
 
-  /// Compatibility with the previous tests/API.
+  /// Full logical path used after Capture.
   ///
-  /// 0..50  = Main Loop
-  /// 51..56 = Home Lane + Finish
+  /// Step 51 in this view is the first Home Lane position,
+  /// not mainLoopPath[51].
   List<Position> get afterCapture => [
-    ...mainLoopPath.take(51),
+    ...mainLoopPath.take(lastMainLoopStep),
     ...homePath,
   ];
 
-  // ============================================================
-  // COMMON LIST-LIKE API
-  // ============================================================
-
-  int get length => mainLoopPath.length;
+  /// Number of logical positions in the complete path.
+  ///
+  /// IMPORTANT:
+  /// This is 57.
+  ///
+  /// [mainLoopLength] remains 52 because the circular main loop
+  /// itself contains exactly 52 positions.
+  int get length => totalLength;
 
   bool get isEmpty => mainLoopPath.isEmpty;
 
   bool get isNotEmpty => mainLoopPath.isNotEmpty;
 
-  Position get first => mainLoopPath.first;
+  Position get first => startingPosition;
 
-  Position get last => mainLoopPath.last;
+  Position get last => finishPosition;
 
-  /// List-like access.
+  // ============================================================
+  // COMPATIBILITY / INDEX ACCESS
+  // ============================================================
+
+  /// List-like access to a logical position.
   ///
-  /// 0..51  -> Main Loop
-  /// 52..56 -> Home Lane + Finish
+  /// IMPORTANT:
+  /// Step 51 is state-dependent:
   ///
-  /// NOTE:
-  /// Step 51 is ambiguous by design:
-  /// - before Capture -> mainLoopPath[51]
-  /// - after Capture  -> homePath[0]
+  /// - Before Capture -> mainLoopPath[51]
+  /// - After Capture  -> homePath[0]
   ///
-  /// لذلك الـEngine الجديد يفضل استخدام positionAt().
-  Position operator [](int index) {
-    if (index < 0 || index > finishStep) {
-      throw RangeError.range(
-        index,
-        0,
-        finishStep,
-        'index',
-      );
-    }
+  /// Therefore game logic should prefer [positionAt].
+  Position operator[](int index) {
+    _validateStep(index);
 
     if (index <= lastMainLoopStep) {
       return mainLoopPath[index];
@@ -103,62 +122,53 @@ class LudoPath {
   // POSITION RESOLUTION
   // ============================================================
 
-  /// Physical board position according to player state.
+  /// Resolves a logical step to its physical board position.
+  ///
+  /// Before Capture:
+  ///   0..51 -> Main Loop
+  ///
+  /// After Capture:
+  ///   0..50 -> Main Loop
+  ///   51..55 -> Home Lane
+  ///   56 -> Finish
   Position positionAt({
     required int step,
     required bool hasCaptured,
   }) {
-    if (step < 0 || step > finishStep) {
-      throw RangeError.range(
-        step,
-        0,
-        finishStep,
-        'step',
-      );
-    }
-
-    // ----------------------------------------------------------
-    // BEFORE CAPTURE
-    // ----------------------------------------------------------
+    _validateStep(step);
 
     if (!hasCaptured) {
       return mainLoopPath[step];
     }
 
-    // ----------------------------------------------------------
-    // AFTER CAPTURE
-    // ----------------------------------------------------------
-
-    if (step <= 50) {
+    if (step <= lastMainLoopStep - 1) {
       return mainLoopPath[step];
     }
 
-    return homePath[
-    step - homeLaneStartStep
-    ];
+    return homePath[step - homeLaneStartStep];
   }
 
   // ============================================================
-  // NEXT STEP
+  // STEP TRANSITION
   // ============================================================
 
+  /// Returns the next logical step.
+  ///
+  /// Before Capture:
+  ///   50 -> 51
+  ///   51 -> 0
+  ///
+  /// After Capture:
+  ///   50 -> 51
+  ///   51 -> 52
+  ///   ...
+  ///   55 -> 56
+  ///   56 -> 56
   int nextStep({
     required int currentStep,
     required bool hasCaptured,
   }) {
-    if (currentStep < 0 ||
-        currentStep > finishStep) {
-      throw RangeError.range(
-        currentStep,
-        0,
-        finishStep,
-        'currentStep',
-      );
-    }
-
-    // ----------------------------------------------------------
-    // AFTER CAPTURE
-    // ----------------------------------------------------------
+    _validateStep(currentStep);
 
     if (hasCaptured) {
       if (currentStep >= finishStep) {
@@ -168,10 +178,6 @@ class LudoPath {
       return currentStep + 1;
     }
 
-    // ----------------------------------------------------------
-    // BEFORE CAPTURE
-    // ----------------------------------------------------------
-
     if (currentStep == lastMainLoopStep) {
       return 0;
     }
@@ -180,26 +186,20 @@ class LudoPath {
   }
 
   // ============================================================
-  // STEP TYPE
+  // STEP CLASSIFICATION
   // ============================================================
 
   bool isMainLoopStep(int step) {
-    return step >= 0 &&
-        step <= lastMainLoopStep;
+    return step >= 0 && step <= lastMainLoopStep;
   }
 
   bool isHomeLaneStep(int step) {
-    return step >= homeLaneStartStep &&
-        step <= homeLaneLastStep;
+    return step >= homeLaneStartStep && step <= homeLaneLastStep;
   }
 
   bool isFinishStep(int step) {
     return step == finishStep;
   }
-
-  // ============================================================
-  // STARTING CELLS
-  // ============================================================
 
   bool isStartingStep(int step) {
     return const {
@@ -214,13 +214,27 @@ class LudoPath {
   // COMMON POSITIONS
   // ============================================================
 
-  Position get startingPosition =>
-      mainLoopPath.first;
+  Position get startingPosition => mainLoopPath.first;
 
-  Position get finishPosition =>
-      homePath.last;
+  Position get finishPosition => homePath.last;
+
+  // ============================================================
+  // VALIDATION
+  // ============================================================
+
+  void _validateStep(int step) {
+    if (step < 0 || step > finishStep) {
+      throw RangeError.range(
+        step,
+        0,
+        finishStep,
+        'step',
+      );
+    }
+  }
 }
 
+/// Provides the predefined board paths for every Ludo color.
 class LudoPaths {
   const LudoPaths._();
 
@@ -289,7 +303,7 @@ class LudoPaths {
       Position(row: 12, column: 8), // 53
       Position(row: 11, column: 8), // 54
       Position(row: 10, column: 8), // 55
-      Position(row: 9, column: 8),  // 56 Finish
+      Position(row: 9, column: 8), // 56 Finish
     ],
   );
 
@@ -504,9 +518,7 @@ class LudoPaths {
   // COLOR LOOKUP
   // ============================================================
 
-  static LudoPath forColor(
-      LudoPlayerColor color,
-      ) {
+  static LudoPath forColor(LudoPlayerColor color) {
     switch (color) {
       case LudoPlayerColor.red:
         return red;
