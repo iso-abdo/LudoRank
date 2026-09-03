@@ -1,20 +1,51 @@
 import 'dart:math';
 
-import 'package:ludo_rank/features/ludo_game/domain/constants/ludo_paths.dart';
-import 'package:ludo_rank/features/ludo_game/domain/constants/safe_cells.dart';
-import 'package:ludo_rank/features/ludo_game/domain/entities/ludo_player.dart';
-import 'package:ludo_rank/features/ludo_game/domain/entities/ludo_token.dart';
-import 'package:ludo_rank/features/ludo_game/domain/entities/position.dart';
-import 'package:ludo_rank/features/ludo_game/domain/models/available_rolls.dart';
-import 'package:ludo_rank/features/ludo_game/domain/models/dice_roll.dart';
-import 'package:ludo_rank/features/ludo_game/domain/models/ludo_game_state.dart';
-import 'package:ludo_rank/features/ludo_game/domain/models/move_option.dart';
-import 'package:ludo_rank/features/ludo_game/domain/models/turn_state.dart';
+import '../constants/ludo_paths.dart';
+import '../constants/safe_cells.dart';
+import '../entities/ludo_player.dart';
+import '../entities/ludo_token.dart';
+import '../entities/position.dart';
+import '../models/available_rolls.dart';
+import '../models/dice_roll.dart';
+import '../models/game_result.dart';
+import '../models/ludo_game_state.dart';
+import '../models/move_option.dart';
+import '../models/turn_state.dart';
 
+/// Core domain engine for a Fast Mode Ludo match.
+///
+/// Responsibilities:
+/// - Game start
+/// - Turn management
+/// - Dice rolls
+/// - Available rolls
+/// - Move validation
+/// - Token movement
+/// - Safe cells
+/// - Blocks
+/// - Capture
+/// - Capture unlocks Home Lane
+/// - Capture grants an immediate extra roll
+/// - Exact finish
+/// - Player ranking
+/// - Game completion
+///
+/// Explicitly NOT responsible for:
+/// - Tournament points
+/// - Withdrawal
+/// - Leaderboard
+/// - Persistence
+/// - SQLite / Drift
+/// - Provider
+/// - UI
 class LudoGameEngine {
   LudoGameState _state;
 
   final Random _random;
+
+  /// Used to carry the result of the most recently executed move
+  /// into the turn-transition logic.
+  bool _lastMoveWasCapture = false;
 
   LudoGameEngine({
     required LudoGameState initialState,
@@ -26,8 +57,10 @@ class LudoGameEngine {
   // GETTERS
   // ============================================================
 
+  /// Current complete game state.
   LudoGameState get state => _state;
 
+  /// Current player according to the turn order.
   LudoPlayer get currentPlayer => _state.currentPlayer;
 
   bool get isStarted => _state.isStarted;
@@ -38,23 +71,27 @@ class LudoGameEngine {
   // GAME START
   // ============================================================
 
-  /// بدء المباراة في Fast Mode.
+  /// Starts the Fast Mode match.
   ///
-  /// كل لاعب يبدأ بـ Token واحد خارج البيت.
+  /// Fast Mode rule:
+  /// Every player starts with exactly one token outside Home,
+  /// on the player's own starting cell.
+  ///
+  /// All other tokens remain initial.
   LudoGameState startGame() {
     if (_state.isStarted) {
       return _state;
     }
 
-    final players = _state.players
-        .map(_prepareFastModePlayer)
-        .toList();
-
-    if (players.isEmpty) {
+    if (_state.players.isEmpty) {
       throw StateError(
         'لا يمكن بدء اللعبة بدون لاعبين.',
       );
     }
+
+    final players = _state.players
+        .map(_prepareFastModePlayer)
+        .toList(growable: false);
 
     final firstPlayer = players.first;
 
@@ -69,6 +106,8 @@ class LudoGameEngine {
       finishedPlayerIds: const [],
     );
 
+    _lastMoveWasCapture = false;
+
     return _state;
   }
 
@@ -76,18 +115,23 @@ class LudoGameEngine {
   // TURN
   // ============================================================
 
+  /// Resets the current player's turn.
+  ///
+  /// Normally the engine already creates the next turn
+  /// automatically, but keeping this operation public is useful
+  /// for the controller layer.
   LudoGameState startTurn() {
     if (!_state.isStarted || _state.isFinished) {
       return _state;
     }
 
-    final player = _state.currentPlayer;
-
-    if (_state.finishedPlayerIds.contains(
-      player.playerId,
-    )) {
+    if (_state.currentPlayerFinished) {
       return _moveToNextPlayer();
     }
+
+    final player = _state.currentPlayer;
+
+    _lastMoveWasCapture = false;
 
     _state = _state.copyWith(
       turnState: TurnState.initial(
@@ -102,13 +146,25 @@ class LudoGameEngine {
   // DICE
   // ============================================================
 
-  /// رمي النرد العادي.
+  /// Rolls a real/random die for the current turn.
+  ///
+  /// Rules:
+  ///
+  /// 1..5
+  ///   - The roll becomes available.
+  ///   - The turn enters Playing.
+  ///
+  /// 6
+  ///   - The roll becomes available.
+  ///   - The turn remains Rolling.
+  ///   - The player must roll again.
+  ///
+  /// Third 6 in the SAME turn:
+  ///   - The complete turn is cancelled.
+  ///   - All previously available rolls are discarded.
+  ///   - The turn moves to the next player.
   List<MoveOption> rollDice() {
-    if (!_state.isStarted) {
-      throw StateError(
-        'لا يمكن رمي النرد قبل بدء اللعبة.',
-      );
-    }
+    _ensureGameStarted();
 
     if (_state.isFinished) {
       return const [];
@@ -118,7 +174,7 @@ class LudoGameEngine {
 
     if (turn.phase == TurnPhase.playing) {
       throw StateError(
-        'يجب تنفيذ الحركات المتاحة قبل رمي النرد مرة أخرى.',
+        'يجب تنفيذ حركة متاحة قبل رمي النرد مرة أخرى.',
       );
     }
 
@@ -128,44 +184,30 @@ class LudoGameEngine {
     }
 
     final sequence = turn.rolls.length + 1;
-
     final value = _random.nextInt(6) + 1;
 
-    registerDiceRoll(
+    return registerDiceRoll(
       value: value,
       sequence: sequence,
     );
-
-    return getValidMoves();
   }
 
   // ============================================================
   // REGISTER DICE
   // ============================================================
 
-  /// تسجيل رمية محددة.
+  /// Registers a deterministic dice result.
   ///
-  /// مهم:
-  /// عدد الـ6 يتم حسابه من جميع رميات الـTurn الحالي،
-  /// وليس من الرميات المتتالية.
-  ///
-  /// مثال:
-  ///
-  /// 6 -> 4 -> 6
-  ///
-  /// sixCount = 2
-  ///
-  /// 6 -> 4 -> 6 -> 3 -> 6
-  ///
-  /// sixCount = 3 => Cancel Turn
-  Object registerDiceRoll({
+  /// This method is intentionally public because the unit tests
+  /// need to inject exact dice values.
+  List<MoveOption> registerDiceRoll({
     required int value,
     required int sequence,
   }) {
-    if (!_state.isStarted) {
-      throw StateError(
-        'لا يمكن تسجيل رمية قبل بدء اللعبة.',
-      );
+    _ensureGameStarted();
+
+    if (_state.isFinished) {
+      return const [];
     }
 
     if (value < 1 || value > 6) {
@@ -176,7 +218,15 @@ class LudoGameEngine {
 
     final turn = _state.turnState;
 
-    if (sequence != turn.rolls.length + 1) {
+    if (turn.phase != TurnPhase.rolling) {
+      throw StateError(
+        'لا يمكن تسجيل رمية جديدة خارج مرحلة Rolling.',
+      );
+    }
+
+    final expectedSequence = turn.rolls.length + 1;
+
+    if (sequence != expectedSequence) {
       throw ArgumentError(
         'تسلسل الرميات غير صحيح.',
       );
@@ -191,44 +241,50 @@ class LudoGameEngine {
       ...turn.rolls,
       roll,
     ];
-
+// ==========================================================
+    // COUNT ALL SIXES IN THIS TURN
     // ==========================================================
-    // COUNT SIXES IN WHOLE TURN
-    // ==========================================================
-
-    final sixCount = updatedRolls
-        .where((item) => item.value == 6)
+    // IMPORTANT:
+    // Count ALL sixes in the current turn.
+    //
+    // Example:
+    // 6 -> 4 -> 6 -> 3 -> 6
+    //
+    // = 3 sixes
+    final sixRollCount = updatedRolls
+        .where((item) => item.isSix)
         .length;
 
     // ==========================================================
     // THIRD SIX IN SAME TURN
     // ==========================================================
 
-    if (value == 6 && sixCount >= 3) {
+    if (sixRollCount >= 3) {
       _state = _state.copyWith(
         turnState: turn.copyWith(
           rolls: updatedRolls,
-          sixRollCount: sixCount,
           availableRolls: const AvailableRolls(),
+          sixRollCount: sixRollCount,
           phase: TurnPhase.cancelled,
         ),
       );
 
-      return _cancelTurnAndMoveNext();
+      _cancelTurnAndMoveNext();
+
+      return const [];
     }
 
     // ==========================================================
     // SIX
     // ==========================================================
 
-    if (value == 6) {
+    if (roll.isSix) {
       final nextTurn = turn.copyWith(
         rolls: updatedRolls,
-        sixRollCount: sixCount,
-        availableRolls: _addAvailableRoll(
-          turn,
+        availableRolls: turn.availableRolls.add(
           roll,
         ),
+        sixRollCount: sixRollCount,
         phase: TurnPhase.rolling,
       );
 
@@ -236,7 +292,7 @@ class LudoGameEngine {
         turnState: nextTurn,
       );
 
-      return const <MoveOption>[];
+      return const [];
     }
 
     // ==========================================================
@@ -245,11 +301,10 @@ class LudoGameEngine {
 
     final nextTurn = turn.copyWith(
       rolls: updatedRolls,
-      sixRollCount: sixCount,
-      availableRolls: _addAvailableRoll(
-        turn,
+      availableRolls: turn.availableRolls.add(
         roll,
       ),
+      sixRollCount: sixRollCount,
       phase: TurnPhase.playing,
     );
 
@@ -259,8 +314,10 @@ class LudoGameEngine {
 
     final moves = getValidMoves();
 
+    // No legal move with ANY currently available roll.
     if (moves.isEmpty) {
-      return _finishTurnWithoutMove();
+      _finishTurnWithoutMove();
+      return const [];
     }
 
     return moves;
@@ -270,8 +327,19 @@ class LudoGameEngine {
   // VALID MOVES
   // ============================================================
 
+  /// Returns every legal move available to the current player.
+  ///
+  /// The player may choose:
+  /// - any legal token
+  /// - with any currently available roll
+  ///
+  /// The Engine never auto-selects a move.
   List<MoveOption> getValidMoves() {
     final turn = _state.turnState;
+
+    if (!_state.isStarted || _state.isFinished) {
+      return const [];
+    }
 
     if (turn.phase != TurnPhase.playing) {
       return const [];
@@ -287,14 +355,14 @@ class LudoGameEngine {
 
     for (final roll in turn.availableRolls.rolls) {
       for (final token in player.tokens) {
-        final option = _getMoveOptionForToken(
+        final move = _getMoveOptionForToken(
           player: player,
           token: token,
           roll: roll,
         );
 
-        if (option != null) {
-          moves.add(option);
+        if (move != null) {
+          moves.add(move);
         }
       }
     }
@@ -306,14 +374,13 @@ class LudoGameEngine {
   // EXECUTE MOVE
   // ============================================================
 
+  /// Executes a move selected by the player.
+  ///
+  /// The move MUST exist in [getValidMoves].
   LudoGameState executeMove(
       MoveOption move,
       ) {
-    if (!_state.isStarted) {
-      throw StateError(
-        'اللعبة لم تبدأ.',
-      );
-    }
+    _ensureGameStarted();
 
     if (_state.isFinished) {
       throw StateError(
@@ -336,8 +403,10 @@ class LudoGameEngine {
       );
     }
 
+    _lastMoveWasCapture = false;
+
     // ==========================================================
-    // EXECUTE
+    // EXECUTE ACTUAL MOVE
     // ==========================================================
 
     if (move is ExitToken) {
@@ -351,22 +420,19 @@ class LudoGameEngine {
     }
 
     // ==========================================================
-    // GET UPDATED CURRENT PLAYER
+    // UPDATED PLAYER
     // ==========================================================
 
     final updatedPlayer = _state.currentPlayer;
 
     // ==========================================================
-    // FINISH PLAYER
+    // RANK PLAYER IF FINISHED
     // ==========================================================
 
-    final hasFinished =
+    final playerFinished =
     _hasPlayerFinished(updatedPlayer);
 
-    if (hasFinished &&
-        !_state.finishedPlayerIds.contains(
-          updatedPlayer.playerId,
-        )) {
+    if (playerFinished) {
       _registerPlayerFinished(
         updatedPlayer.playerId,
       );
@@ -385,11 +451,10 @@ class LudoGameEngine {
     );
 
     // ==========================================================
-    // GAME FINISHED
+    // ALL PLAYERS FINISHED
     // ==========================================================
 
-    if (_state.finishedPlayerIds.length ==
-        _state.players.length) {
+    if (_allPlayersFinished) {
       _state = _state.copyWith(
         isFinished: true,
         turnState: updatedTurn.copyWith(
@@ -397,23 +462,31 @@ class LudoGameEngine {
         ),
       );
 
+      _lastMoveWasCapture = false;
+
       return _state;
     }
 
     // ==========================================================
-    // CAPTURE EXTRA ROLL
+    // PLAYER FINISHED -> LEAVE TURN IMMEDIATELY
     // ==========================================================
 
     //
-    // لو الحركة نتج عنها Capture:
+    // IMPORTANT:
+    // In Fast Mode the first token finishing is enough to rank
+    // the player. That player must not continue consuming the
+    // remaining rolls of the same turn.
     //
-    // Capture
-    //    ↓
-    // Immediate Extra Roll
-    //
-    // لا نضيف Roll وهمي إلى availableRolls.
-    // فقط نرجع phase إلى rolling.
-    //
+    if (playerFinished) {
+      _lastMoveWasCapture = false;
+
+      return _moveToNextPlayer();
+    }
+
+    // ==========================================================
+    // CAPTURE -> IMMEDIATE EXTRA ROLL
+    // ==========================================================
+
     if (_lastMoveWasCapture) {
       _state = _state.copyWith(
         turnState: updatedTurn.copyWith(
@@ -427,12 +500,11 @@ class LudoGameEngine {
     }
 
     // ==========================================================
-    // REMAINING ROLLS
+    // REMAINING AVAILABLE ROLLS
     // ==========================================================
 
     if (_state.turnState.availableRolls.isNotEmpty) {
-      final remainingMoves =
-      getValidMoves();
+      final remainingMoves = getValidMoves();
 
       if (remainingMoves.isEmpty) {
         return _finishTurnWithoutMove();
@@ -442,17 +514,11 @@ class LudoGameEngine {
     }
 
     // ==========================================================
-    // NEXT PLAYER
+    // NO ROLLS LEFT
     // ==========================================================
 
     return _moveToNextPlayer();
   }
-
-  // ============================================================
-  // LAST MOVE RESULT
-  // ============================================================
-
-  bool _lastMoveWasCapture = false;
 
   // ============================================================
   // MOVE CALCULATION
@@ -463,8 +529,8 @@ class LudoGameEngine {
     required LudoToken token,
     required DiceRoll roll,
   }) {
-    // Finished token.
-    if (token.state == LudoTokenState.finished) {
+    // Finished token cannot move.
+    if (token.isFinished) {
       return null;
     }
 
@@ -472,11 +538,15 @@ class LudoGameEngine {
     // EXIT TOKEN
     // ==========================================================
 
-    if (token.state == LudoTokenState.initial) {
-      if (roll.value != 6) {
+    if (token.isInitial) {
+      if (!roll.isSix) {
         return null;
       }
 
+      //
+      // Starting Cells are safe cells in our board definition,
+      // therefore an exit is always legal with respect to blocks.
+      //
       return ExitToken(
         tokenId: token.id,
         rollSequence: roll.sequence,
@@ -487,15 +557,33 @@ class LudoGameEngine {
     // MOVABLE TOKEN
     // ==========================================================
 
-    if (token.state != LudoTokenState.normal &&
-        token.state != LudoTokenState.safe &&
-        token.state != LudoTokenState.safeInPair) {
+    final isMovableState =
+        token.state == LudoTokenState.normal ||
+            token.state == LudoTokenState.safe ||
+            token.state == LudoTokenState.safeInPair;
+
+    if (!isMovableState) {
       return null;
     }
 
-    final path =
-    _pathFor(player.color);
+    if (token.positionInPath < 0 ||
+        token.positionInPath > LudoPath.finishStep) {
+      return null;
+    }
 
+    final path = _pathFor(
+      player.color,
+    );
+
+    // Resolve destination by walking the actual logical path.
+    //
+    // This is critical because step 51 has two meanings:
+    //
+    // Before Capture:
+    //   50 -> 51 -> 0
+    //
+    // After Capture:
+    //   50 -> 51(Home) -> 52 ...
     final destinationStep =
     _calculateDestinationStep(
       path: path,
@@ -504,14 +592,14 @@ class LudoGameEngine {
       hasCaptured: player.hasCaptured,
     );
 
-    // Cannot go beyond Finish.
-    if (destinationStep >
-        LudoPath.finishStep) {
+    // Exact finish:
+    // reaching 56 is legal,
+    // going beyond 56 is not.
+    if (destinationStep > LudoPath.finishStep) {
       return null;
     }
 
-    final destination =
-    path.positionAt(
+    final destination = path.positionAt(
       step: destinationStep,
       hasCaptured: player.hasCaptured,
     );
@@ -538,12 +626,25 @@ class LudoGameEngine {
   // DESTINATION CALCULATION
   // ============================================================
 
+  /// Walks the logical path one step at a time.
+  ///
+  /// This MUST be used instead of:
+  ///
+  ///   currentStep + steps
+  ///
+  /// because the meaning of step 51 changes after Capture.
   int _calculateDestinationStep({
     required LudoPath path,
     required int currentStep,
     required int steps,
     required bool hasCaptured,
   }) {
+    if (steps < 0) {
+      throw ArgumentError(
+        'عدد الخطوات لا يمكن أن يكون سالبًا.',
+      );
+    }
+
     var step = currentStep;
 
     for (var i = 0; i < steps; i++) {
@@ -551,20 +652,43 @@ class LudoGameEngine {
         currentStep: step,
         hasCaptured: hasCaptured,
       );
+
+      //
+      // Once Finish is reached, it is terminal.
+      //
+      if (step == LudoPath.finishStep &&
+          i < steps - 1) {
+        //
+        // Keep advancing to Finish so the final returned value
+        // remains 56. The caller will reject the move only if
+        // it exceeds the exact finish requirement.
+        //
+        continue;
+      }
     }
 
     return step;
   }
 
   // ============================================================
-  // BLOCK
+  // BLOCKS
   // ============================================================
 
+  /// Determines whether a destination is blocked.
+  ///
+  /// Rules:
+  ///
+  /// - Safe cells never block landing.
+  /// - 2+ own tokens on an ordinary cell = own block.
+  /// - 2+ enemy tokens on an ordinary cell = enemy block.
+  /// - Exactly 1 enemy token may be landed on and captured.
+  ///
+  /// Movement may pass over blocks; only the final destination
+  /// is checked here.
   bool _isBlockedDestination({
     required LudoPlayer player,
     required Position destination,
   }) {
-    // Safe cell never blocks landing.
     if (SafeCells.contains(destination)) {
       return false;
     }
@@ -574,10 +698,7 @@ class LudoGameEngine {
 
     for (final otherPlayer in _state.players) {
       for (final token in otherPlayer.tokens) {
-        if (token.state ==
-            LudoTokenState.initial ||
-            token.state ==
-                LudoTokenState.finished) {
+        if (token.isInitial || token.isFinished) {
           continue;
         }
 
@@ -585,8 +706,7 @@ class LudoGameEngine {
           continue;
         }
 
-        if (otherPlayer.playerId ==
-            player.playerId) {
+        if (otherPlayer.playerId == player.playerId) {
           ownCount++;
         } else {
           enemyCount++;
@@ -594,12 +714,12 @@ class LudoGameEngine {
       }
     }
 
-    // 2 or more tokens from the same player = Block.
+    // Own block.
     if (ownCount >= 2) {
       return true;
     }
 
-    // Enemy block cannot be landed on.
+    // Enemy block.
     if (enemyCount >= 2) {
       return true;
     }
@@ -611,6 +731,7 @@ class LudoGameEngine {
   // EXIT TOKEN
   // ============================================================
 
+  /// Moves an initial token onto its own starting cell.
   void _executeExitToken(
       ExitToken move,
       ) {
@@ -620,8 +741,7 @@ class LudoGameEngine {
     final player =
     _state.players[playerIndex];
 
-    final tokenIndex =
-    player.tokens.indexWhere(
+    final tokenIndex = player.tokens.indexWhere(
           (token) => token.id == move.tokenId,
     );
 
@@ -634,22 +754,32 @@ class LudoGameEngine {
     final token =
     player.tokens[tokenIndex];
 
+    if (!token.isInitial) {
+      throw StateError(
+        'الـ Token ليس في الحالة Initial.',
+      );
+    }
+
     final path =
     _pathFor(player.color);
 
+    final startingPosition =
+        path.startingPosition;
+
     final updatedToken =
     token.copyWith(
-      position: path.startingPosition,
+      position: startingPosition,
       positionInPath: 0,
       state: SafeCells.contains(
-        path.startingPosition,
+        startingPosition,
       )
           ? LudoTokenState.safe
           : LudoTokenState.normal,
     );
 
-    final updatedTokens =
-    [...player.tokens];
+    final updatedTokens = [
+      ...player.tokens,
+    ];
 
     updatedTokens[tokenIndex] =
         updatedToken;
@@ -659,8 +789,9 @@ class LudoGameEngine {
       tokens: updatedTokens,
     );
 
-    final updatedPlayers =
-    [..._state.players];
+    final updatedPlayers = [
+      ..._state.players,
+    ];
 
     updatedPlayers[playerIndex] =
         updatedPlayer;
@@ -671,9 +802,10 @@ class LudoGameEngine {
   }
 
   // ============================================================
-  // NORMAL MOVEMENT
+  // NORMAL TOKEN MOVEMENT
   // ============================================================
 
+  /// Executes a token movement along the actual logical path.
   void _executeMoveToken(
       MoveToken move,
       ) {
@@ -683,8 +815,7 @@ class LudoGameEngine {
     final player =
     _state.players[playerIndex];
 
-    final tokenIndex =
-    player.tokens.indexWhere(
+    final tokenIndex = player.tokens.indexWhere(
           (token) => token.id == move.tokenId,
     );
 
@@ -696,6 +827,12 @@ class LudoGameEngine {
 
     final token =
     player.tokens[tokenIndex];
+
+    if (token.isInitial || token.isFinished) {
+      throw StateError(
+        'الـ Token غير قابل للحركة.',
+      );
+    }
 
     final path =
     _pathFor(player.color);
@@ -708,8 +845,7 @@ class LudoGameEngine {
       hasCaptured: player.hasCaptured,
     );
 
-    if (newPathIndex >
-        LudoPath.finishStep) {
+    if (newPathIndex > LudoPath.finishStep) {
       throw StateError(
         'الحركة تتجاوز نهاية المسار.',
       );
@@ -742,10 +878,12 @@ class LudoGameEngine {
         newPathIndex ==
             LudoPath.finishStep;
 
-    final updatedState =
+    final nextTokenState =
     reachesFinish
         ? LudoTokenState.finished
-        : SafeCells.contains(newPosition)
+        : SafeCells.contains(
+      newPosition,
+    )
         ? LudoTokenState.safe
         : LudoTokenState.normal;
 
@@ -753,17 +891,18 @@ class LudoGameEngine {
     token.copyWith(
       position: newPosition,
       positionInPath: newPathIndex,
-      state: updatedState,
+      state: nextTokenState,
     );
 
-    final updatedTokens =
-    [...player.tokens];
+    final updatedTokens = [
+      ...player.tokens,
+    ];
 
     updatedTokens[tokenIndex] =
         updatedToken;
 
     // ==========================================================
-    // hasCaptured
+    // PLAYER hasCaptured
     // ==========================================================
 
     final updatedPlayer =
@@ -774,8 +913,9 @@ class LudoGameEngine {
           captureOccurred,
     );
 
-    final updatedPlayers =
-    [..._state.players];
+    final updatedPlayers = [
+      ..._state.players,
+    ];
 
     updatedPlayers[playerIndex] =
         updatedPlayer;
@@ -789,89 +929,114 @@ class LudoGameEngine {
   // CAPTURE
   // ============================================================
 
+  /// Captures exactly one enemy token on an ordinary cell.
+  ///
+  /// Rules:
+  /// - Safe cells are immune.
+  /// - Exactly one enemy token can be captured.
+  /// - Enemy block (2+) is already rejected by
+  ///   [_isBlockedDestination].
+  ///
+  /// Captured token returns to its own starting cell.
   bool _applyCaptureIfNeeded({
     required String attackerPlayerId,
     required Position destination,
   }) {
-    // Safe cells are immune.
+    // Safe cells cannot be captured on.
     if (SafeCells.contains(destination)) {
       return false;
     }
 
-    var captured = false;
+    for (var playerIndex = 0;
+    playerIndex < _state.players.length;
+    playerIndex++) {
+      final player =
+      _state.players[playerIndex];
 
-    final updatedPlayers =
-    <LudoPlayer>[];
-
-    for (final player in _state.players) {
-      if (player.playerId ==
-          attackerPlayerId) {
-        updatedPlayers.add(player);
+      // Do not capture own tokens.
+      if (player.playerId == attackerPlayerId) {
         continue;
       }
 
-      final playerPath =
-      _pathFor(player.color);
+      final tokenIndex =
+      player.tokens.indexWhere(
+            (token) =>
+        !token.isInitial &&
+            !token.isFinished &&
+            token.position == destination,
+      );
 
-      final updatedTokens =
-      <LudoToken>[];
-
-      for (final token in player.tokens) {
-        final canBeCaptured =
-            token.state !=
-                LudoTokenState.initial &&
-                token.state !=
-                    LudoTokenState.finished;
-
-        if (canBeCaptured &&
-            token.position ==
-                destination) {
-          updatedTokens.add(
-            token.copyWith(
-              position:
-              playerPath.startingPosition,
-              positionInPath: 0,
-              state:
-              LudoTokenState.normal,
-            ),
-          );
-
-          captured = true;
-        } else {
-          updatedTokens.add(token);
-        }
+      if (tokenIndex == -1) {
+        continue;
       }
 
-      updatedPlayers.add(
-        player.copyWith(
-          tokens: updatedTokens,
-        ),
-      );
-    }
+      final path =
+      _pathFor(player.color);
 
-    if (captured) {
+      final defenderToken =
+      player.tokens[tokenIndex];
+
+      final resetToken =
+      defenderToken.copyWith(
+        position: path.startingPosition,
+        positionInPath: 0,
+        state: SafeCells.contains(
+          path.startingPosition,
+        )
+            ? LudoTokenState.safe
+            : LudoTokenState.normal,
+      );
+
+      final updatedTokens = [
+        ...player.tokens,
+      ];
+
+      updatedTokens[tokenIndex] =
+          resetToken;
+
+      final updatedPlayer =
+      player.copyWith(
+        tokens: updatedTokens,
+      );
+
+      final updatedPlayers = [
+        ..._state.players,
+      ];
+
+      updatedPlayers[playerIndex] =
+          updatedPlayer;
+
       _state = _state.copyWith(
         players: updatedPlayers,
       );
+
+      return true;
     }
 
-    return captured;
+    return false;
   }
 
   // ============================================================
-  // FINISH PLAYER
+  // PLAYER FINISH / RANKING
   // ============================================================
 
+  /// In Fast Mode:
+  /// one finished token is enough to rank the player.
   bool _hasPlayerFinished(
       LudoPlayer player,
       ) {
     return player.tokens.any(
-          (token) =>
-      token.state ==
-          LudoTokenState.finished,
+          (token) => token.isFinished,
     );
   }
 
+  /// Registers a player's rank.
+  ///
+  /// The order in finishedPlayerIds is the rank:
+  ///
+  /// index 0 -> rank 1
+  /// index 1 -> rank 2
+  /// ...
   void _registerPlayerFinished(
       String playerId,
       ) {
@@ -889,8 +1054,13 @@ class LudoGameEngine {
     );
   }
 
+  bool get _allPlayersFinished {
+    return _state.finishedPlayerIds.length ==
+        _state.players.length;
+  }
+
   // ============================================================
-  // TURN MANAGEMENT
+  // TURN TRANSITIONS
   // ============================================================
 
   LudoGameState _finishTurnWithoutMove() {
@@ -903,17 +1073,34 @@ class LudoGameEngine {
     return _moveToNextPlayer();
   }
 
+  /// Moves to the next unfinished player.
+  ///
+  /// Finished players are skipped permanently.
   LudoGameState _moveToNextPlayer() {
     if (_state.isFinished) {
       return _state;
     }
 
-    final totalPlayers =
-        _state.players.length;
+    if (_state.players.isEmpty) {
+      throw StateError(
+        'اللعبة لا تحتوي على لاعبين.',
+      );
+    }
 
-    if (totalPlayers == 0) {
+    if (_allPlayersFinished) {
+      _state = _state.copyWith(
+        isFinished: true,
+        turnState:
+        _state.turnState.copyWith(
+          phase: TurnPhase.completed,
+        ),
+      );
+
       return _state;
     }
+
+    final totalPlayers =
+        _state.players.length;
 
     for (var offset = 1;
     offset <= totalPlayers;
@@ -926,22 +1113,29 @@ class LudoGameEngine {
       final nextPlayer =
       _state.players[nextIndex];
 
-      if (!_state.finishedPlayerIds.contains(
+      final isFinished =
+      _state.finishedPlayerIds.contains(
         nextPlayer.playerId,
-      )) {
-        _state = _state.copyWith(
-          currentPlayerIndex:
-          nextIndex,
-          turnState:
-          TurnState.initial(
-            nextPlayer.playerId,
-          ),
-        );
+      );
 
-        return _state;
+      if (isFinished) {
+        continue;
       }
+
+      _state = _state.copyWith(
+        currentPlayerIndex: nextIndex,
+        turnState:
+        TurnState.initial(
+          nextPlayer.playerId,
+        ),
+      );
+
+      _lastMoveWasCapture = false;
+
+      return _state;
     }
 
+    // No unfinished player exists.
     _state = _state.copyWith(
       isFinished: true,
       turnState:
@@ -950,6 +1144,8 @@ class LudoGameEngine {
       ),
     );
 
+    _lastMoveWasCapture = false;
+
     return _state;
   }
 
@@ -957,18 +1153,16 @@ class LudoGameEngine {
   // ROLL MANAGEMENT
   // ============================================================
 
-  AvailableRolls _addAvailableRoll(
-      TurnState turn,
-      DiceRoll roll,
-      ) {
-    return turn.availableRolls.add(
-      roll,
-    );
-  }
-
   TurnState _consumeRoll(
       int rollSequence,
       ) {
+    if (!_state.turnState.availableRolls
+        .containsSequence(rollSequence)) {
+      throw StateError(
+        'الرمية المطلوبة غير متاحة للاستهلاك.',
+      );
+    }
+
     return _state.turnState.copyWith(
       availableRolls:
       _state.turnState.availableRolls
@@ -1020,45 +1214,56 @@ class LudoGameEngine {
   }
 
   // ============================================================
-  // FAST MODE
+  // FAST MODE PREPARATION
   // ============================================================
 
+  /// Prepares one player for Fast Mode.
+  ///
+  /// Token index 0 starts on the player's Starting Cell.
+  /// All other tokens remain untouched.
   LudoPlayer _prepareFastModePlayer(
       LudoPlayer player,
       ) {
     if (player.tokens.isEmpty) {
-      return player;
+      throw StateError(
+        'اللاعب ${player.playerId} لا يملك أي Token.',
+      );
     }
 
-    final path = _pathFor(player.color);
+    final path =
+    _pathFor(player.color);
+
+    final firstTokenIndex =
+    player.tokens.indexWhere(
+          (token) => token.tokenIndex == 0,
+    );
+
+    if (firstTokenIndex == -1) {
+      throw StateError(
+        'اللاعب ${player.playerId} لا يملك Token رقم 0.',
+      );
+    }
 
     final updatedTokens = [
       ...player.tokens,
     ];
 
-    final firstTokenIndex =
-    updatedTokens.indexWhere(
-          (token) => token.tokenIndex == 0,
-    );
-
-    if (firstTokenIndex == -1) {
-      return player;
-    }
-
     final firstToken =
     updatedTokens[firstTokenIndex];
 
-    if (firstToken.state ==
-        LudoTokenState.initial) {
-      final startPosition =
+    //
+    // Only initialize Token #0 when it is still in Home.
+    //
+    if (firstToken.isInitial) {
+      final startingPosition =
           path.startingPosition;
 
       updatedTokens[firstTokenIndex] =
           firstToken.copyWith(
-            position: startPosition,
+            position: startingPosition,
             positionInPath: 0,
             state: SafeCells.contains(
-              startPosition,
+              startingPosition,
             )
                 ? LudoTokenState.safe
                 : LudoTokenState.normal,
@@ -1068,5 +1273,49 @@ class LudoGameEngine {
     return player.copyWith(
       tokens: updatedTokens,
     );
+  }
+
+  // ============================================================
+  // GAME RESULT
+  // ============================================================
+
+  /// Builds the domain-level result.
+  ///
+  /// Tournament points are NOT calculated here.
+  GameResult getResult() {
+    final results =
+    <GamePlayerResult>[];
+
+    for (var index = 0;
+    index < _state.finishedPlayerIds.length;
+    index++) {
+      results.add(
+        GamePlayerResult(
+          playerId:
+          _state.finishedPlayerIds[index],
+          rank: index + 1,
+          finished: true,
+        ),
+      );
+    }
+
+    return GameResult(
+      players: List.unmodifiable(
+        results,
+      ),
+      isFinished: _state.isFinished,
+    );
+  }
+
+  // ============================================================
+  // VALIDATION HELPERS
+  // ============================================================
+
+  void _ensureGameStarted() {
+    if (!_state.isStarted) {
+      throw StateError(
+        'اللعبة لم تبدأ.',
+      );
+    }
   }
 }
