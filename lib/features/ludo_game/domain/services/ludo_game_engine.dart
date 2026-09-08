@@ -43,8 +43,11 @@ class LudoGameEngine {
 
   final Random _random;
 
-  /// Used to carry the result of the most recently executed move
-  /// into the turn-transition logic.
+  /// Indicates whether the most recently executed move
+  /// captured an enemy token.
+  ///
+  /// This flag is consumed immediately by [executeMove]
+  /// to grant the capture bonus roll.
   bool _lastMoveWasCapture = false;
 
   LudoGameEngine({
@@ -60,24 +63,25 @@ class LudoGameEngine {
   /// Current complete game state.
   LudoGameState get state => _state;
 
-  /// Current player according to the turn order.
+  /// Current player according to seat order.
   LudoPlayer get currentPlayer => _state.currentPlayer;
 
+  /// Whether the match has started.
   bool get isStarted => _state.isStarted;
 
+  /// Whether the match has finished.
   bool get isFinished => _state.isFinished;
 
   // ============================================================
   // GAME START
   // ============================================================
 
-  /// Starts the Fast Mode match.
+  /// Starts a Fast Mode match.
   ///
-  /// Fast Mode rule:
-  /// Every player starts with exactly one token outside Home,
-  /// on the player's own starting cell.
-  ///
-  /// All other tokens remain initial.
+  /// Fast Mode:
+  /// - Token #0 starts outside Home.
+  /// - It starts on the player's own Starting Cell.
+  /// - Tokens #1..#3 remain inside Home.
   LudoGameState startGame() {
     if (_state.isStarted) {
       return _state;
@@ -115,11 +119,7 @@ class LudoGameEngine {
   // TURN
   // ============================================================
 
-  /// Resets the current player's turn.
-  ///
-  /// Normally the engine already creates the next turn
-  /// automatically, but keeping this operation public is useful
-  /// for the controller layer.
+  /// Starts or resets the current player's turn.
   LudoGameState startTurn() {
     if (!_state.isStarted || _state.isFinished) {
       return _state;
@@ -146,23 +146,23 @@ class LudoGameEngine {
   // DICE
   // ============================================================
 
-  /// Rolls a real/random die for the current turn.
+  /// Rolls the random die.
   ///
   /// Rules:
   ///
-  /// 1..5
-  ///   - The roll becomes available.
-  ///   - The turn enters Playing.
+  /// 1..5:
+  /// - Roll becomes available.
+  /// - Turn becomes Playing.
   ///
-  /// 6
-  ///   - The roll becomes available.
-  ///   - The turn remains Rolling.
-  ///   - The player must roll again.
+  /// 6:
+  /// - Roll becomes available.
+  /// - Turn remains Rolling.
+  /// - Player gets another roll.
   ///
-  /// Third 6 in the SAME turn:
-  ///   - The complete turn is cancelled.
-  ///   - All previously available rolls are discarded.
-  ///   - The turn moves to the next player.
+  /// Third six in the same turn:
+  /// - Entire turn is cancelled.
+  /// - All available rolls are discarded.
+  /// - Next unfinished player gets the turn.
   List<MoveOption> rollDice() {
     _ensureGameStarted();
 
@@ -196,10 +196,9 @@ class LudoGameEngine {
   // REGISTER DICE
   // ============================================================
 
-  /// Registers a deterministic dice result.
+  /// Registers a deterministic dice roll.
   ///
-  /// This method is intentionally public because the unit tests
-  /// need to inject exact dice values.
+  /// This is mainly useful for unit tests and debugging.
   List<MoveOption> registerDiceRoll({
     required int value,
     required int sequence,
@@ -224,7 +223,8 @@ class LudoGameEngine {
       );
     }
 
-    final expectedSequence = turn.rolls.length + 1;
+    final expectedSequence =
+        turn.rolls.length + 1;
 
     if (sequence != expectedSequence) {
       throw ArgumentError(
@@ -241,29 +241,25 @@ class LudoGameEngine {
       ...turn.rolls,
       roll,
     ];
-// ==========================================================
-    // COUNT ALL SIXES IN THIS TURN
+
     // ==========================================================
-    // IMPORTANT:
-    // Count ALL sixes in the current turn.
-    //
-    // Example:
-    // 6 -> 4 -> 6 -> 3 -> 6
-    //
-    // = 3 sixes
+    // COUNT ALL SIXES
+    // ==========================================================
+
     final sixRollCount = updatedRolls
         .where((item) => item.isSix)
         .length;
 
     // ==========================================================
-    // THIRD SIX IN SAME TURN
+    // THIRD SIX
     // ==========================================================
 
     if (sixRollCount >= 3) {
       _state = _state.copyWith(
         turnState: turn.copyWith(
           rolls: updatedRolls,
-          availableRolls: const AvailableRolls(),
+          availableRolls:
+          const AvailableRolls(),
           sixRollCount: sixRollCount,
           phase: TurnPhase.cancelled,
         ),
@@ -279,17 +275,14 @@ class LudoGameEngine {
     // ==========================================================
 
     if (roll.isSix) {
-      final nextTurn = turn.copyWith(
-        rolls: updatedRolls,
-        availableRolls: turn.availableRolls.add(
-          roll,
-        ),
-        sixRollCount: sixRollCount,
-        phase: TurnPhase.rolling,
-      );
-
       _state = _state.copyWith(
-        turnState: nextTurn,
+        turnState: turn.copyWith(
+          rolls: updatedRolls,
+          availableRolls:
+          turn.availableRolls.add(roll),
+          sixRollCount: sixRollCount,
+          phase: TurnPhase.rolling,
+        ),
       );
 
       return const [];
@@ -299,22 +292,19 @@ class LudoGameEngine {
     // NON-SIX
     // ==========================================================
 
-    final nextTurn = turn.copyWith(
-      rolls: updatedRolls,
-      availableRolls: turn.availableRolls.add(
-        roll,
-      ),
-      sixRollCount: sixRollCount,
-      phase: TurnPhase.playing,
-    );
-
     _state = _state.copyWith(
-      turnState: nextTurn,
+      turnState: turn.copyWith(
+        rolls: updatedRolls,
+        availableRolls:
+        turn.availableRolls.add(roll),
+        sixRollCount: sixRollCount,
+        phase: TurnPhase.playing,
+      ),
     );
 
     final moves = getValidMoves();
 
-    // No legal move with ANY currently available roll.
+    // No legal movement at all.
     if (moves.isEmpty) {
       _finishTurnWithoutMove();
       return const [];
@@ -331,13 +321,14 @@ class LudoGameEngine {
   ///
   /// The player may choose:
   /// - any legal token
-  /// - with any currently available roll
+  /// - with any available roll
   ///
-  /// The Engine never auto-selects a move.
+  /// The engine never auto-selects a token.
   List<MoveOption> getValidMoves() {
     final turn = _state.turnState;
 
-    if (!_state.isStarted || _state.isFinished) {
+    if (!_state.isStarted ||
+        _state.isFinished) {
       return const [];
     }
 
@@ -423,14 +414,17 @@ class LudoGameEngine {
     // UPDATED PLAYER
     // ==========================================================
 
-    final updatedPlayer = _state.currentPlayer;
+    final updatedPlayer =
+        _state.currentPlayer;
 
     // ==========================================================
-    // RANK PLAYER IF FINISHED
+    // PLAYER FINISH
     // ==========================================================
 
     final playerFinished =
-    _hasPlayerFinished(updatedPlayer);
+    _hasPlayerFinished(
+      updatedPlayer,
+    );
 
     if (playerFinished) {
       _registerPlayerFinished(
@@ -442,7 +436,8 @@ class LudoGameEngine {
     // CONSUME USED ROLL
     // ==========================================================
 
-    final updatedTurn = _consumeRoll(
+    final updatedTurn =
+    _consumeRoll(
       move.rollSequence,
     );
 
@@ -468,15 +463,9 @@ class LudoGameEngine {
     }
 
     // ==========================================================
-    // PLAYER FINISHED -> LEAVE TURN IMMEDIATELY
+    // PLAYER FINISHED
     // ==========================================================
 
-    //
-    // IMPORTANT:
-    // In Fast Mode the first token finishing is enough to rank
-    // the player. That player must not continue consuming the
-    // remaining rolls of the same turn.
-    //
     if (playerFinished) {
       _lastMoveWasCapture = false;
 
@@ -484,7 +473,7 @@ class LudoGameEngine {
     }
 
     // ==========================================================
-    // CAPTURE -> IMMEDIATE EXTRA ROLL
+    // CAPTURE BONUS
     // ==========================================================
 
     if (_lastMoveWasCapture) {
@@ -500,15 +489,35 @@ class LudoGameEngine {
     }
 
     // ==========================================================
-    // REMAINING AVAILABLE ROLLS
+    // REMAINING ROLLS
     // ==========================================================
 
     if (_state.turnState.availableRolls.isNotEmpty) {
-      final remainingMoves = getValidMoves();
+      final remainingMoves =
+      getValidMoves();
 
       if (remainingMoves.isEmpty) {
         return _finishTurnWithoutMove();
       }
+
+      // IMPORTANT:
+      //
+      // If a 6 is still available, the 6 itself
+      // represents a granted extra roll.
+      //
+      // Therefore the player goes back to Rolling
+      // before consuming the remaining 6.
+      final hasRemainingSix =
+      _state.turnState.availableRolls.rolls
+          .any((roll) => roll.isSix);
+
+      _state = _state.copyWith(
+        turnState: updatedTurn.copyWith(
+          phase: hasRemainingSix
+              ? TurnPhase.rolling
+              : TurnPhase.playing,
+        ),
+      );
 
       return _state;
     }
@@ -543,10 +552,7 @@ class LudoGameEngine {
         return null;
       }
 
-      //
-      // Starting Cells are safe cells in our board definition,
-      // therefore an exit is always legal with respect to blocks.
-      //
+      // Starting cells are safe cells.
       return ExitToken(
         tokenId: token.id,
         rollSequence: roll.sequence,
@@ -560,14 +566,16 @@ class LudoGameEngine {
     final isMovableState =
         token.state == LudoTokenState.normal ||
             token.state == LudoTokenState.safe ||
-            token.state == LudoTokenState.safeInPair;
+            token.state ==
+                LudoTokenState.safeInPair;
 
     if (!isMovableState) {
       return null;
     }
 
     if (token.positionInPath < 0 ||
-        token.positionInPath > LudoPath.finishStep) {
+        token.positionInPath >
+            LudoPath.finishStep) {
       return null;
     }
 
@@ -575,42 +583,49 @@ class LudoGameEngine {
       player.color,
     );
 
-    // Resolve destination by walking the actual logical path.
+    // Resolve the destination by walking
+    // the actual logical path.
     //
-    // This is critical because step 51 has two meanings:
+    // This is required because:
     //
     // Before Capture:
     //   50 -> 51 -> 0
     //
     // After Capture:
-    //   50 -> 51(Home) -> 52 ...
+    //   50 -> 51(Home) -> 52...
     final destinationStep =
     _calculateDestinationStep(
       path: path,
-      currentStep: token.positionInPath,
+      currentStep:
+      token.positionInPath,
       steps: roll.value,
-      hasCaptured: player.hasCaptured,
+      hasCaptured:
+      player.hasCaptured,
     );
 
-    // Exact finish:
-    // reaching 56 is legal,
-    // going beyond 56 is not.
-    if (destinationStep > LudoPath.finishStep) {
+    // Exact finish / overshoot.
+    if (destinationStep == null) {
       return null;
     }
 
-    final destination = path.positionAt(
+    final destination =
+    path.positionAt(
       step: destinationStep,
-      hasCaptured: player.hasCaptured,
+      hasCaptured:
+      player.hasCaptured,
     );
 
-    // ==========================================================
-    // BLOCK
-    // ==========================================================
+    // Home Lane is intrinsically safe.
+    final destinationIsHomeLane =
+    path.isHomeLaneStep(
+      destinationStep,
+    );
 
     if (_isBlockedDestination(
       player: player,
       destination: destination,
+      isHomeLane:
+      destinationIsHomeLane,
     )) {
       return null;
     }
@@ -626,45 +641,42 @@ class LudoGameEngine {
   // DESTINATION CALCULATION
   // ============================================================
 
-  /// Walks the logical path one step at a time.
+  /// Walks the path one logical step at a time.
   ///
-  /// This MUST be used instead of:
+  /// Returns null when the move would overshoot Finish.
+  ///
+  /// This method MUST NOT simply use:
   ///
   ///   currentStep + steps
   ///
-  /// because the meaning of step 51 changes after Capture.
-  int _calculateDestinationStep({
+  /// because step 51 is state-dependent.
+  int? _calculateDestinationStep({
     required LudoPath path,
     required int currentStep,
     required int steps,
     required bool hasCaptured,
   }) {
-    if (steps < 0) {
-      throw ArgumentError(
-        'عدد الخطوات لا يمكن أن يكون سالبًا.',
-      );
+    if (steps <= 0) {
+      return null;
+    }
+
+    if (currentStep < 0 ||
+        currentStep > LudoPath.finishStep) {
+      return null;
     }
 
     var step = currentStep;
 
     for (var i = 0; i < steps; i++) {
+      // Finish is terminal.
+      if (step == LudoPath.finishStep) {
+        return null;
+      }
+
       step = path.nextStep(
         currentStep: step,
         hasCaptured: hasCaptured,
       );
-
-      //
-      // Once Finish is reached, it is terminal.
-      //
-      if (step == LudoPath.finishStep &&
-          i < steps - 1) {
-        //
-        // Keep advancing to Finish so the final returned value
-        // remains 56. The caller will reject the move only if
-        // it exceeds the exact finish requirement.
-        //
-        continue;
-      }
     }
 
     return step;
@@ -674,21 +686,24 @@ class LudoGameEngine {
   // BLOCKS
   // ============================================================
 
-  /// Determines whether a destination is blocked.
+  /// Determines whether the final destination is blocked.
   ///
   /// Rules:
-  ///
-  /// - Safe cells never block landing.
-  /// - 2+ own tokens on an ordinary cell = own block.
-  /// - 2+ enemy tokens on an ordinary cell = enemy block.
-  /// - Exactly 1 enemy token may be landed on and captured.
-  ///
-  /// Movement may pass over blocks; only the final destination
-  /// is checked here.
+  /// - Safe cells are never blocked.
+  /// - Home Lane is never blocked.
+  /// - 2+ own tokens = own block.
+  /// - 2+ enemy tokens = enemy block.
+  /// - Exactly 1 enemy token is capturable.
+  /// - Blocks only affect landing, not passing over.
   bool _isBlockedDestination({
     required LudoPlayer player,
     required Position destination,
+    required bool isHomeLane,
   }) {
+    if (isHomeLane) {
+      return false;
+    }
+
     if (SafeCells.contains(destination)) {
       return false;
     }
@@ -696,17 +711,22 @@ class LudoGameEngine {
     var ownCount = 0;
     var enemyCount = 0;
 
-    for (final otherPlayer in _state.players) {
-      for (final token in otherPlayer.tokens) {
-        if (token.isInitial || token.isFinished) {
+    for (final otherPlayer
+    in _state.players) {
+      for (final token
+      in otherPlayer.tokens) {
+        if (token.isInitial ||
+            token.isFinished) {
           continue;
         }
 
-        if (token.position != destination) {
+        if (token.position !=
+            destination) {
           continue;
         }
 
-        if (otherPlayer.playerId == player.playerId) {
+        if (otherPlayer.playerId ==
+            player.playerId) {
           ownCount++;
         } else {
           enemyCount++;
@@ -714,12 +734,10 @@ class LudoGameEngine {
       }
     }
 
-    // Own block.
     if (ownCount >= 2) {
       return true;
     }
 
-    // Enemy block.
     if (enemyCount >= 2) {
       return true;
     }
@@ -731,7 +749,8 @@ class LudoGameEngine {
   // EXIT TOKEN
   // ============================================================
 
-  /// Moves an initial token onto its own starting cell.
+  /// Moves an initial token onto its
+  /// own Starting Cell.
   void _executeExitToken(
       ExitToken move,
       ) {
@@ -741,7 +760,8 @@ class LudoGameEngine {
     final player =
     _state.players[playerIndex];
 
-    final tokenIndex = player.tokens.indexWhere(
+    final tokenIndex =
+    player.tokens.indexWhere(
           (token) => token.id == move.tokenId,
     );
 
@@ -777,9 +797,8 @@ class LudoGameEngine {
           : LudoTokenState.normal,
     );
 
-    final updatedTokens = [
-      ...player.tokens,
-    ];
+    final updatedTokens =
+    [...player.tokens];
 
     updatedTokens[tokenIndex] =
         updatedToken;
@@ -789,9 +808,8 @@ class LudoGameEngine {
       tokens: updatedTokens,
     );
 
-    final updatedPlayers = [
-      ..._state.players,
-    ];
+    final updatedPlayers =
+    [..._state.players];
 
     updatedPlayers[playerIndex] =
         updatedPlayer;
@@ -805,7 +823,7 @@ class LudoGameEngine {
   // NORMAL TOKEN MOVEMENT
   // ============================================================
 
-  /// Executes a token movement along the actual logical path.
+  /// Executes a normal token movement.
   void _executeMoveToken(
       MoveToken move,
       ) {
@@ -815,7 +833,8 @@ class LudoGameEngine {
     final player =
     _state.players[playerIndex];
 
-    final tokenIndex = player.tokens.indexWhere(
+    final tokenIndex =
+    player.tokens.indexWhere(
           (token) => token.id == move.tokenId,
     );
 
@@ -828,7 +847,8 @@ class LudoGameEngine {
     final token =
     player.tokens[tokenIndex];
 
-    if (token.isInitial || token.isFinished) {
+    if (token.isInitial ||
+        token.isFinished) {
       throw StateError(
         'الـ Token غير قابل للحركة.',
       );
@@ -840,12 +860,14 @@ class LudoGameEngine {
     final newPathIndex =
     _calculateDestinationStep(
       path: path,
-      currentStep: token.positionInPath,
+      currentStep:
+      token.positionInPath,
       steps: move.steps,
-      hasCaptured: player.hasCaptured,
+      hasCaptured:
+      player.hasCaptured,
     );
 
-    if (newPathIndex > LudoPath.finishStep) {
+    if (newPathIndex == null) {
       throw StateError(
         'الحركة تتجاوز نهاية المسار.',
       );
@@ -854,18 +876,33 @@ class LudoGameEngine {
     final newPosition =
     path.positionAt(
       step: newPathIndex,
-      hasCaptured: player.hasCaptured,
+      hasCaptured:
+      player.hasCaptured,
+    );
+
+    final reachesFinish =
+        newPathIndex ==
+            LudoPath.finishStep;
+
+    final isHomeLane =
+    path.isHomeLaneStep(
+      newPathIndex,
     );
 
     // ==========================================================
     // CAPTURE
     // ==========================================================
 
-    final captureOccurred =
-    _applyCaptureIfNeeded(
-      attackerPlayerId: player.playerId,
-      destination: newPosition,
-    );
+    bool captureOccurred = false;
+
+    if (!reachesFinish && !isHomeLane) {
+      captureOccurred =
+          _applyCaptureIfNeeded(
+            attackerPlayerId:
+            player.playerId,
+            destination: newPosition,
+          );
+    }
 
     _lastMoveWasCapture =
         captureOccurred;
@@ -874,13 +911,11 @@ class LudoGameEngine {
     // TOKEN STATE
     // ==========================================================
 
-    final reachesFinish =
-        newPathIndex ==
-            LudoPath.finishStep;
-
     final nextTokenState =
     reachesFinish
         ? LudoTokenState.finished
+        : isHomeLane
+        ? LudoTokenState.safe
         : SafeCells.contains(
       newPosition,
     )
@@ -894,15 +929,14 @@ class LudoGameEngine {
       state: nextTokenState,
     );
 
-    final updatedTokens = [
-      ...player.tokens,
-    ];
+    final updatedTokens =
+    [...player.tokens];
 
     updatedTokens[tokenIndex] =
         updatedToken;
 
     // ==========================================================
-    // PLAYER hasCaptured
+    // PLAYER CAPTURE STATUS
     // ==========================================================
 
     final updatedPlayer =
@@ -913,9 +947,8 @@ class LudoGameEngine {
           captureOccurred,
     );
 
-    final updatedPlayers = [
-      ..._state.players,
-    ];
+    final updatedPlayers =
+    [..._state.players];
 
     updatedPlayers[playerIndex] =
         updatedPlayer;
@@ -929,32 +962,42 @@ class LudoGameEngine {
   // CAPTURE
   // ============================================================
 
-  /// Captures exactly one enemy token on an ordinary cell.
+  /// Captures exactly one enemy token on
+  /// an ordinary non-safe cell.
   ///
-  /// Rules:
-  /// - Safe cells are immune.
-  /// - Exactly one enemy token can be captured.
-  /// - Enemy block (2+) is already rejected by
-  ///   [_isBlockedDestination].
-  ///
-  /// Captured token returns to its own starting cell.
+  /// Returns true when a capture happened.
   bool _applyCaptureIfNeeded({
     required String attackerPlayerId,
     required Position destination,
   }) {
-    // Safe cells cannot be captured on.
+    // Safe cells cannot be captured.
     if (SafeCells.contains(destination)) {
       return false;
     }
 
-    for (var playerIndex = 0;
+    // An attacker reaching its own Home Lane
+    // cannot capture there.
+    for (final player in _state.players) {
+      final path =
+      _pathFor(player.color);
+
+      if (path.homePath.contains(
+        destination,
+      )) {
+        return false;
+      }
+    }
+
+    for (
+    var playerIndex = 0;
     playerIndex < _state.players.length;
-    playerIndex++) {
+    playerIndex++
+    ) {
       final player =
       _state.players[playerIndex];
 
-      // Do not capture own tokens.
-      if (player.playerId == attackerPlayerId) {
+      if (player.playerId ==
+          attackerPlayerId) {
         continue;
       }
 
@@ -963,33 +1006,34 @@ class LudoGameEngine {
             (token) =>
         !token.isInitial &&
             !token.isFinished &&
-            token.position == destination,
+            token.position ==
+                destination,
       );
 
       if (tokenIndex == -1) {
         continue;
       }
 
-      final path =
-      _pathFor(player.color);
-
       final defenderToken =
       player.tokens[tokenIndex];
 
+      final defenderPath =
+      _pathFor(player.color);
+
       final resetToken =
       defenderToken.copyWith(
-        position: path.startingPosition,
+        position:
+        defenderPath.startingPosition,
         positionInPath: 0,
         state: SafeCells.contains(
-          path.startingPosition,
+          defenderPath.startingPosition,
         )
             ? LudoTokenState.safe
             : LudoTokenState.normal,
       );
 
-      final updatedTokens = [
-        ...player.tokens,
-      ];
+      final updatedTokens =
+      [...player.tokens];
 
       updatedTokens[tokenIndex] =
           resetToken;
@@ -999,9 +1043,8 @@ class LudoGameEngine {
         tokens: updatedTokens,
       );
 
-      final updatedPlayers = [
-        ..._state.players,
-      ];
+      final updatedPlayers =
+      [..._state.players];
 
       updatedPlayers[playerIndex] =
           updatedPlayer;
@@ -1021,7 +1064,8 @@ class LudoGameEngine {
   // ============================================================
 
   /// In Fast Mode:
-  /// one finished token is enough to rank the player.
+  /// the first finished token is enough
+  /// to rank the player.
   bool _hasPlayerFinished(
       LudoPlayer player,
       ) {
@@ -1030,19 +1074,14 @@ class LudoGameEngine {
     );
   }
 
-  /// Registers a player's rank.
+  /// Registers the next player rank.
   ///
-  /// The order in finishedPlayerIds is the rank:
-  ///
-  /// index 0 -> rank 1
-  /// index 1 -> rank 2
-  /// ...
+  /// finishedPlayerIds order = rank order.
   void _registerPlayerFinished(
       String playerId,
       ) {
-    if (_state.finishedPlayerIds.contains(
-      playerId,
-    )) {
+    if (_state.finishedPlayerIds
+        .contains(playerId)) {
       return;
     }
 
@@ -1074,8 +1113,6 @@ class LudoGameEngine {
   }
 
   /// Moves to the next unfinished player.
-  ///
-  /// Finished players are skipped permanently.
   LudoGameState _moveToNextPlayer() {
     if (_state.isFinished) {
       return _state;
@@ -1102,9 +1139,11 @@ class LudoGameEngine {
     final totalPlayers =
         _state.players.length;
 
-    for (var offset = 1;
+    for (
+    var offset = 1;
     offset <= totalPlayers;
-    offset++) {
+    offset++
+    ) {
       final nextIndex =
           (_state.currentPlayerIndex +
               offset) %
@@ -1113,19 +1152,14 @@ class LudoGameEngine {
       final nextPlayer =
       _state.players[nextIndex];
 
-      final isFinished =
-      _state.finishedPlayerIds.contains(
-        nextPlayer.playerId,
-      );
-
-      if (isFinished) {
+      if (_state.finishedPlayerIds
+          .contains(nextPlayer.playerId)) {
         continue;
       }
 
       _state = _state.copyWith(
         currentPlayerIndex: nextIndex,
-        turnState:
-        TurnState.initial(
+        turnState: TurnState.initial(
           nextPlayer.playerId,
         ),
       );
@@ -1135,7 +1169,7 @@ class LudoGameEngine {
       return _state;
     }
 
-    // No unfinished player exists.
+    // Safety fallback.
     _state = _state.copyWith(
       isFinished: true,
       turnState:
@@ -1217,10 +1251,10 @@ class LudoGameEngine {
   // FAST MODE PREPARATION
   // ============================================================
 
-  /// Prepares one player for Fast Mode.
+  /// Prepares a player for Fast Mode.
   ///
-  /// Token index 0 starts on the player's Starting Cell.
-  /// All other tokens remain untouched.
+  /// Token #0 starts outside Home.
+  /// Tokens #1..#3 remain Initial.
   LudoPlayer _prepareFastModePlayer(
       LudoPlayer player,
       ) {
@@ -1244,16 +1278,12 @@ class LudoGameEngine {
       );
     }
 
-    final updatedTokens = [
-      ...player.tokens,
-    ];
+    final updatedTokens =
+    [...player.tokens];
 
     final firstToken =
     updatedTokens[firstTokenIndex];
 
-    //
-    // Only initialize Token #0 when it is still in Home.
-    //
     if (firstToken.isInitial) {
       final startingPosition =
           path.startingPosition;
@@ -1279,20 +1309,26 @@ class LudoGameEngine {
   // GAME RESULT
   // ============================================================
 
-  /// Builds the domain-level result.
+  /// Builds the domain-level game result.
   ///
-  /// Tournament points are NOT calculated here.
+  /// Tournament points are intentionally
+  /// calculated outside the engine.
   GameResult getResult() {
     final results =
     <GamePlayerResult>[];
 
-    for (var index = 0;
-    index < _state.finishedPlayerIds.length;
-    index++) {
+    for (
+    var index = 0;
+    index <
+        _state.finishedPlayerIds.length;
+    index++
+    ) {
+      final playerId =
+      _state.finishedPlayerIds[index];
+
       results.add(
         GamePlayerResult(
-          playerId:
-          _state.finishedPlayerIds[index],
+          playerId: playerId,
           rank: index + 1,
           finished: true,
         ),
@@ -1300,15 +1336,13 @@ class LudoGameEngine {
     }
 
     return GameResult(
-      players: List.unmodifiable(
-        results,
-      ),
+      players: results,
       isFinished: _state.isFinished,
     );
   }
 
   // ============================================================
-  // VALIDATION HELPERS
+  // VALIDATION
   // ============================================================
 
   void _ensureGameStarted() {
