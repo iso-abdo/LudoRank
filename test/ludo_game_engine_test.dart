@@ -12,7 +12,7 @@ import 'package:ludo_rank/features/ludo_game/domain/services/ludo_game_engine.da
 void main() {
   group('LudoGameEngine - Fast Mode', () {
     // ==========================================================
-    // Helpers
+    // HELPERS
     // ==========================================================
 
     LudoToken createToken({
@@ -39,8 +39,9 @@ void main() {
     LudoPlayer createPlayer({
       required String playerId,
       required int seat,
-      LudoPlayerColor color = LudoPlayerColor.green,
+      required LudoPlayerColor color,
       List<LudoToken>? tokens,
+      bool hasCaptured = false,
     }) {
       return LudoPlayer(
         id: playerId,
@@ -48,6 +49,7 @@ void main() {
         name: playerId,
         color: color,
         seat: seat,
+        hasCaptured: hasCaptured,
         tokens: tokens ??
             List.generate(
               4,
@@ -74,11 +76,45 @@ void main() {
 
       return engine;
     }
+
+
+    LudoGameEngine createTwoPlayerEngine() {
+      return createEngine(
+        players: [
+          createPlayer(
+            playerId: 'player-1',
+            seat: 1,
+            color: LudoPlayerColor.green,
+          ),
+          createPlayer(
+            playerId: 'player-2',
+            seat: 2,
+            color: LudoPlayerColor.yellow,
+          ),
+        ],
+      );
+    }
+
     LudoGameEngine createCaptureEngine({
       required int attackerStep,
-      required int defenderStep,
     }) {
       final attackerPath = LudoPaths.green;
+      final defenderPath = LudoPaths.yellow;
+
+      final destination = attackerPath.positionAt(
+        step: attackerStep + 4,
+        hasCaptured: false,
+      );
+
+      final defenderStep = defenderPath.mainLoopPath.indexOf(
+        destination,
+      );
+
+      if (defenderStep == -1) {
+        throw StateError(
+          'Destination is not present on defender path.',
+        );
+      }
 
       final attacker = createToken(
         playerId: 'player-1',
@@ -91,12 +127,6 @@ void main() {
         ),
       );
 
-      final destination =
-      attackerPath.positionAt(
-        step: attackerStep + 4,
-        hasCaptured: false,
-      );
-
       final defender = createToken(
         playerId: 'player-2',
         tokenIndex: 0,
@@ -105,301 +135,133 @@ void main() {
         position: destination,
       );
 
-      final players = [
-        createPlayer(
-          playerId: 'player-1',
-          seat: 1,
-          color: LudoPlayerColor.green,
-          tokens: [
-            attacker,
-            ...List.generate(
-              3,
-                  (index) => createToken(
-                playerId: 'player-1',
-                tokenIndex: index + 1,
-              ),
-            ),
-          ],
-        ),
-        createPlayer(
-          playerId: 'player-2',
-          seat: 2,
-          color: LudoPlayerColor.yellow,
-          tokens: [
-            defender,
-            ...List.generate(
-              3,
-                  (index) => createToken(
-                playerId: 'player-2',
-                tokenIndex: index + 1,
-              ),
-            ),
-          ],
-        ),
-      ];
-
       return createEngine(
-        players: players,
+        players: [
+          createPlayer(
+            playerId: 'player-1',
+            seat: 1,
+            color: LudoPlayerColor.green,
+            tokens: [
+              attacker,
+              ...List.generate(
+                3,
+                    (index) => createToken(
+                  playerId: 'player-1',
+                  tokenIndex: index + 1,
+                ),
+              ),
+            ],
+          ),
+          createPlayer(
+            playerId: 'player-2',
+            seat: 2,
+            color: LudoPlayerColor.yellow,
+            tokens: [
+              defender,
+              ...List.generate(
+                3,
+                    (index) => createToken(
+                  playerId: 'player-2',
+                  tokenIndex: index + 1,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+    LudoPlayer getPlayer(
+        LudoGameEngine engine,
+        String playerId,
+        ) {
+      return engine.state.players.firstWhere(
+            (player) => player.playerId == playerId,
+      );
+    }
+
+    LudoToken getToken(
+        LudoGameEngine engine,
+        String playerId,
+        int tokenIndex,
+        ) {
+      final player = getPlayer(
+        engine,
+        playerId,
+      );
+
+      return player.tokens.firstWhere(
+            (token) => token.tokenIndex == tokenIndex,
       );
     }
 
     // ==========================================================
-    // 1. Roll 4
+    // 1. START GAME
     // ==========================================================
 
     test(
-      'Roll 4 gives valid moves for the current player',
+      'Fast Mode starts with exactly one token outside Home',
           () {
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-        ];
+        final engine = createTwoPlayerEngine();
 
-        final engine = createEngine(
-          players: players,
-        );
+        for (final player in engine.state.players) {
+          final outsideTokens = player.tokens
+              .where((token) => !token.isInitial)
+              .toList();
 
-        final moves = engine.registerDiceRoll(
-          value: 4,
-          sequence: 1,
-        );
+          expect(
+            outsideTokens,
+            hasLength(1),
+          );
 
-        expect(
-          engine.state.turnState.isPlaying,
-          isTrue,
-        );
+          final token = outsideTokens.single;
 
-        expect(
-          engine.state.turnState.rolls.length,
-          1,
-        );
+          expect(
+            token.tokenIndex,
+            0,
+          );
 
-        expect(
-          engine.state.turnState.availableRolls.count,
-          1,
-        );
+          expect(
+            token.positionInPath,
+            0,
+          );
 
-        final validMoves =
-        engine.getValidMoves();
+          final path = LudoPaths.forColor(
+            player.color,
+          );
 
-        expect(
-          validMoves,
-          isNotEmpty,
-        );
+          expect(
+            token.position,
+            path.startingPosition,
+          );
 
-        expect(
-          validMoves.whereType<MoveToken>().any(
-                (move) =>
-            move.tokenId ==
-                'player-1-token-0' &&
-                move.steps == 4 &&
-                move.rollSequence == 1,
-          ),
-          isTrue,
-        );
-
-        // registerDiceRoll itself now returns state.
-        expect(
-          moves,
-          isNotNull,
-        );
+          expect(
+            token.state,
+            LudoTokenState.safe,
+          );
+        }
       },
     );
 
     // ==========================================================
-    // 2. Roll 6 -> Roll 4
+    // 2. FIRST PLAYER BY SEAT
     // ==========================================================
 
     test(
-      'Roll 6 then Roll 4 keeps both rolls available',
+      'first turn belongs to the player with the lowest seat',
           () {
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-        ];
-
         final engine = createEngine(
-          players: players,
-        );
-
-        engine.registerDiceRoll(
-          value: 6,
-          sequence: 1,
-        );
-
-        expect(
-          engine.state.turnState.phase,
-          TurnPhase.rolling,
-        );
-
-        expect(
-          engine.state.turnState.rolls.length,
-          1,
-        );
-
-        expect(
-          engine.state.turnState.availableRolls.values,
-          [6],
-        );
-
-        engine.registerDiceRoll(
-          value: 4,
-          sequence: 2,
-        );
-
-        expect(
-          engine.state.turnState.phase,
-          TurnPhase.playing,
-        );
-
-        expect(
-          engine.state.turnState.rolls.length,
-          2,
-        );
-
-        expect(
-          engine.state.turnState.availableRolls.values,
-          [6, 4],
-        );
-
-        final moves =
-        engine.getValidMoves();
-
-        expect(
-          moves,
-          isNotEmpty,
-        );
-
-        expect(
-          moves.whereType<MoveToken>().any(
-                (move) =>
-            move.steps == 6 &&
-                move.rollSequence == 1,
-          ),
-          isTrue,
-        );
-
-        expect(
-          moves.whereType<MoveToken>().any(
-                (move) =>
-            move.steps == 4 &&
-                move.rollSequence == 2,
-          ),
-          isTrue,
-        );
-      },
-    );
-
-    // ==========================================================
-    // 3. Roll 6 -> Roll 6 -> Roll 4
-    // ==========================================================
-
-    test(
-      'Roll 6 -> 6 -> 4 creates three available rolls',
-          () {
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-        ];
-
-        final engine = createEngine(
-          players: players,
-        );
-
-        engine.registerDiceRoll(
-          value: 6,
-          sequence: 1,
-        );
-
-        engine.registerDiceRoll(
-          value: 6,
-          sequence: 2,
-        );
-
-        expect(
-          engine.state.turnState.availableRolls,
-          2,
-        );
-
-        expect(
-          engine.state.turnState.phase,
-          TurnPhase.rolling,
-        );
-
-        engine.registerDiceRoll(
-          value: 4,
-          sequence: 3,
-        );
-
-        expect(
-          engine.state.turnState.phase,
-          TurnPhase.playing,
-        );
-
-        expect(
-          engine.state.turnState.rolls
-              .map((roll) => roll.value),
-          [6, 6, 4],
-        );
-
-        expect(
-          engine.state.turnState.availableRolls.values,
-          [6, 6, 4],
-        );
-
-        expect(
-          engine.getValidMoves(),
-          isNotEmpty,
-        );
-      },
-    );
-
-    // ==========================================================
-    // 4. Roll 6 -> Roll 6 -> Roll 6
-    // ==========================================================
-
-    test(
-      'Three consecutive sixes cancel the turn and move to next player',
-          () {
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-        ];
-
-        final engine = createEngine(
-          players: players,
+          players: [
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+            ),
+          ],
         );
 
         expect(
@@ -407,24 +269,66 @@ void main() {
           'player-1',
         );
 
-        engine.registerDiceRoll(
-          value: 6,
+        expect(
+          engine.state.turnState.playerId,
+          'player-1',
+        );
+      },
+    );
+
+    // ==========================================================
+    // 3. ROLL 4
+    // ==========================================================
+
+    test(
+      'Roll 4 enters Playing and makes the roll available',
+          () {
+        final engine = createTwoPlayerEngine();
+
+        final moves = engine.registerDiceRoll(
+          value: 4,
           sequence: 1,
         );
 
-        engine.registerDiceRoll(
-          value: 6,
-          sequence: 2,
-        );
-
-        engine.registerDiceRoll(
-          value: 6,
-          sequence: 3,
+        expect(
+          engine.state.turnState.phase,
+          TurnPhase.playing,
         );
 
         expect(
-          engine.currentPlayer.playerId,
-          'player-2',
+          engine.state.turnState.rolls,
+          hasLength(1),
+        );
+
+        expect(
+          engine.state.turnState.availableRolls.count,
+          1,
+        );
+
+        expect(
+          engine.state.turnState.availableRolls.values,
+          [4],
+        );
+
+        expect(
+          moves,
+          isNotEmpty,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 4. SIX
+    // ==========================================================
+
+    test(
+      'Roll 6 stays in Rolling and grants another roll',
+          () {
+        final engine = createTwoPlayerEngine();
+
+        final moves = engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
         );
 
         expect(
@@ -433,127 +337,35 @@ void main() {
         );
 
         expect(
+          engine.state.turnState.sixRollCount,
+          1,
+        );
+
+        expect(
           engine.state.turnState.rolls,
-          isEmpty,
-        );
-
-        expect(
-          engine.state.turnState.availableRolls.isEmpty,
-          isTrue,
-        );
-
-        expect(
-          engine.state.turnState.availableRolls,
-          0,
-        );
-      },
-    );
-
-    // ==========================================================
-    // 5. Player can choose more than one token
-    // ==========================================================
-
-    test(
-      'Player can use different rolls on different tokens',
-          () {
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-        ];
-
-        final engine = createEngine(
-          players: players,
-        );
-
-        engine.registerDiceRoll(
-          value: 6,
-          sequence: 1,
-        );
-
-        engine.registerDiceRoll(
-          value: 4,
-          sequence: 2,
-        );
-
-        final moves =
-        engine.getValidMoves();
-
-        final tokenZeroSixMove =
-        moves.whereType<MoveToken>().firstWhere(
-              (move) =>
-          move.tokenId ==
-              'player-1-token-0' &&
-              move.steps == 6,
-        );
-
-        engine.executeMove(
-          tokenZeroSixMove,
+          hasLength(1),
         );
 
         expect(
           engine.state.turnState.availableRolls.values,
-          [4],
-        );
-
-        final tokenZero =
-        engine.state.currentPlayer.tokens
-            .firstWhere(
-              (token) =>
-          token.tokenIndex == 0,
+          [6],
         );
 
         expect(
-          tokenZero.positionInPath,
-          6,
-        );
-
-        // The second roll can now be used
-        // independently.
-        final nextMoves =
-        engine.getValidMoves();
-
-        expect(
-          nextMoves.whereType<MoveToken>().any(
-                (move) =>
-            move.steps == 4 &&
-                move.rollSequence == 2,
-          ),
-          isTrue,
+          moves,
+          isEmpty,
         );
       },
     );
 
     // ==========================================================
-    // 6. Consume rolls one by one
+    // 5. SIX -> FOUR
     // ==========================================================
 
     test(
-      'Available rolls are consumed one by one',
+      'Roll 6 then 4 keeps both rolls available',
           () {
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-        ];
-
-        final engine = createEngine(
-          players: players,
-        );
+        final engine = createTwoPlayerEngine();
 
         engine.registerDiceRoll(
           value: 6,
@@ -563,6 +375,16 @@ void main() {
         engine.registerDiceRoll(
           value: 4,
           sequence: 2,
+        );
+
+        expect(
+          engine.state.turnState.phase,
+          TurnPhase.playing,
+        );
+
+        expect(
+          engine.state.turnState.sixRollCount,
+          1,
         );
 
         expect(
@@ -570,14 +392,188 @@ void main() {
           [6, 4],
         );
 
-        final moveSix =
-        engine
-            .getValidMoves()
-            .whereType<MoveToken>()
-            .firstWhere(
+        final moves = engine.getValidMoves();
+
+        expect(
+          moves.any(
+                (move) =>
+            move.rollSequence == 1 &&
+                move is ExitToken &&
+                move.tokenId ==
+                    'player-1-token-1',
+          ),
+          isTrue,
+        );
+
+        expect(
+          moves.any(
+                (move) =>
+            move is MoveToken &&
+                move.rollSequence == 2 &&
+                move.tokenId ==
+                    'player-1-token-0' &&
+                move.steps == 4,
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 6. SIX -> SIX -> FOUR
+    // ==========================================================
+
+    test(
+      'two sixes in one turn are both counted',
+          () {
+        final engine = createTwoPlayerEngine();
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 2,
+        );
+
+        expect(
+          engine.state.turnState.phase,
+          TurnPhase.rolling,
+        );
+
+        expect(
+          engine.state.turnState.sixRollCount,
+          2,
+        );
+
+        expect(
+          engine.state.turnState.availableRolls.values,
+          [6, 6],
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 3,
+        );
+
+        expect(
+          engine.state.turnState.phase,
+          TurnPhase.playing,
+        );
+
+        expect(
+          engine.state.turnState.sixRollCount,
+          2,
+        );
+
+        expect(
+          engine.state.turnState.availableRolls.values,
+          [6, 6, 4],
+        );
+      },
+    );
+
+    // ==========================================================
+    // 7. NON-CONSECUTIVE SIXES
+    // ==========================================================
+
+    test(
+      'player can use different rolls on different active tokens',
+          () {
+        final greenPath = LudoPaths.green;
+
+        final tokenZero = createToken(
+          playerId: 'player-1',
+          tokenIndex: 0,
+          state: LudoTokenState.normal,
+          positionInPath: 0,
+          position: greenPath.positionAt(
+            step: 0,
+            hasCaptured: false,
+          ),
+        );
+
+        final tokenOne = createToken(
+          playerId: 'player-1',
+          tokenIndex: 1,
+          state: LudoTokenState.normal,
+          positionInPath: 10,
+          position: greenPath.positionAt(
+            step: 10,
+            hasCaptured: false,
+          ),
+        );
+
+        final engine = createEngine(
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+              tokens: [
+                tokenZero,
+                tokenOne,
+                createToken(
+                  playerId: 'player-1',
+                  tokenIndex: 2,
+                ),
+                createToken(
+                  playerId: 'player-1',
+                  tokenIndex: 3,
+                ),
+              ],
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 2,
+        );
+
+        final moves = engine.getValidMoves();
+
+        expect(
+          moves.any(
+                (move) =>
+            move is MoveToken &&
+                move.tokenId ==
+                    'player-1-token-0' &&
+                move.steps == 6 &&
+                move.rollSequence == 1,
+          ),
+          isTrue,
+        );
+
+        expect(
+          moves.any(
+                (move) =>
+            move is MoveToken &&
+                move.tokenId ==
+                    'player-1-token-1' &&
+                move.steps == 4 &&
+                move.rollSequence == 2,
+          ),
+          isTrue,
+        );
+
+        final moveSix = moves.firstWhere(
               (move) =>
-          move.tokenId ==
-              'player-1-token-0' &&
+          move is MoveToken &&
+              move.tokenId ==
+                  'player-1-token-0' &&
               move.steps == 6 &&
               move.rollSequence == 1,
         );
@@ -589,14 +585,17 @@ void main() {
           [4],
         );
 
+        expect(
+          engine.currentPlayer.playerId,
+          'player-1',
+        );
+
         final moveFour =
-        engine
-            .getValidMoves()
-            .whereType<MoveToken>()
-            .firstWhere(
+        engine.getValidMoves().firstWhere(
               (move) =>
-          move.tokenId ==
-              'player-1-token-0' &&
+          move is MoveToken &&
+              move.tokenId ==
+                  'player-1-token-1' &&
               move.steps == 4 &&
               move.rollSequence == 2,
         );
@@ -604,8 +603,552 @@ void main() {
         engine.executeMove(moveFour);
 
         expect(
-          engine.state.turnState.availableRolls.isEmpty,
-          isTrue,
+          engine.state.turnState.availableRolls,
+          isEmpty,
+        );
+
+        expect(
+          engine.currentPlayer.playerId,
+          'player-2',
+        );
+
+        expect(
+          getToken(
+            engine,
+            'player-1',
+            0,
+          ).positionInPath,
+          6,
+        );
+
+        expect(
+          getToken(
+            engine,
+            'player-1',
+            1,
+          ).positionInPath,
+          14,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 8. NON-CONSECUTIVE SIXES IN SAME TURN
+    // ==========================================================
+
+    test(
+      '6 -> 4 -> 6 -> 3 -> 6 counts as three sixes in one turn',
+          () {
+        final engine = createTwoPlayerEngine();
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 2,
+        );
+
+        // Use the 4 so that the turn can continue.
+        final move4 = engine.getValidMoves().firstWhere(
+              (move) =>
+          move is MoveToken &&
+              move.rollSequence == 2 &&
+              move.steps == 4,
+        );
+
+        engine.executeMove(move4);
+
+        expect(
+          engine.currentPlayer.playerId,
+          'player-1',
+        );
+
+        expect(
+          engine.state.turnState.phase,
+          TurnPhase.rolling,
+        );
+
+        expect(
+          engine.state.turnState.sixRollCount,
+          1,
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 3,
+        );
+
+        expect(
+          engine.state.turnState.sixRollCount,
+          2,
+        );
+
+        engine.registerDiceRoll(
+          value: 3,
+          sequence: 4,
+        );
+
+        final move3 = engine.getValidMoves().firstWhere(
+              (move) =>
+          move is MoveToken &&
+              move.rollSequence == 4 &&
+              move.steps == 3,
+        );
+
+        engine.executeMove(move3);
+
+        expect(
+          engine.currentPlayer.playerId,
+          'player-1',
+        );
+
+        expect(
+          engine.state.turnState.phase,
+          TurnPhase.rolling,
+        );
+
+        expect(
+          engine.state.turnState.sixRollCount,
+          2,
+        );
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 5,
+        );
+
+        expect(
+          engine.currentPlayer.playerId,
+          'player-2',
+        );
+
+        expect(
+          engine.state.turnState.sixRollCount,
+          isZero,
+        );
+
+        expect(
+          engine.state.turnState.rolls,
+          isEmpty,
+        );
+
+        expect(
+          engine.state.turnState.availableRolls,
+          isEmpty,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 9. EXECUTE MOVE CONSUMES THE CORRECT ROLL
+    // ==========================================================
+
+    test(
+      'executing a move consumes only its selected roll',
+          () {
+        final engine = createTwoPlayerEngine();
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 2,
+        );
+
+        final move = engine.getValidMoves().firstWhere(
+              (option) =>
+          option is MoveToken &&
+              option.tokenId ==
+                  'player-1-token-0' &&
+              option.rollSequence == 2,
+        );
+
+        engine.executeMove(move);
+
+        expect(
+          engine.state.turnState.availableRolls.values,
+          [6],
+        );
+      },
+    );
+
+    // ==========================================================
+    // 10. EXIT TOKEN WITH SIX
+    // ==========================================================
+
+    test(
+      'a 6 allows an initial token to exit Home',
+          () {
+        final engine = createTwoPlayerEngine();
+
+        engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 2,
+        );
+
+        final exitMove =
+        engine.getValidMoves().firstWhere(
+              (move) =>
+          move is ExitToken &&
+              move.tokenId ==
+                  'player-1-token-1' &&
+              move.rollSequence == 1,
+        );
+
+        engine.executeMove(exitMove);
+
+        final player =
+            engine.state.players.first;
+
+        final token =
+        player.tokens.firstWhere(
+              (token) =>
+          token.tokenIndex == 1,
+        );
+
+        final path =
+            LudoPaths.green;
+
+        expect(
+          token.positionInPath,
+          0,
+        );
+
+        expect(
+          token.position,
+          path.startingPosition,
+        );
+
+        expect(
+          token.state,
+          LudoTokenState.safe,
+        );
+
+        expect(
+          engine.state.turnState
+              .availableRolls.values,
+          [4],
+        );
+      },
+    );
+
+    // ==========================================================
+    // 11. MAIN LOOP WRAP BEFORE CAPTURE
+    // ==========================================================
+
+    test(
+      'before capture, step 51 wraps to step 0',
+          () {
+        final engine = createEngine(
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+              tokens: [
+                createToken(
+                  playerId: 'player-1',
+                  tokenIndex: 0,
+                  state: LudoTokenState.normal,
+                  positionInPath: 50,
+                  position:
+                  LudoPaths.green.mainLoopPath[50],
+                ),
+                ...List.generate(
+                  3,
+                      (index) => createToken(
+                    playerId: 'player-1',
+                    tokenIndex: index + 1,
+                  ),
+                ),
+              ],
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
+        );
+
+        engine.registerDiceRoll(
+          value: 2,
+          sequence: 1,
+        );
+
+        final move = engine.getValidMoves().firstWhere(
+              (option) =>
+          option is MoveToken &&
+              option.tokenId ==
+                  'player-1-token-0',
+        );
+
+        engine.executeMove(move);
+
+        final token =
+        engine.currentPlayer.tokens.firstWhere(
+              (token) =>
+          token.tokenIndex == 0,
+        );
+
+        expect(
+          token.positionInPath,
+          0,
+        );
+
+        expect(
+          token.position,
+          LudoPaths.green.startingPosition,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 12. HOME LANE AFTER CAPTURE
+    // ==========================================================
+
+    test(
+      'after capture, step 50 can move into Home Lane step 51',
+          () {
+        final player = createPlayer(
+          playerId: 'player-1',
+          seat: 1,
+          color: LudoPlayerColor.green,
+          hasCaptured: true,
+          tokens: [
+            createToken(
+              playerId: 'player-1',
+              tokenIndex: 0,
+              state: LudoTokenState.normal,
+              positionInPath: 50,
+              position:
+              LudoPaths.green.mainLoopPath[50],
+            ),
+            ...List.generate(
+              3,
+                  (index) => createToken(
+                playerId: 'player-1',
+                tokenIndex: index + 1,
+              ),
+            ),
+          ],
+        );
+
+        final engine = createEngine(
+          players: [
+            player,
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
+        );
+
+        engine.registerDiceRoll(
+          value: 1,
+          sequence: 1,
+        );
+
+        final move =
+        engine.getValidMoves().firstWhere(
+              (option) =>
+          option is MoveToken &&
+              option.tokenId ==
+                  'player-1-token-0',
+        );
+
+        engine.executeMove(move);
+
+        final token =
+        engine.currentPlayer.tokens.firstWhere(
+              (token) =>
+          token.tokenIndex == 0,
+        );
+
+        expect(
+          token.positionInPath,
+          51,
+        );
+
+        expect(
+          token.position,
+          LudoPaths.green.homePath.first,
+        );
+
+        expect(
+          token.state,
+          LudoTokenState.safe,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 13. EXACT FINISH
+    // ==========================================================
+
+    test(
+      'token finishes only when it reaches step 56 exactly',
+          () {
+        final token = createToken(
+          playerId: 'player-1',
+          tokenIndex: 0,
+          state: LudoTokenState.normal,
+          positionInPath: 55,
+          position:
+          LudoPaths.green.homePath[4],
+        );
+
+        final engine = createEngine(
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+              hasCaptured: true,
+              tokens: [
+                token,
+                ...List.generate(
+                  3,
+                      (index) => createToken(
+                    playerId: 'player-1',
+                    tokenIndex: index + 1,
+                  ),
+                ),
+              ],
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
+        );
+
+        engine.registerDiceRoll(
+          value: 1,
+          sequence: 1,
+        );
+
+        final move =
+        engine.getValidMoves().firstWhere(
+              (option) =>
+          option is MoveToken &&
+              option.tokenId ==
+                  'player-1-token-0',
+        );
+
+        engine.executeMove(move);
+
+        final updatedToken =
+        engine.state.players
+            .firstWhere(
+              (player) =>
+          player.playerId ==
+              'player-1',
+        )
+            .tokens
+            .firstWhere(
+              (token) =>
+          token.tokenIndex ==
+              0,
+        );
+
+        expect(
+          updatedToken.positionInPath,
+          56,
+        );
+
+        expect(
+          updatedToken.position,
+          LudoPaths.green.finishPosition,
+        );
+
+        expect(
+          updatedToken.state,
+          LudoTokenState.finished,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 14. PLAYER RANKING
+    // ==========================================================
+
+    test(
+      'the player who finishes gets the next rank',
+          () {
+        final token = createToken(
+          playerId: 'player-1',
+          tokenIndex: 0,
+          state: LudoTokenState.normal,
+          positionInPath: 55,
+          position:
+          LudoPaths.green.homePath[4],
+        );
+
+        final engine = createEngine(
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+              hasCaptured: true,
+              tokens: [
+                token,
+                ...List.generate(
+                  3,
+                      (index) => createToken(
+                    playerId: 'player-1',
+                    tokenIndex: index + 1,
+                  ),
+                ),
+              ],
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
+        );
+
+        engine.registerDiceRoll(
+          value: 1,
+          sequence: 1,
+        );
+
+        final move =
+        engine.getValidMoves().firstWhere(
+              (option) =>
+          option is MoveToken &&
+              option.tokenId ==
+                  'player-1-token-0',
+        );
+
+        engine.executeMove(move);
+
+        expect(
+          engine.state.finishedPlayerIds,
+          ['player-1'],
+        );
+
+        expect(
+          engine.getResult()
+              .getPlayerResult('player-1')!
+              .rank,
+          1,
         );
 
         expect(
@@ -616,37 +1159,15 @@ void main() {
     );
 
     // ==========================================================
-    // 7. Turn moves to next player
+    // 15. CAPTURE
     // ==========================================================
 
     test(
-      'Turn moves according to seat order',
+      'capture sends the enemy token back to its starting cell',
           () {
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-          createPlayer(
-            playerId: 'player-3',
-            seat: 3,
-            color: LudoPlayerColor.blue,
-          ),
-        ];
-
-        final engine = createEngine(
-          players: players,
-        );
-
-        expect(
-          engine.currentPlayer.playerId,
-          'player-1',
+        final engine =
+        createCaptureEngine(
+          attackerStep: 4,
         );
 
         engine.registerDiceRoll(
@@ -655,14 +1176,393 @@ void main() {
         );
 
         final move =
-        engine
-            .getValidMoves()
-            .whereType<MoveToken>()
+        engine.getValidMoves().firstWhere(
+              (option) =>
+          option is MoveToken &&
+              option.tokenId ==
+                  'player-1-token-0' &&
+              option.rollSequence == 1,
+        );
+
+        engine.executeMove(move);
+
+        final attacker =
+        engine.state.players
             .firstWhere(
+              (player) =>
+          player.playerId ==
+              'player-1',
+        );
+
+        final defender =
+        engine.state.players
+            .firstWhere(
+              (player) =>
+          player.playerId ==
+              'player-2',
+        );
+
+        final attackerToken =
+        attacker.tokens.firstWhere(
+              (token) =>
+          token.tokenIndex == 0,
+        );
+
+        final defenderToken =
+        defender.tokens.firstWhere(
+              (token) =>
+          token.tokenIndex == 0,
+        );
+
+        expect(
+          attacker.hasCaptured,
+          isTrue,
+        );
+
+        expect(
+          attackerToken.positionInPath,
+          8,
+        );
+
+        expect(
+          attackerToken.position,
+          LudoPaths.green.positionAt(
+            step: 8,
+            hasCaptured: false,
+          ),
+        );
+
+        expect(
+          defenderToken.positionInPath,
+          0,
+        );
+
+        expect(
+          defenderToken.position,
+          LudoPaths.yellow.startingPosition,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 16. CAPTURE IMMEDIATE EXTRA ROLL
+    // ==========================================================
+
+    test(
+      'capture grants an immediate extra roll',
+          () {
+        final engine =
+        createCaptureEngine(
+          attackerStep: 4,
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 1,
+        );
+
+        final move =
+        engine.getValidMoves().firstWhere(
+              (option) =>
+          option is MoveToken &&
+              option.tokenId ==
+                  'player-1-token-0' &&
+              option.rollSequence == 1,
+        );
+
+        final state =
+        engine.executeMove(move);
+
+        expect(
+          state.turnState.phase,
+          TurnPhase.rolling,
+        );
+
+        expect(
+          state.currentPlayer.playerId,
+          'player-1',
+        );
+
+        expect(
+          state.turnState.availableRolls,
+          isEmpty,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 17. SAFE CELL CANNOT BE CAPTURED
+    // ==========================================================
+
+    test(
+      'safe cells cannot be captured',
+          () {
+        final safePosition =
+        LudoPaths.green.positionAt(
+          step: 8,
+          hasCaptured: false,
+        );
+
+        final attacker = createToken(
+          playerId: 'player-1',
+          tokenIndex: 0,
+          state: LudoTokenState.normal,
+          positionInPath: 4,
+          position:
+          LudoPaths.green.mainLoopPath[4],
+        );
+
+        final defender = createToken(
+          playerId: 'player-2',
+          tokenIndex: 0,
+          state: LudoTokenState.safe,
+          positionInPath: 8,
+          position: safePosition,
+        );
+
+        final engine = createEngine(
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+              tokens: [
+                attacker,
+                ...List.generate(
+                  3,
+                      (index) => createToken(
+                    playerId: 'player-1',
+                    tokenIndex: index + 1,
+                  ),
+                ),
+              ],
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+              tokens: [
+                defender,
+                ...List.generate(
+                  3,
+                      (index) => createToken(
+                    playerId: 'player-2',
+                    tokenIndex: index + 1,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 1,
+        );
+
+        final moves =
+        engine.getValidMoves();
+
+        final captureMoveExists =
+        moves.any(
               (move) =>
-          move.tokenId ==
-              'player-1-token-0' &&
-              move.steps == 4,
+          move is MoveToken &&
+              move.tokenId ==
+                  'player-1-token-0',
+        );
+
+        expect(
+          captureMoveExists,
+          isFalse,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 18. ENEMY BLOCK
+    // ==========================================================
+
+    test(
+      'landing on an enemy block is illegal',
+          () {
+        final path =
+            LudoPaths.green;
+
+        const attackerStep = 4;
+        const destinationStep = 8;
+
+        final destination =
+        path.positionAt(
+          step: destinationStep,
+          hasCaptured: false,
+        );
+
+        final attacker =
+        createToken(
+          playerId: 'player-1',
+          tokenIndex: 0,
+          state: LudoTokenState.normal,
+          positionInPath: attackerStep,
+          position:
+          path.mainLoopPath[attackerStep],
+        );
+
+        final enemy1 =
+        createToken(
+          playerId: 'player-2',
+          tokenIndex: 0,
+          state: LudoTokenState.normal,
+          positionInPath: 8,
+          position: destination,
+        );
+
+        final enemy2 =
+        createToken(
+          playerId: 'player-2',
+          tokenIndex: 1,
+          state: LudoTokenState.normal,
+          positionInPath: 8,
+          position: destination,
+        );
+
+        final engine = createEngine(
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+              tokens: [
+                attacker,
+                ...List.generate(
+                  3,
+                      (index) => createToken(
+                    playerId: 'player-1',
+                    tokenIndex: index + 1,
+                  ),
+                ),
+              ],
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+              tokens: [
+                enemy1,
+                enemy2,
+                ...List.generate(
+                  2,
+                      (index) => createToken(
+                    playerId: 'player-2',
+                    tokenIndex: index + 2,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+
+        engine.registerDiceRoll(
+          value: 4,
+          sequence: 1,
+        );
+
+        final moves =
+        engine.getValidMoves();
+
+        expect(
+          moves.whereType<MoveToken>().any(
+                (move) =>
+            move.tokenId ==
+                'player-1-token-0',
+          ),
+          isFalse,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 19. RESULT
+    // ==========================================================
+
+    test(
+      'getResult returns ranks in finish order',
+          () {
+        final engine =
+        createTwoPlayerEngine();
+
+        final state =
+            engine.state;
+
+        expect(
+          state.finishedPlayerIds,
+          isEmpty,
+        );
+
+        expect(
+          engine.getResult().players,
+          isEmpty,
+        );
+      },
+    );
+
+    // ==========================================================
+    // 20. NEXT PLAYER SKIPS FINISHED PLAYER
+    // ==========================================================
+
+    test(
+      'finished players are skipped in turn order',
+          () {
+        final token = createToken(
+          playerId: 'player-1',
+          tokenIndex: 0,
+          state: LudoTokenState.normal,
+          positionInPath: 55,
+          position:
+          LudoPaths.green.homePath[4],
+        );
+
+        final engine = createEngine(
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+              hasCaptured: true,
+              tokens: [
+                token,
+                ...List.generate(
+                  3,
+                      (index) => createToken(
+                    playerId: 'player-1',
+                    tokenIndex: index + 1,
+                  ),
+                ),
+              ],
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+            createPlayer(
+              playerId: 'player-3',
+              seat: 3,
+              color: LudoPlayerColor.blue,
+            ),
+          ],
+        );
+
+        engine.registerDiceRoll(
+          value: 1,
+          sequence: 1,
+        );
+
+        final move =
+        engine.getValidMoves().firstWhere(
+              (option) =>
+          option is MoveToken &&
+              option.tokenId ==
+                  'player-1-token-0',
         );
 
         engine.executeMove(move);
@@ -672,212 +1572,11 @@ void main() {
           'player-2',
         );
 
-        engine.registerDiceRoll(
-          value: 4,
-          sequence: 1,
-        );
-
-        final moveTwo =
-        engine
-            .getValidMoves()
-            .whereType<MoveToken>()
-            .firstWhere(
-              (move) =>
-          move.tokenId ==
-              'player-2-token-0' &&
-              move.steps == 4,
-        );
-
-        engine.executeMove(moveTwo);
-
-        expect(
-          engine.currentPlayer.playerId,
-          'player-3',
-        );
-      },
-    );
-
-    // ==========================================================
-    // 8. Player finishes with first token
-    // ==========================================================
-
-    test(
-      'Player gets rank when the first token reaches finish',
-          () {
-        final playerOneTokens =
-        <LudoToken>[];
-
-        final greenPath = LudoPaths.green;
-
-        final finishIndex =
-            greenPath.length - 1;
-
-        final startPosition =
-        greenPath[finishIndex - 4];
-
-        // Token 0 is four steps away from finish.
-        playerOneTokens.add(
-          createToken(
-            playerId: 'player-1',
-            tokenIndex: 0,
-            state: LudoTokenState.normal,
-            positionInPath: finishIndex - 4,
-            position: startPosition,
-          ),
-        );
-
-        // Remaining tokens stay in initial state.
-        for (var index = 1; index < 4; index++) {
-          playerOneTokens.add(
-            createToken(
-              playerId: 'player-1',
-              tokenIndex: index,
-            ),
-          );
-        }
-
-        final players = [
-          createPlayer(
-            playerId: 'player-1',
-            seat: 1,
-            color: LudoPlayerColor.green,
-            tokens: playerOneTokens,
-          ),
-          createPlayer(
-            playerId: 'player-2',
-            seat: 2,
-            color: LudoPlayerColor.yellow,
-          ),
-        ];
-
-        final engine = createEngine(
-          players: players,
-        );
-
-        // The player starts with token 0
-        // already on the board.
-        final moves = engine.registerDiceRoll(
-          value: 4,
-          sequence: 1,
-        );
-
-        expect(
-          moves,
-          isNotNull,
-        );
-
-        final finishMove =
-        engine
-            .getValidMoves()
-            .whereType<MoveToken>()
-            .firstWhere(
-              (move) =>
-          move.tokenId ==
-              'player-1-token-0' &&
-              move.steps == 4,
-        );
-
-        engine.executeMove(finishMove);
-
         expect(
           engine.state.finishedPlayerIds,
           ['player-1'],
         );
-
-        expect(
-          engine.state.getRankForPlayer(
-            'player-1',
-          ),
-          1,
-        );
-
-        expect(
-          engine.state.currentPlayer.playerId,
-          'player-2',
-        );
       },
     );
-
-
-
-  test(
-    'Capture -> 6 -> 6 counts all sixes in the same turn',
-        () {
-      final engine = createCaptureEngine(
-        attackerStep: 0,
-        defenderStep: 4,
-      );
-
-      // First roll = 6.
-      engine.registerDiceRoll(
-        value: 6,
-        sequence: 1,
-      );
-
-      // Second roll = 4.
-      engine.registerDiceRoll(
-        value: 4,
-        sequence: 2,
-      );
-
-      final captureMove = engine
-          .getValidMoves()
-          .whereType<MoveToken>()
-          .firstWhere(
-            (move) =>
-        move.rollSequence == 2 &&
-            move.steps == 4,
-      );
-
-      // Capture happens here.
-      engine.executeMove(captureMove);
-
-      expect(
-        engine.currentPlayer.playerId,
-        'player-1',
-      );
-
-      expect(
-        engine.currentPlayer.hasCaptured,
-        isTrue,
-      );
-
-      expect(
-        engine.state.turnState.phase,
-        TurnPhase.rolling,
-      );
-
-      // Immediate extra roll = 6.
-      engine.registerDiceRoll(
-        value: 6,
-        sequence: 3,
-      );
-
-      expect(
-        engine.state.turnState.rolls
-            .where(
-              (roll) => roll.value == 6,
-        )
-            .length,
-        2,
-      );
-
-      // Third six in the SAME turn.
-      engine.registerDiceRoll(
-        value: 6,
-        sequence: 4,
-      );
-
-      expect(
-        engine.currentPlayer.playerId,
-        'player-2',
-      );
-
-      expect(
-        engine.state.turnState.availableRolls.values,
-        isEmpty,
-      );
-        },
-  );
   });
 }
