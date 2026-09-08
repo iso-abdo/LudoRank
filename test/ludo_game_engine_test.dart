@@ -896,10 +896,10 @@ void main() {
 
         engine.executeMove(move);
 
-        final token =
-        engine.currentPlayer.tokens.firstWhere(
-              (token) =>
-          token.tokenIndex == 0,
+        final token = getToken(
+          engine,
+          'player-1',
+          0,
         );
 
         expect(
@@ -971,10 +971,10 @@ void main() {
 
         engine.executeMove(move);
 
-        final token =
-        engine.currentPlayer.tokens.firstWhere(
-              (token) =>
-          token.tokenIndex == 0,
+        final token = getToken(
+          engine,
+          'player-1',
+          0,
         );
 
         expect(
@@ -1167,7 +1167,7 @@ void main() {
           () {
         final engine =
         createCaptureEngine(
-          attackerStep: 4,
+          attackerStep: 5,
         );
 
         engine.registerDiceRoll(
@@ -1221,13 +1221,13 @@ void main() {
 
         expect(
           attackerToken.positionInPath,
-          8,
+          9,
         );
 
         expect(
           attackerToken.position,
           LudoPaths.green.positionAt(
-            step: 8,
+            step: 9,
             hasCaptured: false,
           ),
         );
@@ -1253,7 +1253,7 @@ void main() {
           () {
         final engine =
         createCaptureEngine(
-          attackerStep: 4,
+          attackerStep: 5,
         );
 
         engine.registerDiceRoll(
@@ -1297,8 +1297,7 @@ void main() {
     test(
       'safe cells cannot be captured',
           () {
-        final safePosition =
-        LudoPaths.green.positionAt(
+        final safePosition = LudoPaths.green.positionAt(
           step: 8,
           hasCaptured: false,
         );
@@ -1308,8 +1307,7 @@ void main() {
           tokenIndex: 0,
           state: LudoTokenState.normal,
           positionInPath: 4,
-          position:
-          LudoPaths.green.mainLoopPath[4],
+          position: LudoPaths.green.mainLoopPath[4],
         );
 
         final defender = createToken(
@@ -1360,19 +1358,55 @@ void main() {
           sequence: 1,
         );
 
-        final moves =
-        engine.getValidMoves();
+        final moves = engine.getValidMoves();
 
-        final captureMoveExists =
-        moves.any(
+        final move = moves.firstWhere(
               (move) =>
           move is MoveToken &&
-              move.tokenId ==
-                  'player-1-token-0',
+              move.tokenId == 'player-1-token-0',
+        );
+
+        engine.executeMove(move);
+
+        final updatedAttacker = getToken(
+          engine,
+          'player-1',
+          0,
+        );
+
+        final updatedDefender = getToken(
+          engine,
+          'player-2',
+          0,
         );
 
         expect(
-          captureMoveExists,
+          updatedAttacker.positionInPath,
+          8,
+        );
+
+        expect(
+          updatedAttacker.position,
+          safePosition,
+        );
+
+        expect(
+          updatedDefender.positionInPath,
+          8,
+        );
+
+        expect(
+          updatedDefender.position,
+          safePosition,
+        );
+
+        expect(
+          updatedDefender.state,
+          LudoTokenState.safe,
+        );
+
+        expect(
+          getPlayer(engine, 'player-1').hasCaptured,
           isFalse,
         );
       },
@@ -1388,8 +1422,8 @@ void main() {
         final path =
             LudoPaths.green;
 
-        const attackerStep = 4;
-        const destinationStep = 8;
+        const attackerStep = 5;
+        const destinationStep = 9;
 
         final destination =
         path.positionAt(
@@ -1472,8 +1506,7 @@ void main() {
         expect(
           moves.whereType<MoveToken>().any(
                 (move) =>
-            move.tokenId ==
-                'player-1-token-0',
+            move.tokenId == 'player-1-token-0',
           ),
           isFalse,
         );
