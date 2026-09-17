@@ -23,6 +23,8 @@ class CreateMatchPage extends StatefulWidget {
   @override
   State<CreateMatchPage> createState() => _CreateMatchPageState();
 }
+// ignore: must_be_immutable
+
 
 class _CreateMatchPageState extends State<CreateMatchPage> {
   final TournamentPlayerProvider tournamentPlayerProvider =
