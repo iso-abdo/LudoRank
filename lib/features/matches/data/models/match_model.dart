@@ -18,7 +18,8 @@ class MatchModel extends Match {
     return MatchModel(
       id: row.id,
       tournamentId: row.tournamentId,
-      playersCount: 0, // سيتم حسابها من MatchPlayers
+      //playersCount: 0,  سيتم حسابها من MatchPlayers
+      playersCount: row.playersCount,
       status: MatchStatus.values.firstWhere(
             (e) => e.name == row.status,
       ),

@@ -28,6 +28,10 @@ class Matches extends Table {
   DateTimeColumn get updatedAt =>
       dateTime().withDefault(currentDateAndTime)();
 
+  /// Number of players
+  IntColumn get playersCount =>
+      integer().withDefault(const Constant(0))();
+
   @override
   Set<Column> get primaryKey => {id};
   // داخل كلاس Matches

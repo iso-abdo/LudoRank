@@ -1309,6 +1309,18 @@ class $MatchesTable extends Matches with TableInfo<$MatchesTable, MatchData> {
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _playersCountMeta = const VerificationMeta(
+    'playersCount',
+  );
+  @override
+  late final GeneratedColumn<int> playersCount = GeneratedColumn<int>(
+    'players_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1317,6 +1329,7 @@ class $MatchesTable extends Matches with TableInfo<$MatchesTable, MatchData> {
     status,
     createdAt,
     updatedAt,
+    playersCount,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1377,6 +1390,15 @@ class $MatchesTable extends Matches with TableInfo<$MatchesTable, MatchData> {
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('players_count')) {
+      context.handle(
+        _playersCountMeta,
+        playersCount.isAcceptableOrUnknown(
+          data['players_count']!,
+          _playersCountMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1410,6 +1432,10 @@ class $MatchesTable extends Matches with TableInfo<$MatchesTable, MatchData> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      playersCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}players_count'],
+      )!,
     );
   }
 
@@ -1440,6 +1466,9 @@ class MatchData extends DataClass implements Insertable<MatchData> {
 
   /// Updated At
   final DateTime updatedAt;
+
+  /// Number of players
+  final int playersCount;
   const MatchData({
     required this.id,
     required this.tournamentId,
@@ -1447,6 +1476,7 @@ class MatchData extends DataClass implements Insertable<MatchData> {
     required this.status,
     required this.createdAt,
     required this.updatedAt,
+    required this.playersCount,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1457,6 +1487,7 @@ class MatchData extends DataClass implements Insertable<MatchData> {
     map['status'] = Variable<String>(status);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['players_count'] = Variable<int>(playersCount);
     return map;
   }
 
@@ -1468,6 +1499,7 @@ class MatchData extends DataClass implements Insertable<MatchData> {
       status: Value(status),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      playersCount: Value(playersCount),
     );
   }
 
@@ -1483,6 +1515,7 @@ class MatchData extends DataClass implements Insertable<MatchData> {
       status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      playersCount: serializer.fromJson<int>(json['playersCount']),
     );
   }
   @override
@@ -1495,6 +1528,7 @@ class MatchData extends DataClass implements Insertable<MatchData> {
       'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'playersCount': serializer.toJson<int>(playersCount),
     };
   }
 
@@ -1505,6 +1539,7 @@ class MatchData extends DataClass implements Insertable<MatchData> {
     String? status,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? playersCount,
   }) => MatchData(
     id: id ?? this.id,
     tournamentId: tournamentId ?? this.tournamentId,
@@ -1512,6 +1547,7 @@ class MatchData extends DataClass implements Insertable<MatchData> {
     status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    playersCount: playersCount ?? this.playersCount,
   );
   MatchData copyWithCompanion(MatchesCompanion data) {
     return MatchData(
@@ -1525,6 +1561,9 @@ class MatchData extends DataClass implements Insertable<MatchData> {
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      playersCount: data.playersCount.present
+          ? data.playersCount.value
+          : this.playersCount,
     );
   }
 
@@ -1536,14 +1575,22 @@ class MatchData extends DataClass implements Insertable<MatchData> {
           ..write('matchNumber: $matchNumber, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('playersCount: $playersCount')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, tournamentId, matchNumber, status, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    tournamentId,
+    matchNumber,
+    status,
+    createdAt,
+    updatedAt,
+    playersCount,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1553,7 +1600,8 @@ class MatchData extends DataClass implements Insertable<MatchData> {
           other.matchNumber == this.matchNumber &&
           other.status == this.status &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.playersCount == this.playersCount);
 }
 
 class MatchesCompanion extends UpdateCompanion<MatchData> {
@@ -1563,6 +1611,7 @@ class MatchesCompanion extends UpdateCompanion<MatchData> {
   final Value<String> status;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> playersCount;
   final Value<int> rowid;
   const MatchesCompanion({
     this.id = const Value.absent(),
@@ -1571,6 +1620,7 @@ class MatchesCompanion extends UpdateCompanion<MatchData> {
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.playersCount = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   MatchesCompanion.insert({
@@ -1580,6 +1630,7 @@ class MatchesCompanion extends UpdateCompanion<MatchData> {
     required String status,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.playersCount = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        tournamentId = Value(tournamentId),
@@ -1592,6 +1643,7 @@ class MatchesCompanion extends UpdateCompanion<MatchData> {
     Expression<String>? status,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? playersCount,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1601,6 +1653,7 @@ class MatchesCompanion extends UpdateCompanion<MatchData> {
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (playersCount != null) 'players_count': playersCount,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1612,6 +1665,7 @@ class MatchesCompanion extends UpdateCompanion<MatchData> {
     Value<String>? status,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<int>? playersCount,
     Value<int>? rowid,
   }) {
     return MatchesCompanion(
@@ -1621,6 +1675,7 @@ class MatchesCompanion extends UpdateCompanion<MatchData> {
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      playersCount: playersCount ?? this.playersCount,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1646,6 +1701,9 @@ class MatchesCompanion extends UpdateCompanion<MatchData> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (playersCount.present) {
+      map['players_count'] = Variable<int>(playersCount.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1661,6 +1719,7 @@ class MatchesCompanion extends UpdateCompanion<MatchData> {
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('playersCount: $playersCount, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3455,6 +3514,7 @@ typedef $$MatchesTableCreateCompanionBuilder =
       required String status,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> playersCount,
       Value<int> rowid,
     });
 typedef $$MatchesTableUpdateCompanionBuilder =
@@ -3465,6 +3525,7 @@ typedef $$MatchesTableUpdateCompanionBuilder =
       Value<String> status,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<int> playersCount,
       Value<int> rowid,
     });
 
@@ -3539,6 +3600,11 @@ class $$MatchesTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get playersCount => $composableBuilder(
+    column: $table.playersCount,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3625,6 +3691,11 @@ class $$MatchesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get playersCount => $composableBuilder(
+    column: $table.playersCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$TournamentsTableOrderingComposer get tournamentId {
     final $$TournamentsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3674,6 +3745,11 @@ class $$MatchesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get playersCount => $composableBuilder(
+    column: $table.playersCount,
+    builder: (column) => column,
+  );
 
   $$TournamentsTableAnnotationComposer get tournamentId {
     final $$TournamentsTableAnnotationComposer composer = $composerBuilder(
@@ -3758,6 +3834,7 @@ class $$MatchesTableTableManager
                 Value<String> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> playersCount = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MatchesCompanion(
                 id: id,
@@ -3766,6 +3843,7 @@ class $$MatchesTableTableManager
                 status: status,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                playersCount: playersCount,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3776,6 +3854,7 @@ class $$MatchesTableTableManager
                 required String status,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> playersCount = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MatchesCompanion.insert(
                 id: id,
@@ -3784,6 +3863,7 @@ class $$MatchesTableTableManager
                 status: status,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                playersCount: playersCount,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
