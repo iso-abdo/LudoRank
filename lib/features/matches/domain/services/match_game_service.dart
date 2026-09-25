@@ -167,11 +167,27 @@ class MatchGameService {
       );
     }
 
-    final match = session.match;
+   /// final match = session.match;
 
-    if (match.status == MatchStatus.finished) {
+    ///if (match.status == MatchStatus.finished) {
+     /// throw StateError(
+       /// 'المباراة تم إنهاؤها بالفعل.',
+     /// );
+   /// }
+    ///
+    final match = await matchRepository.getById(
+      session.match.id,
+    );
+
+    if (match == null) {
       throw StateError(
-        'المباراة تم إنهاؤها بالفعل.',
+        'المباراة ${session.match.id} غير موجودة.',
+      );
+    }
+
+    if (match.status != MatchStatus.playing) {
+      throw StateError(
+        'لا يمكن إنهاء المباراة إلا إذا كانت حالتها Playing.',
       );
     }
 

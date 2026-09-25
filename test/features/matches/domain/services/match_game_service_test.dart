@@ -186,6 +186,176 @@ void main() {
           );
         },
       );
+      test(
+        'rejects starting an already playing match',
+            () async {
+          await service.startMatch(
+            matchId: 'match-1',
+            playerNames: const {
+              'player-1': 'Player 1',
+              'player-2': 'Player 2',
+              'player-3': 'Player 3',
+              'player-4': 'Player 4',
+            },
+          );
+
+          expect(
+                () => service.startMatch(
+              matchId: 'match-1',
+              playerNames: const {
+                'player-1': 'Player 1',
+                'player-2': 'Player 2',
+                'player-3': 'Player 3',
+                'player-4': 'Player 4',
+              },
+            ),
+            throwsStateError,
+          );
+
+          final storedMatch =
+          await matchRepository.getById(
+            'match-1',
+          );
+
+          expect(
+            storedMatch?.status,
+            MatchStatus.playing,
+          );
+        },
+      );
+      test(
+        'rejects completing a pending match',
+            () async {
+          final session =
+          await service.startMatch(
+            matchId: 'match-1',
+            playerNames: const {
+              'player-1': 'Player 1',
+              'player-2': 'Player 2',
+              'player-3': 'Player 3',
+              'player-4': 'Player 4',
+            },
+          );
+
+          // نحاكي أن حالة الـ Match المحفوظة رجعت Pending.
+          await matchRepository.update(
+            match.copyWith(
+              status: MatchStatus.pending,
+            ),
+          );
+
+          final completedResult =
+          GameResult(
+            isFinished: true,
+            players: const [
+              GamePlayerResult(
+                playerId: 'player-1',
+                rank: 1,
+                finished: true,
+              ),
+              GamePlayerResult(
+                playerId: 'player-2',
+                rank: 2,
+                finished: true,
+              ),
+              GamePlayerResult(
+                playerId: 'player-3',
+                rank: 3,
+                finished: true,
+              ),
+              GamePlayerResult(
+                playerId: 'player-4',
+                rank: 4,
+                finished: true,
+              ),
+            ],
+          );
+
+          expect(
+                () => service.completeMatchFromResult(
+              session: session,
+              result: completedResult,
+            ),
+            throwsStateError,
+          );
+
+          final storedMatch =
+          await matchRepository.getById(
+            'match-1',
+          );
+
+          expect(
+            storedMatch?.status,
+            MatchStatus.pending,
+          );
+        },
+      );
+      test(
+        'rejects completing a finished match',
+            () async {
+          final session =
+          await service.startMatch(
+            matchId: 'match-1',
+            playerNames: const {
+              'player-1': 'Player 1',
+              'player-2': 'Player 2',
+              'player-3': 'Player 3',
+              'player-4': 'Player 4',
+            },
+          );
+
+          await matchRepository.update(
+            match.copyWith(
+              status: MatchStatus.finished,
+            ),
+          );
+
+          final completedResult =
+          GameResult(
+            isFinished: true,
+            players: const [
+              GamePlayerResult(
+                playerId: 'player-3',
+                rank: 1,
+                finished: true,
+              ),
+              GamePlayerResult(
+                playerId: 'player-1',
+                rank: 2,
+                finished: true,
+              ),
+              GamePlayerResult(
+                playerId: 'player-4',
+                rank: 3,
+                finished: true,
+              ),
+              GamePlayerResult(
+                playerId: 'player-2',
+                rank: 4,
+                finished: true,
+              ),
+            ],
+          );
+
+          expect(
+                () => service.completeMatchFromResult(
+              session: session,
+              result: completedResult,
+            ),
+            throwsStateError,
+          );
+
+          final storedMatch =
+          await matchRepository.getById(
+            'match-1',
+          );
+
+          expect(
+            storedMatch?.status,
+            MatchStatus.finished,
+          );
+        },
+      );
 
       test(
         'converts a completed GameResult to rank and points',
@@ -385,6 +555,7 @@ void main() {
           );
         },
       );
+
 
       test(
         'rejects duplicate ranks',
