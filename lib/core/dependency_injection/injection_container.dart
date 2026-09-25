@@ -11,6 +11,8 @@ import 'package:ludo_rank/features/match_players/data/data_sources/local/match_p
 import 'package:ludo_rank/features/match_players/data/repositories/match_player_repository_impl.dart';
 import 'package:ludo_rank/features/match_players/domain/repositories/match_player_repository.dart';
 import 'package:ludo_rank/features/match_players/presentation/providers/match_player_provider.dart';
+import 'package:ludo_rank/features/matches/domain/services/match_game_service.dart';
+import 'package:ludo_rank/features/matches/presentation/providers/match_game_provider.dart';
 
 
 import 'package:ludo_rank/features/players/data/data_sources/local/player_dao.dart';
@@ -178,12 +180,18 @@ Future<void> initDependencies() async {
       sl<MatchPlayerRepository>(),
     ),
   );
+  sl.registerFactory<MatchGameProvider>(
+        () => MatchGameProvider(
+      service: sl<MatchGameService>(),
+    ),
+  );
 
 
   // Validator
   sl.registerLazySingleton<TournamentValidator>(
         () => TournamentValidator(),
   );
+
 
 
 
