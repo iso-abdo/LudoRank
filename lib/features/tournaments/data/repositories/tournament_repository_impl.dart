@@ -13,15 +13,11 @@ class TournamentRepositoryImpl implements TournamentRepository {
   Future<List<Tournament>> getAllTournaments() async {
     final rows = await dao.getAllTournaments();
 
-    return rows
-        .map(TournamentModel.fromDrift)
-        .toList();
+    return rows.map(TournamentModel.fromDrift).toList();
   }
 
   @override
-  Future<Tournament?> getTournamentById(
-      String id,
-      ) async {
+  Future<Tournament?> getTournamentById(String id) async {
     final row = await dao.getTournamentById(id);
 
     if (row == null) {
@@ -32,35 +28,21 @@ class TournamentRepositoryImpl implements TournamentRepository {
   }
 
   @override
-  Future<void> addTournament(
-      Tournament tournament,
-      ) async {
-    final model = TournamentModel.fromEntity(
-      tournament,
-    );
+  Future<void> addTournament(Tournament tournament) async {
+    final model = TournamentModel.fromEntity(tournament);
 
-    await dao.insertTournament(
-      model.toCompanion(),
-    );
+    await dao.insertTournament(model.toCompanion());
   }
 
   @override
-  Future<void> updateTournament(
-      Tournament tournament,
-      ) async {
-    final model = TournamentModel.fromEntity(
-      tournament,
-    );
+  Future<void> updateTournament(Tournament tournament) async {
+    final model = TournamentModel.fromEntity(tournament);
 
-    await dao.updateTournament(
-      model.toCompanion(),
-    );
+    await dao.updateTournament(model.toCompanion());
   }
 
   @override
-  Future<void> deleteTournament(
-      String id,
-      ) async {
+  Future<void> deleteTournament(String id) async {
     await dao.deleteTournament(id);
   }
 }

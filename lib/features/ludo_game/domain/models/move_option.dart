@@ -8,9 +8,7 @@ sealed class MoveOption {
   /// rollSequence = 2
   final int rollSequence;
 
-  const MoveOption({
-    required this.rollSequence,
-  });
+  const MoveOption({required this.rollSequence});
 }
 
 /// تحريك Token موجود بالفعل على المسار.
@@ -31,8 +29,5 @@ class MoveToken extends MoveOption {
 class ExitToken extends MoveOption {
   final String tokenId;
 
-  const ExitToken({
-    required this.tokenId,
-    required super.rollSequence,
-  });
+  const ExitToken({required this.tokenId, required super.rollSequence});
 }

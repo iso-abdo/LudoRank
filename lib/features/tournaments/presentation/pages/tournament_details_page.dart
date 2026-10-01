@@ -15,10 +15,7 @@ import 'package:uuid/uuid.dart';
 class TournamentDetailsPage extends StatefulWidget {
   final String tournamentId;
 
-  const TournamentDetailsPage({
-    super.key,
-    required this.tournamentId,
-  });
+  const TournamentDetailsPage({super.key, required this.tournamentId});
 
   @override
   State<TournamentDetailsPage> createState() => _TournamentDetailsPageState();
@@ -27,33 +24,24 @@ class TournamentDetailsPage extends StatefulWidget {
 class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
   final TournamentPlayerProvider tournamentPlayerProvider =
       sl<TournamentPlayerProvider>();
-  final TournamentProvider tournamentProvider =
-      sl<TournamentProvider>();
-  final PlayerProvider playerProvider =
-      sl<PlayerProvider>();
-
+  final TournamentProvider tournamentProvider = sl<TournamentProvider>();
+  final PlayerProvider playerProvider = sl<PlayerProvider>();
 
   final uuid = const Uuid();
 
   @override
   void initState() {
     super.initState();
-    tournamentPlayerProvider.loadPlayers(
-      widget.tournamentId,
-
-    );
+    tournamentPlayerProvider.loadPlayers(widget.tournamentId);
     playerProvider.loadPlayers();
-    tournamentProvider.loadTournament(
-        widget.tournamentId);
+    tournamentProvider.loadTournament(widget.tournamentId);
   }
 
   Future<void> _addPlayers() async {
     final result = await Navigator.push<List<String>>(
       context,
       MaterialPageRoute(
-        builder: (_) => SelectPlayersPage(
-          tournamentId: widget.tournamentId,
-        ),
+        builder: (_) => SelectPlayersPage(tournamentId: widget.tournamentId),
       ),
     );
 
@@ -91,26 +79,18 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    const Icon(
-                      Icons.emoji_events,
-                      size: 60,
-                    ),
+                    const Icon(Icons.emoji_events, size: 60),
                     const SizedBox(height: 16),
                     Text(
                       "Tournament ID",
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    Text(
-                      widget.tournamentId,
-                      textAlign: TextAlign.center,
-                    ),
+                    Text(widget.tournamentId, textAlign: TextAlign.center),
                     const Divider(height: 32),
                     const ListTile(
                       leading: Icon(Icons.flag),
                       title: Text("الحالة"),
-                      trailing: Chip(
-                        label: Text("Draft"),
-                      ),
+                      trailing: Chip(label: Text("Draft")),
                     ),
                     AnimatedBuilder(
                       animation: tournamentPlayerProvider,
@@ -118,7 +98,9 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                         return ListTile(
                           leading: const Icon(Icons.people),
                           title: const Text("اللاعبون"),
-                          trailing: Text("${tournamentPlayerProvider.players.length}"),
+                          trailing: Text(
+                            "${tournamentPlayerProvider.players.length}",
+                          ),
                         );
                       },
                     ),
@@ -141,16 +123,12 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
               listenable: tournamentPlayerProvider,
               builder: (context, index) {
                 if (tournamentPlayerProvider.isLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 if (tournamentPlayerProvider.players.isEmpty) {
                   return const Center(
-                    child: Text(
-                      "لا يوجد لاعبون داخل البطولة",
-                    ),
+                    child: Text("لا يوجد لاعبون داخل البطولة"),
                   );
                 }
 
@@ -162,13 +140,9 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                     final player = tournamentPlayerProvider.players[index];
 
                     return ListTile(
-                      leading: const CircleAvatar(
-                        child: Icon(Icons.person),
-                      ),
+                      leading: const CircleAvatar(child: Icon(Icons.person)),
                       title: Text(
-                        playerProvider.getPlayerName(
-                          player.playerId,
-                        ),
+                        playerProvider.getPlayerName(player.playerId),
                       ),
                     );
                   },
@@ -184,13 +158,14 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
             const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(
-                      builder: (_) => TournamentMatchesPage(
-                        tournamentId: widget.tournamentId,
-                        ),
-                      ),
-                    );
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TournamentMatchesPage(
+                      tournamentId: widget.tournamentId,
+                    ),
+                  ),
+                );
               },
               icon: const Icon(Icons.play_arrow),
               label: const Text("استكمال البطولة"),
@@ -201,5 +176,3 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
     );
   }
 }
-
-

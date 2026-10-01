@@ -14,14 +14,12 @@ import 'package:ludo_rank/features/match_players/presentation/providers/match_pl
 import 'package:ludo_rank/features/matches/domain/services/match_game_service.dart';
 import 'package:ludo_rank/features/matches/presentation/providers/match_game_provider.dart';
 
-
 import 'package:ludo_rank/features/players/data/data_sources/local/player_dao.dart';
 import 'package:ludo_rank/features/players/data/repositories/player_repository_impl.dart';
 
 import 'package:ludo_rank/features/players/domain/repositories/player_repository.dart';
 
 import 'package:ludo_rank/features/players/presentation/providers/player_provider.dart';
-
 
 // أضف الـ imports الخاصة بالـ tournament
 
@@ -30,7 +28,7 @@ import 'package:ludo_rank/features/tournaments/data/data_sources/local/tournamen
 
 import 'package:ludo_rank/features/tournaments/domain/repositories/tournament_repository.dart';
 import 'package:ludo_rank/features/tournaments/domain/services/tournament_validator.dart';
-import 'package:ludo_rank/features/tournaments/domain/usecases/continue_tournament.dart';
+import 'package:ludo_rank/features/tournaments/domain/Use-cases/continue_tournament.dart';
 import 'package:ludo_rank/features/tournaments/presentation/providers/tournament_provider.dart';
 
 // Tournament Players.
@@ -43,157 +41,108 @@ import 'package:ludo_rank/features/matches/data/data_sources/local/match_dao.dar
 import 'package:ludo_rank/features/matches/data/repositories/match_repository_impl.dart';
 import 'package:ludo_rank/features/matches/domain/repositories/match_repository.dart';
 import 'package:ludo_rank/features/matches/presentation/providers/match_provider.dart';
-import 'package:ludo_rank/features/matches/domain/usecases/create_match.dart';
+import 'package:ludo_rank/features/matches/domain/Use-cases/create_match.dart';
 
 final sl = GetIt.instance;
 
-
 Future<void> initDependencies() async {
-
   // Database
 
-  sl.registerLazySingleton<AppDatabase>(
-        () => AppDatabase(),
-  );
+  sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
 
   // UseCase
   sl.registerLazySingleton<GetDashboard>(
-        () => GetDashboard(
-      sl<HomeRepository>(),
-    ),
+    () => GetDashboard(sl<HomeRepository>()),
   );
 
-  sl.registerLazySingleton(
-        () => ContinueTournament(
-      sl(),
-      sl(),
-      sl(),
-    ),
-  );
+  sl.registerLazySingleton(() => ContinueTournament(sl(), sl(), sl()));
 
   // DAO
 
-  sl.registerLazySingleton<PlayerDao>(
-        () => PlayerDao(
-      sl<AppDatabase>(),
-    ),
-  );
+  sl.registerLazySingleton<PlayerDao>(() => PlayerDao(sl<AppDatabase>()));
   sl.registerLazySingleton<TournamentDao>(
-        () => TournamentDao(
-      sl<AppDatabase>(),
-    ),
+    () => TournamentDao(sl<AppDatabase>()),
   );
   sl.registerLazySingleton<TournamentPlayerDao>(
-        () => TournamentPlayerDao(
-      sl<AppDatabase>(),
-    ),
+    () => TournamentPlayerDao(sl<AppDatabase>()),
   );
-  sl.registerLazySingleton<HomeDao>(
-        () => HomeDao(sl<AppDatabase>()),
-  );
-  sl.registerLazySingleton<MatchDao>(
-        () => MatchDao(sl<AppDatabase>()),
-
-  );
+  sl.registerLazySingleton<HomeDao>(() => HomeDao(sl<AppDatabase>()));
+  sl.registerLazySingleton<MatchDao>(() => MatchDao(sl<AppDatabase>()));
   sl.registerLazySingleton<MatchPlayerDao>(
-        () => MatchPlayerDao(sl<AppDatabase>()),
+    () => MatchPlayerDao(sl<AppDatabase>()),
   );
-
-
 
   // Repository
   sl.registerLazySingleton<CreateMatch>(
-        () => CreateMatch(
+    () => CreateMatch(
       matchRepository: sl<MatchRepository>(),
       matchPlayerRepository: sl<MatchPlayerRepository>(),
     ),
   );
 
   sl.registerLazySingleton<PlayerRepository>(
-        () => PlayerRepositoryImpl(
-      sl<PlayerDao>(),
-    ),
+    () => PlayerRepositoryImpl(sl<PlayerDao>()),
   );
   sl.registerLazySingleton<TournamentRepository>(
-        () => TournamentRepositoryImpl(
-      sl<TournamentDao>(),
-    ),
+    () => TournamentRepositoryImpl(sl<TournamentDao>()),
   );
   sl.registerLazySingleton<TournamentPlayerRepository>(
-        () => TournamentPlayerRepositoryImpl(
-      sl<TournamentPlayerDao>(),
-    ),
+    () => TournamentPlayerRepositoryImpl(sl<TournamentPlayerDao>()),
   );
   sl.registerLazySingleton<HomeRepository>(
-        () => HomeRepositoryImpl(
-      sl<HomeDao>(),
-    ),
+    () => HomeRepositoryImpl(sl<HomeDao>()),
   );
 
-  sl.registerLazySingleton<MatchPlayerRepository>(
-        () => MatchPlayerRepositoryImpl(
-      sl<MatchPlayerDao>(),
+  sl.registerLazySingleton<MatchGameService>(
+    () => MatchGameService(
+      matchRepository: sl<MatchRepository>(),
+      matchPlayerRepository: sl<MatchPlayerRepository>(),
     ),
   );
-  sl.registerLazySingleton<MatchRepository>(
-        () => MatchRepositoryImpl(
-      sl<MatchDao>(),
-    ),
-  );
-
 
   // تأكد من وجود هذا السطر الخاص بـ MatchRepository (إذا لم يكن موجوداً)
-  //sl.registerLazySingleton<MatchRepository>(() => MatchRepositoryImpl(sl()));
+  ///sl.registerLazySingleton<MatchRepository>(
+  ///     () => MatchRepositoryImpl(
+  ///sl()
+  ///)
+  ///);
 
+  sl.registerLazySingleton<MatchPlayerRepository>(
+    () => MatchPlayerRepositoryImpl(sl<MatchPlayerDao>()),
+  );
 
+  sl.registerLazySingleton<MatchRepository>(
+    () => MatchRepositoryImpl(sl<MatchDao>()),
+  );
+
+  ///sl.registerLazySingleton<MatchGameService>(
+  ///   () => MatchGameService(
+  /// matchRepository: sl<MatchRepository>(),
+  ///matchPlayerRepository: sl<MatchPlayerRepository>(),
+  ///),
+  ///);
   // Provider
 
   sl.registerFactory<PlayerProvider>(
-        () => PlayerProvider(
-      sl<PlayerRepository>(),
-    ),
+    () => PlayerProvider(sl<PlayerRepository>()),
   );
 
   sl.registerFactory<TournamentProvider>(
-    () => TournamentProvider(
-      sl<TournamentRepository>(),
-    ),
+    () => TournamentProvider(sl<TournamentRepository>()),
   );
   sl.registerFactory<TournamentPlayerProvider>(
-    () => TournamentPlayerProvider(
-      sl<TournamentPlayerRepository>(),
-    ),
+    () => TournamentPlayerProvider(sl<TournamentPlayerRepository>()),
   );
-  sl.registerFactory<HomeProvider>(
-    () => HomeProvider(
-      sl<GetDashboard>(),
-    ),
-  );
+  sl.registerFactory<HomeProvider>(() => HomeProvider(sl<GetDashboard>()));
 
-  sl.registerFactory<MatchProvider>(
-        () => MatchProvider(
-      sl<MatchRepository>(),
-    ),
-  );
+  sl.registerFactory<MatchProvider>(() => MatchProvider(sl<MatchRepository>()));
   sl.registerFactory<MatchPlayerProvider>(
-        () => MatchPlayerProvider(
-      sl<MatchPlayerRepository>(),
-    ),
+    () => MatchPlayerProvider(sl<MatchPlayerRepository>()),
   );
   sl.registerFactory<MatchGameProvider>(
-        () => MatchGameProvider(
-      service: sl<MatchGameService>(),
-    ),
+    () => MatchGameProvider(service: sl<MatchGameService>()),
   );
-
 
   // Validator
-  sl.registerLazySingleton<TournamentValidator>(
-        () => TournamentValidator(),
-  );
-
-
-
-
-
+  sl.registerLazySingleton<TournamentValidator>(() => TournamentValidator());
 }

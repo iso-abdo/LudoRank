@@ -51,9 +51,7 @@ class MatchPlayerRepositoryImpl implements MatchPlayerRepository {
       for (final player in players) {
         final model = MatchPlayerModel.fromEntity(player);
 
-        await dao.updateMatchPlayer(
-          model.toCompanion(),
-        );
+        await dao.updateMatchPlayer(model.toCompanion());
       }
     });
   }
@@ -67,6 +65,4 @@ class MatchPlayerRepositoryImpl implements MatchPlayerRepository {
   Future<void> removeMatchPlayers(String matchId) async {
     await dao.removeMatchPlayers(matchId);
   }
-
-
 }

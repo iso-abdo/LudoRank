@@ -31,9 +31,7 @@ class MatchGameProvider extends ChangeNotifier {
 
   String? _error;
 
-  MatchGameProvider({
-    required this.service,
-  });
+  MatchGameProvider({required this.service});
 
   // ============================================================
   // SESSION
@@ -55,8 +53,7 @@ class MatchGameProvider extends ChangeNotifier {
   LudoGameState? get state => _session?.state;
 
   List<LudoPlayer> get players {
-    return _session?.state.players ??
-        const <LudoPlayer>[];
+    return _session?.state.players ?? const <LudoPlayer>[];
   }
 
   LudoPlayer? get currentPlayer {
@@ -76,17 +73,12 @@ class MatchGameProvider extends ChangeNotifier {
   }
 
   AvailableRolls get availableRolls {
-    return _session
-        ?.engine
-        .state
-        .turnState
-        .availableRolls ??
+    return _session?.engine.state.turnState.availableRolls ??
         const AvailableRolls();
   }
 
   List<MoveOption> get availableMoves {
-    return _session?.engine.getValidMoves() ??
-        const <MoveOption>[];
+    return _session?.engine.getValidMoves() ?? const <MoveOption>[];
   }
 
   // ============================================================
@@ -103,8 +95,7 @@ class MatchGameProvider extends ChangeNotifier {
   GameResult? get result {
     final currentSession = _session;
 
-    if (currentSession == null ||
-        !currentSession.isFinished) {
+    if (currentSession == null || !currentSession.isFinished) {
       return null;
     }
 
@@ -112,9 +103,7 @@ class MatchGameProvider extends ChangeNotifier {
   }
 
   List<MatchPlayer> get completedPlayers {
-    return List.unmodifiable(
-      _completedPlayers,
-    );
+    return List.unmodifiable(_completedPlayers);
   }
 
   // ============================================================
@@ -190,8 +179,7 @@ class MatchGameProvider extends ChangeNotifier {
     _completedPlayers.clear();
 
     try {
-      final createdSession =
-      await service.startMatch(
+      final createdSession = await service.startMatch(
         matchId: matchId,
         playerNames: playerNames,
         random: random,
@@ -199,8 +187,7 @@ class MatchGameProvider extends ChangeNotifier {
 
       _session = createdSession;
 
-      _matchStatus =
-          createdSession.match.status;
+      _matchStatus = createdSession.match.status;
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -224,9 +211,7 @@ class MatchGameProvider extends ChangeNotifier {
     final currentSession = _session;
 
     if (currentSession == null) {
-      _setError(
-        'لا توجد جلسة مباراة نشطة.',
-      );
+      _setError('لا توجد جلسة مباراة نشطة.');
       return;
     }
 
@@ -282,24 +267,18 @@ class MatchGameProvider extends ChangeNotifier {
   ///
   /// If the move finishes the complete Ludo game,
   /// the provider automatically persists the Match.
-  Future<void> executeMove(
-      MoveOption move,
-      ) async {
+  Future<void> executeMove(MoveOption move) async {
     final currentSession = _session;
 
     if (currentSession == null) {
-      _setError(
-        'لا توجد جلسة مباراة نشطة.',
-      );
+      _setError('لا توجد جلسة مباراة نشطة.');
       return;
     }
 
     try {
       _error = null;
 
-      currentSession.engine.executeMove(
-        move,
-      );
+      currentSession.engine.executeMove(move);
 
       _selectedTokenId = null;
 
@@ -310,8 +289,7 @@ class MatchGameProvider extends ChangeNotifier {
       // GAME FINISHED
       // ========================================================
 
-      if (currentSession.isFinished &&
-          _matchStatus != MatchStatus.finished) {
+      if (currentSession.isFinished && _matchStatus != MatchStatus.finished) {
         await _completeFinishedMatch();
       }
     } catch (e) {
@@ -332,16 +310,12 @@ class MatchGameProvider extends ChangeNotifier {
     final currentSession = _session;
 
     if (currentSession == null) {
-      _setError(
-        'لا توجد جلسة مباراة نشطة.',
-      );
+      _setError('لا توجد جلسة مباراة نشطة.');
       return;
     }
 
     if (!currentSession.isFinished) {
-      _setError(
-        'محرك اللعبة لم ينتهِ بعد.',
-      );
+      _setError('محرك اللعبة لم ينتهِ بعد.');
       return;
     }
 
@@ -353,10 +327,7 @@ class MatchGameProvider extends ChangeNotifier {
     _error = null;
 
     try {
-      final updatedPlayers =
-      await service.completeMatch(
-        currentSession,
-      );
+      final updatedPlayers = await service.completeMatch(currentSession);
 
       _completedPlayers
         ..clear()
@@ -382,16 +353,12 @@ class MatchGameProvider extends ChangeNotifier {
     final currentSession = _session;
 
     if (currentSession == null) {
-      _setError(
-        'لا توجد جلسة مباراة نشطة.',
-      );
+      _setError('لا توجد جلسة مباراة نشطة.');
       return;
     }
 
     if (!currentSession.isFinished) {
-      _setError(
-        'لا يمكن إعادة حفظ النتيجة قبل انتهاء اللعبة.',
-      );
+      _setError('لا يمكن إعادة حفظ النتيجة قبل انتهاء اللعبة.');
       return;
     }
 

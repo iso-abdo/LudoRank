@@ -1,7 +1,5 @@
 import 'package:go_router/go_router.dart';
 
-
-
 import 'package:ludo_rank/features/players/presentation/pages/players_page.dart';
 
 import '../features/home/presentation/pages/home_page.dart';
@@ -42,9 +40,7 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['id']!;
 
-        return TournamentDetailsPage(
-          tournamentId: id,
-        );
+        return TournamentDetailsPage(tournamentId: id);
       },
     ),
   ],

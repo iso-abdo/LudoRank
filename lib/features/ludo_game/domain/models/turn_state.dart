@@ -53,29 +53,21 @@ class TurnState extends Equatable {
   }) : assert(sixRollCount >= 0);
 
   factory TurnState.initial(String playerId) {
-    return TurnState(
-      playerId: playerId,
-    );
+    return TurnState(playerId: playerId);
   }
 
-  bool get isRolling =>
-      phase == TurnPhase.rolling;
+  bool get isRolling => phase == TurnPhase.rolling;
 
-  bool get isPlaying =>
-      phase == TurnPhase.playing;
+  bool get isPlaying => phase == TurnPhase.playing;
 
-  bool get isCancelled =>
-      phase == TurnPhase.cancelled;
+  bool get isCancelled => phase == TurnPhase.cancelled;
 
-  bool get isCompleted =>
-      phase == TurnPhase.completed;
+  bool get isCompleted => phase == TurnPhase.completed;
 
-  bool get hasAvailableRolls =>
-      availableRolls.isNotEmpty;
+  bool get hasAvailableRolls => availableRolls.isNotEmpty;
 
   /// وصلنا لثالث 6 داخل نفس الدور.
-  bool get reachedSixLimit =>
-      sixRollCount >= 3;
+  bool get reachedSixLimit => sixRollCount >= 3;
 
   int? get lastRoll {
     if (rolls.isEmpty) {
@@ -95,12 +87,12 @@ class TurnState extends Equatable {
 
   @override
   List<Object?> get props => [
-        playerId,
-        rolls,
-        availableRolls,
-        sixRollCount,
-        phase,
-      ];
+    playerId,
+    rolls,
+    availableRolls,
+    sixRollCount,
+    phase,
+  ];
 
   TurnState copyWith({
     String? playerId,
@@ -111,13 +103,9 @@ class TurnState extends Equatable {
   }) {
     return TurnState(
       playerId: playerId ?? this.playerId,
-      rolls: List.unmodifiable(
-        rolls ?? this.rolls,
-      ),
-      availableRolls:
-      availableRolls ?? this.availableRolls,
-      sixRollCount:
-      sixRollCount ?? this.sixRollCount,
+      rolls: List.unmodifiable(rolls ?? this.rolls),
+      availableRolls: availableRolls ?? this.availableRolls,
+      sixRollCount: sixRollCount ?? this.sixRollCount,
       phase: phase ?? this.phase,
     );
   }

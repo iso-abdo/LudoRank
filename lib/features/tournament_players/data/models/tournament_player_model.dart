@@ -11,9 +11,7 @@ class TournamentPlayerModel extends TournamentPlayer {
     required super.joinedAt,
   });
 
-  factory TournamentPlayerModel.fromDrift(
-      db.TournamentPlayer row,
-      ) {
+  factory TournamentPlayerModel.fromDrift(db.TournamentPlayer row) {
     return TournamentPlayerModel(
       id: row.id,
       tournamentId: row.tournamentId,
@@ -22,9 +20,7 @@ class TournamentPlayerModel extends TournamentPlayer {
     );
   }
 
-  factory TournamentPlayerModel.fromEntity(
-      TournamentPlayer entity,
-      ) {
+  factory TournamentPlayerModel.fromEntity(TournamentPlayer entity) {
     return TournamentPlayerModel(
       id: entity.id,
       tournamentId: entity.tournamentId,

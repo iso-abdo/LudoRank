@@ -30,10 +30,7 @@ class LudoPath {
   /// 56      = Finish
   final List<Position> homePath;
 
-  const LudoPath({
-    required this.mainLoopPath,
-    required this.homePath,
-  });
+  const LudoPath({required this.mainLoopPath, required this.homePath});
 
   // ============================================================
   // LOGICAL CONSTANTS
@@ -108,7 +105,7 @@ class LudoPath {
   /// - After Capture  -> homePath[0]
   ///
   /// Therefore game logic should prefer [positionAt].
-  Position operator[](int index) {
+  Position operator [](int index) {
     _validateStep(index);
 
     if (index <= lastMainLoopStep) {
@@ -131,10 +128,7 @@ class LudoPath {
   ///   0..50 -> Main Loop
   ///   51..55 -> Home Lane
   ///   56 -> Finish
-  Position positionAt({
-    required int step,
-    required bool hasCaptured,
-  }) {
+  Position positionAt({required int step, required bool hasCaptured}) {
     _validateStep(step);
 
     if (!hasCaptured) {
@@ -164,10 +158,7 @@ class LudoPath {
   ///   ...
   ///   55 -> 56
   ///   56 -> 56
-  int nextStep({
-    required int currentStep,
-    required bool hasCaptured,
-  }) {
+  int nextStep({required int currentStep, required bool hasCaptured}) {
     _validateStep(currentStep);
 
     if (hasCaptured) {
@@ -202,12 +193,7 @@ class LudoPath {
   }
 
   bool isStartingStep(int step) {
-    return const {
-      0,
-      13,
-      26,
-      39,
-    }.contains(step);
+    return const {0, 13, 26, 39}.contains(step);
   }
 
   // ============================================================
@@ -224,12 +210,7 @@ class LudoPath {
 
   void _validateStep(int step) {
     if (step < 0 || step > finishStep) {
-      throw RangeError.range(
-        step,
-        0,
-        finishStep,
-        'step',
-      );
+      throw RangeError.range(step, 0, finishStep, 'step');
     }
   }
 }

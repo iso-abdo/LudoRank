@@ -34,9 +34,7 @@ class _PlayersPageState extends State<PlayersPage> {
     return Consumer<PlayerProvider>(
       builder: (context, provider, child) {
         return AppScaffold(
-          appBar: const AppAppBar(
-            title: 'اللاعبون',
-          ),
+          appBar: const AppAppBar(title: 'اللاعبون'),
 
           floatingActionButton: FloatingActionButton(
             onPressed: () async {
@@ -85,22 +83,12 @@ class _PlayersPageState extends State<PlayersPage> {
 
         return Card(
           child: ListTile(
-            leading: const CircleAvatar(
-              child: Icon(Icons.person),
-            ),
+            leading: const CircleAvatar(child: Icon(Icons.person)),
             title: Text(player.name),
-            subtitle: Text(
-              player.nickname ?? "",
-            ),
+            subtitle: Text(player.nickname ?? ""),
             trailing: player.isActive
-                ? const Icon(
-              Icons.check_circle,
-              color: Colors.green,
-            )
-                : const Icon(
-              Icons.cancel,
-              color: Colors.red,
-            ),
+                ? const Icon(Icons.check_circle, color: Colors.green)
+                : const Icon(Icons.cancel, color: Colors.red),
           ),
         );
       },

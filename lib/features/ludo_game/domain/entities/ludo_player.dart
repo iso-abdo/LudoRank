@@ -1,8 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:ludo_rank/features/ludo_game/domain/entities/ludo_token.dart';
 
-
-
 class LudoPlayer extends Equatable {
   final String id;
 
@@ -43,8 +41,7 @@ class LudoPlayer extends Equatable {
   }) {
     return LudoPlayer(
       id: id ?? this.id,
-      playerId:
-      playerId ?? this.playerId,
+      playerId: playerId ?? this.playerId,
       name: name ?? this.name,
       color: color ?? this.color,
       seat: seat ?? this.seat,
@@ -65,9 +62,4 @@ class LudoPlayer extends Equatable {
   ];
 }
 
-enum LudoPlayerColor {
-  red,
-  green,
-  yellow,
-  blue,
-}
+enum LudoPlayerColor { red, green, yellow, blue }

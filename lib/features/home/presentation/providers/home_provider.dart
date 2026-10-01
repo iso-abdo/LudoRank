@@ -35,17 +35,13 @@ class HomeProvider extends ChangeNotifier {
     }
   }
 
-  int get playersCount =>
-      _dashboard?.playersCount ?? 0;
+  int get playersCount => _dashboard?.playersCount ?? 0;
 
-  int get tournamentsCount =>
-      _dashboard?.tournamentsCount ?? 0;
+  int get tournamentsCount => _dashboard?.tournamentsCount ?? 0;
 
-  int get matchesCount =>
-      _dashboard?.matchesCount ?? 0;
+  int get matchesCount => _dashboard?.matchesCount ?? 0;
 
-  int get finishedTournamentsCount =>
-      _dashboard?.finishedTournamentsCount ?? 0;
+  int get finishedTournamentsCount => _dashboard?.finishedTournamentsCount ?? 0;
 
   void clearError() {
     _error = null;

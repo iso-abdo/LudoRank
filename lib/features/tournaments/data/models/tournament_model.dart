@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import 'package:ludo_rank/core/database/database.dart' as db;
 import 'package:ludo_rank/features/tournaments/domain/entities/tournament.dart';
+
 class TournamentModel extends Tournament {
   const TournamentModel({
     required super.id,
@@ -16,9 +17,7 @@ class TournamentModel extends Tournament {
     return TournamentModel(
       id: row.id,
       name: row.name,
-      status: TournamentStatus.values.firstWhere(
-            (e) => e.name == row.status,
-      ),
+      status: TournamentStatus.values.firstWhere((e) => e.name == row.status),
       rounds: row.rounds,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -36,8 +35,6 @@ class TournamentModel extends Tournament {
     );
   }
 
-
-
   db.TournamentsCompanion toCompanion() {
     return db.TournamentsCompanion(
       id: Value(id),
@@ -48,6 +45,4 @@ class TournamentModel extends Tournament {
       updatedAt: Value(updatedAt),
     );
   }
-
-
 }

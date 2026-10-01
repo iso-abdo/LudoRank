@@ -6,9 +6,7 @@ class GetMatchPlayers {
 
   GetMatchPlayers(this.repository);
 
-  Future<List<MatchPlayer>> call(
-      String matchId,
-      ) {
+  Future<List<MatchPlayer>> call(String matchId) {
     return repository.getMatchPlayers(matchId);
   }
 }

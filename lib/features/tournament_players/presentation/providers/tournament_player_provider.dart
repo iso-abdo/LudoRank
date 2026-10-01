@@ -6,9 +6,7 @@ import 'package:ludo_rank/features/tournament_players/domain/repositories/tourna
 class TournamentPlayerProvider extends ChangeNotifier {
   final TournamentPlayerRepository repository;
 
-  TournamentPlayerProvider(
-      this.repository,
-      );
+  TournamentPlayerProvider(this.repository);
 
   final List<TournamentPlayer> _players = [];
 
@@ -22,9 +20,7 @@ class TournamentPlayerProvider extends ChangeNotifier {
 
   String? get error => _error;
 
-  Future<void> loadPlayers(
-      String tournamentId,
-      ) async {
+  Future<void> loadPlayers(String tournamentId) async {
     try {
       _isLoading = true;
       _error = null;
@@ -32,11 +28,7 @@ class TournamentPlayerProvider extends ChangeNotifier {
 
       _players
         ..clear()
-        ..addAll(
-          await repository.getTournamentPlayers(
-            tournamentId,
-          ),
-        );
+        ..addAll(await repository.getTournamentPlayers(tournamentId));
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -45,12 +37,9 @@ class TournamentPlayerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addPlayer(
-      TournamentPlayer player,
-      ) async {
+  Future<void> addPlayer(TournamentPlayer player) async {
     final alreadyExists = _players.any(
-          (existingPlayer) =>
-      existingPlayer.playerId == player.playerId,
+      (existingPlayer) => existingPlayer.playerId == player.playerId,
     );
 
     if (alreadyExists) {
@@ -75,16 +64,9 @@ class TournamentPlayerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> removePlayer(
-      TournamentPlayer player,
-      ) async {
-    await repository.removePlayer(
-      player.id,
-    );
+  Future<void> removePlayer(TournamentPlayer player) async {
+    await repository.removePlayer(player.id);
 
-    await loadPlayers(
-      player.tournamentId,
-    );
+    await loadPlayers(player.tournamentId);
   }
-
 }

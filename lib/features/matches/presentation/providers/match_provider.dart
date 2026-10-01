@@ -36,6 +36,7 @@ class MatchProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
   Future<void> loadAllMatches() async {
     try {
       _isLoading = true;

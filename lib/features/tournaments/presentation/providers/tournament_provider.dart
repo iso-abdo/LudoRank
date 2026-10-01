@@ -10,8 +10,7 @@ class TournamentProvider extends ChangeNotifier {
 
   final List<Tournament> _tournaments = [];
 
-  List<Tournament> get tournaments =>
-      List.unmodifiable(_tournaments);
+  List<Tournament> get tournaments => List.unmodifiable(_tournaments);
 
   Tournament? _currentTournament;
 
@@ -31,8 +30,7 @@ class TournamentProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      final result =
-      await repository.getAllTournaments();
+      final result = await repository.getAllTournaments();
 
       _tournaments
         ..clear()
@@ -51,8 +49,7 @@ class TournamentProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      _currentTournament =
-      await repository.getTournamentById(id);
+      _currentTournament = await repository.getTournamentById(id);
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -61,17 +58,13 @@ class TournamentProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addTournament(
-      Tournament tournament,
-      ) async {
+  Future<void> addTournament(Tournament tournament) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      await repository.addTournament(
-        tournament,
-      );
+      await repository.addTournament(tournament);
 
       await loadTournaments();
     } catch (e) {

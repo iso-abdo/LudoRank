@@ -9,45 +9,49 @@ import 'package:ludo_rank/features/matches/presentation/pages/create_match_page.
 
 import 'package:ludo_rank/shared/widgets/app_scaffold.dart';
 
+import 'package:ludo_rank/features/ludo_game/presentation/pages/match_game_page.dart';
+
+import 'package:ludo_rank/features/match_players/domain/entities/match_player.dart';
+import 'package:ludo_rank/features/match_players/domain/repositories/match_player_repository.dart';
+
+import 'package:ludo_rank/features/players/domain/entities/player.dart';
+import 'package:ludo_rank/features/players/domain/repositories/player_repository.dart';
+
 class TournamentMatchesPage extends StatefulWidget {
   final String tournamentId;
 
-  const TournamentMatchesPage({
-    super.key,
-    required this.tournamentId,
-  });
+  const TournamentMatchesPage({super.key, required this.tournamentId});
 
   @override
-  State<TournamentMatchesPage> createState() =>
-      _TournamentMatchesPageState();
+  State<TournamentMatchesPage> createState() => _TournamentMatchesPageState();
 }
 
-class _TournamentMatchesPageState
-    extends State<TournamentMatchesPage> {
+class _TournamentMatchesPageState extends State<TournamentMatchesPage> {
   late final MatchProvider matchProvider;
 
+  late final MatchPlayerRepository matchPlayerRepository;
+  late final PlayerRepository playerRepository;
+  @override
   @override
   void initState() {
     super.initState();
 
     matchProvider = sl<MatchProvider>();
+    matchPlayerRepository = sl<MatchPlayerRepository>();
+    playerRepository = sl<PlayerRepository>();
 
     _loadMatches();
   }
 
   Future<void> _loadMatches() async {
-    await matchProvider.loadMatches(
-      widget.tournamentId,
-    );
+    await matchProvider.loadMatches(widget.tournamentId);
   }
 
   Future<void> _createNewMatch() async {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => CreateMatchPage(
-          tournamentId: widget.tournamentId,
-        ),
+        builder: (_) => CreateMatchPage(tournamentId: widget.tournamentId),
       ),
     );
 
@@ -64,6 +68,84 @@ class _TournamentMatchesPageState
     await _loadMatches();
   }
 
+  Future<void> _openMatch(Match match) async {
+    if (match.status != MatchStatus.pending) {
+      if (!mounted) {
+        return;
+      }
+
+      final message = switch (match.status) {
+        MatchStatus.playing =>
+          'المباراة بدأت بالفعل ولا يمكن استئنافها حاليًا.',
+        MatchStatus.finished => 'هذه المباراة منتهية بالفعل.',
+        MatchStatus.cancelled => 'هذه المباراة ملغاة.',
+        MatchStatus.pending => '',
+      };
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+
+      return;
+    }
+
+    try {
+      final matchPlayers = await matchPlayerRepository.getMatchPlayers(
+        match.id,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      final playerEntries = await Future.wait(
+        matchPlayers.map((MatchPlayer matchPlayer) async {
+          final Player? player = await playerRepository.getPlayerById(
+            matchPlayer.playerId,
+          );
+
+          if (player == null) {
+            throw StateError('اللاعب ${matchPlayer.playerId} غير موجود.');
+          }
+
+          return MapEntry(matchPlayer.playerId, player.name);
+        }),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      final playerNames = <String, String>{
+        for (final entry in playerEntries) entry.key: entry.value,
+      };
+
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              MatchGamePage(matchId: match.id, playerNames: playerNames),
+        ),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (result == true) {
+        await _loadMatches();
+      }
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('تعذر فتح المباراة: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -71,15 +153,11 @@ class _TournamentMatchesPageState
       body: ListenableBuilder(
         listenable: matchProvider,
         builder: (context, _) {
-          if (matchProvider.isLoading &&
-              matchProvider.matches.isEmpty) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+          if (matchProvider.isLoading && matchProvider.matches.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
           }
 
-          if (matchProvider.error != null &&
-              matchProvider.matches.isEmpty) {
+          if (matchProvider.error != null && matchProvider.matches.isEmpty) {
             return _ErrorView(
               message: matchProvider.error!,
               onRetry: _loadMatches,
@@ -100,9 +178,7 @@ class _TournamentMatchesPageState
                   Icon(
                     Icons.sports_esports_outlined,
                     size: 80,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
 
                   const SizedBox(height: 24),
@@ -110,10 +186,7 @@ class _TournamentMatchesPageState
                   const Text(
                     'لا توجد مباريات حتى الآن',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
 
                   const SizedBox(height: 12),
@@ -128,9 +201,7 @@ class _TournamentMatchesPageState
                   ElevatedButton.icon(
                     onPressed: _createNewMatch,
                     icon: const Icon(Icons.add),
-                    label: const Text(
-                      'مباراة جديدة',
-                    ),
+                    label: const Text('مباراة جديدة'),
                   ),
                 ],
               ),
@@ -150,13 +221,8 @@ class _TournamentMatchesPageState
                 const SizedBox(height: 16),
 
                 ...matches.map(
-                      (match) => _MatchCard(
-                    match: match,
-                    onTap: () {
-                      // المرحلة القادمة:
-                      // فتح تفاصيل المباراة.
-                    },
-                  ),
+                  (match) =>
+                      _MatchCard(match: match, onTap: () => _openMatch(match)),
                 ),
 
                 if (matchProvider.error != null) ...[
@@ -166,9 +232,7 @@ class _TournamentMatchesPageState
                     matchProvider.error!,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .error,
+                      color: Theme.of(context).colorScheme.error,
                     ),
                   ),
                 ],
@@ -185,10 +249,7 @@ class _MatchesHeader extends StatelessWidget {
   final int matchesCount;
   final VoidCallback onAddMatch;
 
-  const _MatchesHeader({
-    required this.matchesCount,
-    required this.onAddMatch,
-  });
+  const _MatchesHeader({required this.matchesCount, required this.onAddMatch});
 
   @override
   Widget build(BuildContext context) {
@@ -196,22 +257,17 @@ class _MatchesHeader extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment:
-          CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                const Icon(
-                  Icons.sports_esports,
-                  size: 32,
-                ),
+                const Icon(Icons.sports_esports, size: 32),
 
                 const SizedBox(width: 12),
 
                 Expanded(
                   child: Column(
-                    crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
                         'مباريات البطولة',
@@ -223,9 +279,7 @@ class _MatchesHeader extends StatelessWidget {
 
                       const SizedBox(height: 4),
 
-                      Text(
-                        'عدد المباريات: $matchesCount',
-                      ),
+                      Text('عدد المباريات: $matchesCount'),
                     ],
                   ),
                 ),
@@ -237,9 +291,7 @@ class _MatchesHeader extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onAddMatch,
               icon: const Icon(Icons.add),
-              label: const Text(
-                'مباراة جديدة',
-              ),
+              label: const Text('مباراة جديدة'),
             ),
           ],
         ),
@@ -252,34 +304,26 @@ class _MatchCard extends StatelessWidget {
   final Match match;
   final VoidCallback onTap;
 
-  const _MatchCard({
-    required this.match,
-    required this.onTap,
-  });
+  const _MatchCard({required this.match, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(
-        bottom: 12,
-      ),
+      margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 children: [
                   CircleAvatar(
                     child: Text(
                       '#',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
 
@@ -287,8 +331,7 @@ class _MatchCard extends StatelessWidget {
 
                   Expanded(
                     child: Column(
-                      crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'مباراة ${match.id.substring(0, 8)}',
@@ -300,16 +343,12 @@ class _MatchCard extends StatelessWidget {
 
                         const SizedBox(height: 4),
 
-                        Text(
-                          'عدد اللاعبين: ${match.playersCount}',
-                        ),
+                        Text('عدد اللاعبين: ${match.playersCount}'),
                       ],
                     ),
                   ),
 
-                  _MatchStatusChip(
-                    status: match.status,
-                  ),
+                  _MatchStatusChip(status: match.status),
                 ],
               ),
 
@@ -321,23 +360,15 @@ class _MatchCard extends StatelessWidget {
 
               Row(
                 children: [
-                  const Icon(
-                    Icons.people,
-                    size: 20,
-                  ),
+                  const Icon(Icons.people, size: 20),
 
                   const SizedBox(width: 8),
 
-                  Text(
-                    '${match.playersCount} لاعبين',
-                  ),
+                  Text('${match.playersCount} لاعبين'),
 
                   const Spacer(),
 
-                  const Icon(
-                    Icons.arrow_forward_ios,
-                    size: 16,
-                  ),
+                  const Icon(Icons.arrow_forward_ios, size: 16),
                 ],
               ),
             ],
@@ -351,17 +382,11 @@ class _MatchCard extends StatelessWidget {
 class _MatchStatusChip extends StatelessWidget {
   final MatchStatus status;
 
-  const _MatchStatusChip({
-    required this.status,
-  });
+  const _MatchStatusChip({required this.status});
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      label: Text(
-        _statusText(status),
-      ),
-    );
+    return Chip(label: Text(_statusText(status)));
   }
 
   String _statusText(MatchStatus status) {
@@ -385,10 +410,7 @@ class _ErrorView extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _ErrorView({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ErrorView({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -398,37 +420,26 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 60,
-            ),
+            const Icon(Icons.error_outline, size: 60),
 
             const SizedBox(height: 16),
 
             const Text(
               'حدث خطأ أثناء تحميل المباريات',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 8),
 
-            Text(
-              message,
-              textAlign: TextAlign.center,
-            ),
+            Text(message, textAlign: TextAlign.center),
 
             const SizedBox(height: 20),
 
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
-              label: const Text(
-                'إعادة المحاولة',
-              ),
+              label: const Text('إعادة المحاولة'),
             ),
           ],
         ),

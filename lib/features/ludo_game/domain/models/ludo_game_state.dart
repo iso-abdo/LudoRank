@@ -45,26 +45,18 @@ class LudoGameState extends Equatable {
   });
 
   /// الحالة الأولية للعبة.
-  factory LudoGameState.initial({
-    required List<LudoPlayer> players,
-  }) {
+  factory LudoGameState.initial({required List<LudoPlayer> players}) {
     if (players.isEmpty) {
-      throw ArgumentError(
-        'يجب أن تحتوي اللعبة على لاعب واحد على الأقل.',
-      );
+      throw ArgumentError('يجب أن تحتوي اللعبة على لاعب واحد على الأقل.');
     }
 
     final sortedPlayers = [...players]
-      ..sort(
-            (a, b) => a.seat.compareTo(b.seat),
-      );
+      ..sort((a, b) => a.seat.compareTo(b.seat));
 
     return LudoGameState(
       players: List.unmodifiable(sortedPlayers),
       currentPlayerIndex: 0,
-      turnState: TurnState.initial(
-        sortedPlayers.first.playerId,
-      ),
+      turnState: TurnState.initial(sortedPlayers.first.playerId),
       isStarted: false,
       isFinished: false,
       finishedPlayerIds: const [],
@@ -91,9 +83,7 @@ class LudoGameState extends Equatable {
 
   /// هل اللاعب الحالي أنهى اللعبة؟
   bool get currentPlayerFinished {
-    return finishedPlayerIds.contains(
-      currentPlayer.playerId,
-    );
+    return finishedPlayerIds.contains(currentPlayer.playerId);
   }
 
   /// ترتيب لاعب أنهى اللعبة.
@@ -102,9 +92,7 @@ class LudoGameState extends Equatable {
   /// ثاني لاعب = 2
   /// ...
   int? getRankForPlayer(String playerId) {
-    final index = finishedPlayerIds.indexOf(
-      playerId,
-    );
+    final index = finishedPlayerIds.indexOf(playerId);
 
     if (index == -1) {
       return null;
@@ -116,9 +104,7 @@ class LudoGameState extends Equatable {
   /// البحث عن لاعب بالـ playerId.
   LudoPlayer? getPlayerById(String playerId) {
     try {
-      return players.firstWhere(
-            (player) => player.playerId == playerId,
-      );
+      return players.firstWhere((player) => player.playerId == playerId);
     } catch (_) {
       return null;
     }
@@ -133,20 +119,13 @@ class LudoGameState extends Equatable {
     List<String>? finishedPlayerIds,
   }) {
     return LudoGameState(
-      players: List.unmodifiable(
-        players ?? this.players,
-      ),
-      currentPlayerIndex:
-      currentPlayerIndex ?? this.currentPlayerIndex,
-      turnState:
-      turnState ?? this.turnState,
-      isStarted:
-      isStarted ?? this.isStarted,
-      isFinished:
-      isFinished ?? this.isFinished,
+      players: List.unmodifiable(players ?? this.players),
+      currentPlayerIndex: currentPlayerIndex ?? this.currentPlayerIndex,
+      turnState: turnState ?? this.turnState,
+      isStarted: isStarted ?? this.isStarted,
+      isFinished: isFinished ?? this.isFinished,
       finishedPlayerIds: List.unmodifiable(
-        finishedPlayerIds ??
-            this.finishedPlayerIds,
+        finishedPlayerIds ?? this.finishedPlayerIds,
       ),
     );
   }

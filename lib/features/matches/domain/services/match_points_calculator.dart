@@ -23,31 +23,20 @@
 class MatchPointsCalculator {
   const MatchPointsCalculator();
 
-  int calculate({
-    required int playersCount,
-    required int rank,
-  }) {
+  int calculate({required int playersCount, required int rank}) {
     _validatePlayersCount(playersCount);
-    _validateRank(
-      playersCount: playersCount,
-      rank: rank,
-    );
+    _validateRank(playersCount: playersCount, rank: rank);
 
     return playersCount - rank + 1;
   }
 
-  Map<int, int> calculateAll({
-    required int playersCount,
-  }) {
+  Map<int, int> calculateAll({required int playersCount}) {
     _validatePlayersCount(playersCount);
 
     final result = <int, int>{};
 
     for (var rank = 1; rank <= playersCount; rank++) {
-      result[rank] = calculate(
-        playersCount: playersCount,
-        rank: rank,
-      );
+      result[rank] = calculate(playersCount: playersCount, rank: rank);
     }
 
     return Map.unmodifiable(result);
@@ -55,20 +44,13 @@ class MatchPointsCalculator {
 
   void _validatePlayersCount(int playersCount) {
     if (playersCount < 2 || playersCount > 4) {
-      throw ArgumentError(
-        'عدد لاعبي المباراة يجب أن يكون 2 أو 3 أو 4.',
-      );
+      throw ArgumentError('عدد لاعبي المباراة يجب أن يكون 2 أو 3 أو 4.');
     }
   }
 
-  void _validateRank({
-    required int playersCount,
-    required int rank,
-  }) {
+  void _validateRank({required int playersCount, required int rank}) {
     if (rank < 1 || rank > playersCount) {
-      throw ArgumentError(
-        'رتبة اللاعب يجب أن تكون بين 1 و $playersCount.',
-      );
+      throw ArgumentError('رتبة اللاعب يجب أن تكون بين 1 و $playersCount.');
     }
   }
 }

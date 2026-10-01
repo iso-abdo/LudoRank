@@ -5,9 +5,7 @@ class RemoveMatchPlayer {
 
   RemoveMatchPlayer(this.repository);
 
-  Future<void> call(
-      String id,
-      ) {
+  Future<void> call(String id) {
     return repository.removePlayer(id);
   }
 }

@@ -10,8 +10,7 @@ class MatchPlayerProvider extends ChangeNotifier {
 
   final List<MatchPlayer> _players = [];
 
-  List<MatchPlayer> get players =>
-      List.unmodifiable(_players);
+  List<MatchPlayer> get players => List.unmodifiable(_players);
 
   bool _isLoading = false;
 
@@ -21,17 +20,14 @@ class MatchPlayerProvider extends ChangeNotifier {
 
   String? get error => _error;
 
-  Future<void> loadPlayers(
-      String matchId,
-      ) async {
+  Future<void> loadPlayers(String matchId) async {
     try {
       _isLoading = true;
       _error = null;
 
       notifyListeners();
 
-      final result =
-      await repository.getMatchPlayers(matchId);
+      final result = await repository.getMatchPlayers(matchId);
 
       _players
         ..clear()
@@ -44,17 +40,13 @@ class MatchPlayerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addPlayer(
-      MatchPlayer player,
-      ) async {
+  Future<void> addPlayer(MatchPlayer player) async {
     await repository.addPlayer(player);
 
     await loadPlayers(player.matchId);
   }
 
-  Future<void> addPlayers(
-      List<MatchPlayer> players,
-      ) async {
+  Future<void> addPlayers(List<MatchPlayer> players) async {
     await repository.addPlayers(players);
 
     if (players.isNotEmpty) {
@@ -62,9 +54,7 @@ class MatchPlayerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> removePlayer(
-      MatchPlayer player,
-      ) async {
+  Future<void> removePlayer(MatchPlayer player) async {
     await repository.removePlayer(player.id);
 
     await loadPlayers(player.matchId);

@@ -82,18 +82,16 @@ class _TournamentsPageState extends State<TournamentsPage> {
         return const SizedBox(height: 12);
       },
 
-        itemBuilder: (_, index) {
-          final tournament = provider.tournaments[index];
+      itemBuilder: (_, index) {
+        final tournament = provider.tournaments[index];
 
-          return TournamentCard(
-            tournament: tournament,
-            onTap: () {
-              context.push(
-                '${AppRoutes.tournaments}/${tournament.id}',
-              );
-            },
-          );
-        }
+        return TournamentCard(
+          tournament: tournament,
+          onTap: () {
+            context.push('${AppRoutes.tournaments}/${tournament.id}');
+          },
+        );
+      },
     );
   }
 }

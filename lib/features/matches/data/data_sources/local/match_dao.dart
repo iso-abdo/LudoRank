@@ -6,60 +6,38 @@ import 'package:ludo_rank/core/database/tables/matches_table.dart';
 
 part 'match_dao.g.dart';
 
-@DriftAccessor(
-  tables: [
-    Matches,
-  ],
-)
-class MatchDao extends DatabaseAccessor<AppDatabase>
-    with _$MatchDaoMixin {
-
+@DriftAccessor(tables: [Matches])
+class MatchDao extends DatabaseAccessor<AppDatabase> with _$MatchDaoMixin {
   MatchDao(super.db);
 
-
-
-  Future<MatchData?> getMatchById(
-      String id,
-      ) {
-    return (select(matches)
-      ..where((tbl) => tbl.id.equals(id)))
-        .getSingleOrNull();
+  Future<MatchData?> getMatchById(String id) {
+    return (select(
+      matches,
+    )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
   }
 
-  Future<void> insertMatch(
-      MatchesCompanion match,
-      ) {
+  Future<void> insertMatch(MatchesCompanion match) {
     return into(matches).insert(match);
   }
 
-  Future<void> insertMatches(
-      List<MatchesCompanion> companions,
-      ) async {
+  Future<void> insertMatches(List<MatchesCompanion> companions) async {
     await batch((batch) {
       batch.insertAll(matches, companions);
     });
   }
 
-  Future<bool> updateMatch(
-      MatchesCompanion match,
-      ) {
+  Future<bool> updateMatch(MatchesCompanion match) {
     return update(matches).replace(match);
   }
 
-  Future<int> deleteMatch(
-      String id,
-      ) {
-    return (delete(matches)
-      ..where((tbl) => tbl.id.equals(id)))
-        .go();
+  Future<int> deleteMatch(String id) {
+    return (delete(matches)..where((tbl) => tbl.id.equals(id))).go();
   }
 
-  Future<List<db.MatchData>> getTournamentMatches(
-      String tournamentId,
-      ) {
-    return (select(matches)
-      ..where((tbl) => tbl.tournamentId.equals(tournamentId)))
-        .get();
+  Future<List<db.MatchData>> getTournamentMatches(String tournamentId) {
+    return (select(
+      matches,
+    )..where((tbl) => tbl.tournamentId.equals(tournamentId))).get();
   }
 
   Future<List<db.MatchData>> getAllMatches() {

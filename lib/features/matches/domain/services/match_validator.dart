@@ -9,27 +9,20 @@ class MatchValidator {
     required int requiredPlayers,
   }) {
     if (selectedPlayers.length != requiredPlayers) {
-      throw Exception(
-        'عدد اللاعبين غير صحيح.',
-      );
+      throw Exception('عدد اللاعبين غير صحيح.');
     }
 
     final uniquePlayers = selectedPlayers.toSet();
 
     if (uniquePlayers.length != selectedPlayers.length) {
-      throw Exception(
-        'لا يمكن تكرار نفس اللاعب داخل المباراة.',
-      );
+      throw Exception('لا يمكن تكرار نفس اللاعب داخل المباراة.');
     }
 
-    final tournamentIds =
-    tournamentPlayers.map((e) => e.playerId).toSet();
+    final tournamentIds = tournamentPlayers.map((e) => e.playerId).toSet();
 
     for (final playerId in selectedPlayers) {
       if (!tournamentIds.contains(playerId)) {
-        throw Exception(
-          'يوجد لاعب غير مسجل داخل البطولة.',
-        );
+        throw Exception('يوجد لاعب غير مسجل داخل البطولة.');
       }
     }
   }

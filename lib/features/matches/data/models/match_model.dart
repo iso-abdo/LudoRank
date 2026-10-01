@@ -20,9 +20,7 @@ class MatchModel extends Match {
       tournamentId: row.tournamentId,
       //playersCount: 0,  سيتم حسابها من MatchPlayers
       playersCount: row.playersCount,
-      status: MatchStatus.values.firstWhere(
-            (e) => e.name == row.status,
-      ),
+      status: MatchStatus.values.firstWhere((e) => e.name == row.status),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     );
@@ -44,6 +42,7 @@ class MatchModel extends Match {
       id: Value(id),
       tournamentId: Value(tournamentId),
       matchNumber: const Value(0),
+      playersCount: Value(playersCount),
       status: Value(status.name),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),

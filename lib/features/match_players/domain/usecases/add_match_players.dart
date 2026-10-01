@@ -6,9 +6,7 @@ class AddMatchPlayers {
 
   AddMatchPlayers(this.repository);
 
-  Future<void> call(
-      List<MatchPlayer> players,
-      ) {
+  Future<void> call(List<MatchPlayer> players) {
     return repository.addPlayers(players);
   }
 }

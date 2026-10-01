@@ -7,23 +7,12 @@ import 'package:ludo_rank/core/database/tables/tournaments_table.dart';
 
 part 'home_dao.g.dart';
 
-@DriftAccessor(
-  tables: [
-    Players,
-    Tournaments,
-    Matches,
-  ],
-)
-class HomeDao extends DatabaseAccessor<AppDatabase>
-    with _$HomeDaoMixin {
-
+@DriftAccessor(tables: [Players, Tournaments, Matches])
+class HomeDao extends DatabaseAccessor<AppDatabase> with _$HomeDaoMixin {
   HomeDao(super.db);
 
   Future<int> getPlayersCount() async {
-    final query = selectOnly(players)
-      ..addColumns([
-        players.id.count(),
-      ]);
+    final query = selectOnly(players)..addColumns([players.id.count()]);
 
     final row = await query.getSingle();
 
@@ -31,10 +20,7 @@ class HomeDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<int> getTournamentsCount() async {
-    final query = selectOnly(tournaments)
-      ..addColumns([
-        tournaments.id.count(),
-      ]);
+    final query = selectOnly(tournaments)..addColumns([tournaments.id.count()]);
 
     final row = await query.getSingle();
 
@@ -42,10 +28,7 @@ class HomeDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<int> getMatchesCount() async {
-    final query = selectOnly(matches)
-      ..addColumns([
-        matches.id.count(),
-      ]);
+    final query = selectOnly(matches)..addColumns([matches.id.count()]);
 
     final row = await query.getSingle();
 
@@ -54,12 +37,8 @@ class HomeDao extends DatabaseAccessor<AppDatabase>
 
   Future<int> getFinishedTournamentsCount() async {
     final query = selectOnly(tournaments)
-      ..addColumns([
-        tournaments.id.count(),
-      ])
-      ..where(
-        tournaments.status.equals('finished'),
-      );
+      ..addColumns([tournaments.id.count()])
+      ..where(tournaments.status.equals('finished'));
 
     final row = await query.getSingle();
 

@@ -63,19 +63,14 @@ class MatchGameService {
     final match = await matchRepository.getById(matchId);
 
     if (match == null) {
-      throw StateError(
-        'المباراة $matchId غير موجودة.',
-      );
+      throw StateError('المباراة $matchId غير موجودة.');
     }
 
     if (match.status != MatchStatus.pending) {
-      throw StateError(
-        'لا يمكن بدء المباراة إلا إذا كانت حالتها Pending.',
-      );
+      throw StateError('لا يمكن بدء المباراة إلا إذا كانت حالتها Pending.');
     }
 
-    final matchPlayers =
-    await matchPlayerRepository.getMatchPlayers(matchId);
+    final matchPlayers = await matchPlayerRepository.getMatchPlayers(matchId);
 
     _validateMatchPlayers(
       match: match,
@@ -88,14 +83,9 @@ class MatchGameService {
       playerNames: playerNames,
     );
 
-    final initialState = LudoGameState.initial(
-      players: ludoPlayers,
-    );
+    final initialState = LudoGameState.initial(players: ludoPlayers);
 
-    final engine = LudoGameEngine(
-      initialState: initialState,
-      random: random,
-    );
+    final engine = LudoGameEngine(initialState: initialState, random: random);
 
     engine.startGame();
 
@@ -104,9 +94,7 @@ class MatchGameService {
       updatedAt: DateTime.now(),
     );
 
-    await matchRepository.update(
-      playingMatch,
-    );
+    await matchRepository.update(playingMatch);
 
     return MatchGameSession(
       match: playingMatch,
@@ -118,9 +106,7 @@ class MatchGameService {
   /// Returns the current GameResult from the running session.
   ///
   /// This method does not persist anything.
-  GameResult getResult(
-      MatchGameSession session,
-      ) {
+  GameResult getResult(MatchGameSession session) {
     return session.result;
   }
 
@@ -128,21 +114,14 @@ class MatchGameService {
   /// the current LudoGameEngine.
   ///
   /// The engine MUST already be finished.
-  Future<List<MatchPlayer>> completeMatch(
-      MatchGameSession session,
-      ) async {
+  Future<List<MatchPlayer>> completeMatch(MatchGameSession session) async {
     if (!session.isFinished) {
-      throw StateError(
-        'لا يمكن إنهاء Match قبل انتهاء LudoGameEngine.',
-      );
+      throw StateError('لا يمكن إنهاء Match قبل انتهاء LudoGameEngine.');
     }
 
     final result = session.result;
 
-    return completeMatchFromResult(
-      session: session,
-      result: result,
-    );
+    return completeMatchFromResult(session: session, result: result);
   }
 
   /// Persists an already completed GameResult.
@@ -162,37 +141,28 @@ class MatchGameService {
     required GameResult result,
   }) async {
     if (!result.isFinished) {
-      throw StateError(
-        'GameResult ليس مكتملًا.',
-      );
+      throw StateError('GameResult ليس مكتملًا.');
     }
 
-   /// final match = session.match;
+    /// final match = session.match;
 
     ///if (match.status == MatchStatus.finished) {
-     /// throw StateError(
-       /// 'المباراة تم إنهاؤها بالفعل.',
-     /// );
-   /// }
+    /// throw StateError(
+    /// 'المباراة تم إنهاؤها بالفعل.',
+    /// );
+    /// }
     ///
-    final match = await matchRepository.getById(
-      session.match.id,
-    );
+    final match = await matchRepository.getById(session.match.id);
 
     if (match == null) {
-      throw StateError(
-        'المباراة ${session.match.id} غير موجودة.',
-      );
+      throw StateError('المباراة ${session.match.id} غير موجودة.');
     }
 
     if (match.status != MatchStatus.playing) {
-      throw StateError(
-        'لا يمكن إنهاء المباراة إلا إذا كانت حالتها Playing.',
-      );
+      throw StateError('لا يمكن إنهاء المباراة إلا إذا كانت حالتها Playing.');
     }
 
-    final storedMatchPlayers =
-    await matchPlayerRepository.getMatchPlayers(
+    final storedMatchPlayers = await matchPlayerRepository.getMatchPlayers(
       match.id,
     );
 
@@ -205,15 +175,10 @@ class MatchGameService {
     final updatedPlayers = <MatchPlayer>[];
 
     for (final matchPlayer in storedMatchPlayers) {
-      final playerResult =
-      result.getPlayerResult(
-        matchPlayer.playerId,
-      );
+      final playerResult = result.getPlayerResult(matchPlayer.playerId);
 
       if (playerResult == null) {
-        throw StateError(
-          'لا توجد نتيجة للاعب ${matchPlayer.playerId}.',
-        );
+        throw StateError('لا توجد نتيجة للاعب ${matchPlayer.playerId}.');
       }
 
       final points = pointsCalculator.calculate(
@@ -230,22 +195,16 @@ class MatchGameService {
       );
     }
 
-    await matchPlayerRepository.updateMatchPlayers(
-      updatedPlayers,
-    );
+    await matchPlayerRepository.updateMatchPlayers(updatedPlayers);
 
     final finishedMatch = match.copyWith(
       status: MatchStatus.finished,
       updatedAt: DateTime.now(),
     );
 
-    await matchRepository.update(
-      finishedMatch,
-    );
+    await matchRepository.update(finishedMatch);
 
-    return List.unmodifiable(
-      updatedPlayers,
-    );
+    return List.unmodifiable(updatedPlayers);
   }
 
   List<LudoPlayer> _buildLudoPlayers({
@@ -253,41 +212,30 @@ class MatchGameService {
     required Map<String, String> playerNames,
   }) {
     final sortedPlayers = [...matchPlayers]
-      ..sort(
-            (a, b) => a.seat.compareTo(b.seat),
-      );
+      ..sort((a, b) => a.seat.compareTo(b.seat));
 
     return sortedPlayers
         .map(
           (matchPlayer) => LudoPlayer(
-        id: 'ludo-${matchPlayer.playerId}',
-        playerId: matchPlayer.playerId,
-        name: playerNames[matchPlayer.playerId]!,
-        color: _colorForSeat(
-          matchPlayer.seat,
-        ),
-        seat: matchPlayer.seat,
-        tokens: _createInitialTokens(
-          playerId: matchPlayer.playerId,
-        ),
-      ),
-    )
+            id: 'ludo-${matchPlayer.playerId}',
+            playerId: matchPlayer.playerId,
+            name: playerNames[matchPlayer.playerId]!,
+            color: _colorForSeat(matchPlayer.seat),
+            seat: matchPlayer.seat,
+            tokens: _createInitialTokens(playerId: matchPlayer.playerId),
+          ),
+        )
         .toList(growable: false);
   }
 
-  List<LudoToken> _createInitialTokens({
-    required String playerId,
-  }) {
+  List<LudoToken> _createInitialTokens({required String playerId}) {
     return List.generate(
       4,
-          (index) => LudoToken(
+      (index) => LudoToken(
         id: '$playerId-token-$index',
         playerId: playerId,
         tokenIndex: index,
-        position: const Position(
-          row: 0,
-          column: 0,
-        ),
+        position: const Position(row: 0, column: 0),
         positionInPath: -1,
         state: LudoTokenState.initial,
       ),
@@ -295,9 +243,7 @@ class MatchGameService {
     );
   }
 
-  LudoPlayerColor _colorForSeat(
-      int seat,
-      ) {
+  LudoPlayerColor _colorForSeat(int seat) {
     switch (seat) {
       case 1:
         return LudoPlayerColor.green;
@@ -312,9 +258,7 @@ class MatchGameService {
         return LudoPlayerColor.red;
 
       default:
-        throw ArgumentError(
-          'Seat يجب أن يكون بين 1 و 4.',
-        );
+        throw ArgumentError('Seat يجب أن يكون بين 1 و 4.');
     }
   }
 
@@ -323,17 +267,12 @@ class MatchGameService {
     required List<MatchPlayer> matchPlayers,
     required Map<String, String> playerNames,
   }) {
-    if (match.playersCount < 2 ||
-        match.playersCount > 4) {
-      throw StateError(
-        'عدد لاعبي المباراة يجب أن يكون 2 أو 3 أو 4.',
-      );
+    if (match.playersCount < 2 || match.playersCount > 4) {
+      throw StateError('عدد لاعبي المباراة يجب أن يكون 2 أو 3 أو 4.');
     }
 
     if (matchPlayers.length != match.playersCount) {
-      throw StateError(
-        'عدد MatchPlayers لا يطابق playersCount.',
-      );
+      throw StateError('عدد MatchPlayers لا يطابق playersCount.');
     }
 
     final playerIds = <String>{};
@@ -346,37 +285,22 @@ class MatchGameService {
         );
       }
 
-      if (!playerIds.add(
-        matchPlayer.playerId,
-      )) {
-        throw StateError(
-          'اللاعب ${matchPlayer.playerId} مكرر داخل المباراة.',
-        );
+      if (!playerIds.add(matchPlayer.playerId)) {
+        throw StateError('اللاعب ${matchPlayer.playerId} مكرر داخل المباراة.');
       }
 
-      if (matchPlayer.seat < 1 ||
-          matchPlayer.seat > match.playersCount) {
-        throw StateError(
-          'Seat ${matchPlayer.seat} غير صالح لهذه المباراة.',
-        );
+      if (matchPlayer.seat < 1 || matchPlayer.seat > match.playersCount) {
+        throw StateError('Seat ${matchPlayer.seat} غير صالح لهذه المباراة.');
       }
 
-      if (!seats.add(
-        matchPlayer.seat,
-      )) {
-        throw StateError(
-          'Seat ${matchPlayer.seat} مكرر.',
-        );
+      if (!seats.add(matchPlayer.seat)) {
+        throw StateError('Seat ${matchPlayer.seat} مكرر.');
       }
 
-      final name =
-      playerNames[matchPlayer.playerId];
+      final name = playerNames[matchPlayer.playerId];
 
-      if (name == null ||
-          name.trim().isEmpty) {
-        throw StateError(
-          'لا يوجد اسم للاعب ${matchPlayer.playerId}.',
-        );
+      if (name == null || name.trim().isEmpty) {
+        throw StateError('لا يوجد اسم للاعب ${matchPlayer.playerId}.');
       }
     }
   }
@@ -387,65 +311,37 @@ class MatchGameService {
     required GameResult result,
   }) {
     if (matchPlayers.length != match.playersCount) {
-      throw StateError(
-        'عدد MatchPlayers لا يطابق عدد لاعبي Match.',
-      );
+      throw StateError('عدد MatchPlayers لا يطابق عدد لاعبي Match.');
     }
 
     if (result.players.length != match.playersCount) {
-      throw StateError(
-        'GameResult لا يحتوي على ترتيب كامل للاعبين.',
-      );
+      throw StateError('GameResult لا يحتوي على ترتيب كامل للاعبين.');
     }
 
     if (!result.isFinished) {
-      throw StateError(
-        'GameResult غير مكتمل.',
-      );
+      throw StateError('GameResult غير مكتمل.');
     }
 
-    final expectedPlayerIds =
-    matchPlayers.map(
-          (player) => player.playerId,
-    );
+    final expectedPlayerIds = matchPlayers.map((player) => player.playerId);
 
-    final actualPlayerIds =
-    result.players.map(
-          (player) => player.playerId,
-    );
+    final actualPlayerIds = result.players.map((player) => player.playerId);
 
-    if (expectedPlayerIds.toSet().length !=
-        actualPlayerIds.toSet().length) {
-      throw StateError(
-        'GameResult يحتوي على لاعبين مكررين.',
-      );
+    if (expectedPlayerIds.toSet().length != actualPlayerIds.toSet().length) {
+      throw StateError('GameResult يحتوي على لاعبين مكررين.');
     }
 
-    if (!actualPlayerIds.toSet().containsAll(
-      expectedPlayerIds,
-    ) ||
-        !expectedPlayerIds.toSet().containsAll(
-          actualPlayerIds,
-        )) {
-      throw StateError(
-        'GameResult لا يطابق لاعبي المباراة.',
-      );
+    if (!actualPlayerIds.toSet().containsAll(expectedPlayerIds) ||
+        !expectedPlayerIds.toSet().containsAll(actualPlayerIds)) {
+      throw StateError('GameResult لا يطابق لاعبي المباراة.');
     }
 
-    final ranks =
-    result.players.map(
-          (player) => player.rank,
-    ).toSet();
+    final ranks = result.players.map((player) => player.rank).toSet();
 
     if (ranks.length != match.playersCount) {
-      throw StateError(
-        'رتب اللاعبين يجب أن تكون فريدة.',
-      );
+      throw StateError('رتب اللاعبين يجب أن تكون فريدة.');
     }
 
-    for (var rank = 1;
-    rank <= match.playersCount;
-    rank++) {
+    for (var rank = 1; rank <= match.playersCount; rank++) {
       if (!ranks.contains(rank)) {
         throw StateError(
           'الرتب يجب أن تبدأ من 1 وتنتهي عند ${match.playersCount}.',
@@ -455,9 +351,7 @@ class MatchGameService {
 
     for (final player in result.players) {
       if (!player.finished) {
-        throw StateError(
-          'كل لاعب في GameResult المكتمل يجب أن يكون Finished.',
-        );
+        throw StateError('كل لاعب في GameResult المكتمل يجب أن يكون Finished.');
       }
     }
   }

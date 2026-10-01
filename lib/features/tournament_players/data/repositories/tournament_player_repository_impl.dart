@@ -3,63 +3,41 @@ import 'package:ludo_rank/features/tournament_players/data/models/tournament_pla
 import 'package:ludo_rank/features/tournament_players/domain/entities/tournament_player.dart';
 import 'package:ludo_rank/features/tournament_players/domain/repositories/tournament_player_repository.dart';
 
-
-class TournamentPlayerRepositoryImpl
-    implements TournamentPlayerRepository {
+class TournamentPlayerRepositoryImpl implements TournamentPlayerRepository {
   final TournamentPlayerDao dao;
 
   TournamentPlayerRepositoryImpl(this.dao);
 
   @override
   Future<List<TournamentPlayer>> getTournamentPlayers(
-      String tournamentId,
-      ) async {
-    final rows = await dao.getTournamentPlayers(
-      tournamentId,
-    );
+    String tournamentId,
+  ) async {
+    final rows = await dao.getTournamentPlayers(tournamentId);
 
-    return rows
-        .map(
-      TournamentPlayerModel.fromDrift,
-    )
-        .toList();
+    return rows.map(TournamentPlayerModel.fromDrift).toList();
   }
 
   @override
-  Future<void> addPlayer(
-      TournamentPlayer player,
-      ) {
+  Future<void> addPlayer(TournamentPlayer player) {
     return dao.insertTournamentPlayer(
-      TournamentPlayerModel
-          .fromEntity(player)
-          .toCompanion(),
+      TournamentPlayerModel.fromEntity(player).toCompanion(),
     );
   }
 
   @override
-  Future<void> removePlayer(
-      String id,
-      ) {
+  Future<void> removePlayer(String id) {
     return dao.removePlayer(id);
   }
 
   @override
-  Future<void> removeTournamentPlayers(
-      String tournamentId,
-      ) {
-    return dao.removeTournamentPlayers(
-      tournamentId,
-    );
+  Future<void> removeTournamentPlayers(String tournamentId) {
+    return dao.removeTournamentPlayers(tournamentId);
   }
 
   @override
-  Future<void> updatePlayer(
-      TournamentPlayer player,
-      ) {
+  Future<void> updatePlayer(TournamentPlayer player) {
     return dao.updateTournamentPlayer(
-      TournamentPlayerModel
-          .fromEntity(player)
-          .toCompanion(),
+      TournamentPlayerModel.fromEntity(player).toCompanion(),
     );
   }
 }

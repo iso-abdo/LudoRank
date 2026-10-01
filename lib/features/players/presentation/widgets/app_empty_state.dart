@@ -20,10 +20,7 @@ class AppEmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 70,
-            ),
+            Icon(icon, size: 70),
             const SizedBox(height: 20),
             Text(
               title,
@@ -32,10 +29,7 @@ class AppEmptyState extends StatelessWidget {
             ),
             if (subtitle != null) ...[
               const SizedBox(height: 8),
-              Text(
-                subtitle!,
-                textAlign: TextAlign.center,
-              ),
+              Text(subtitle!, textAlign: TextAlign.center),
             ],
           ],
         ),

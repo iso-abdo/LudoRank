@@ -20,11 +20,11 @@ class MatchGameSession {
   final List<MatchPlayer> matchPlayers;
   final LudoGameEngine engine;
 
-   MatchGameSession({
+  MatchGameSession({
     required this.match,
     required List<MatchPlayer> matchPlayers,
     required this.engine,
-  }) : matchPlayers =   List.unmodifiable(matchPlayers);
+  }) : matchPlayers = List.unmodifiable(matchPlayers);
 
   /// Current runtime Ludo state.
   LudoGameState get state => engine.state;

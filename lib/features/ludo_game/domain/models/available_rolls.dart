@@ -5,9 +5,7 @@ import 'dice_roll.dart';
 class AvailableRolls extends Equatable {
   final List<DiceRoll> rolls;
 
-  const AvailableRolls({
-    this.rolls = const [],
-  });
+  const AvailableRolls({this.rolls = const []});
 
   bool get isEmpty => rolls.isEmpty;
 
@@ -16,34 +14,23 @@ class AvailableRolls extends Equatable {
   int get count => rolls.length;
 
   List<int> get values {
-    return List.unmodifiable(
-      rolls.map((roll) => roll.value),
-    );
+    return List.unmodifiable(rolls.map((roll) => roll.value));
   }
 
   bool containsSequence(int sequence) {
-    return rolls.any(
-          (roll) => roll.sequence == sequence,
-    );
+    return rolls.any((roll) => roll.sequence == sequence);
   }
 
   DiceRoll? getBySequence(int sequence) {
     try {
-      return rolls.firstWhere(
-            (roll) => roll.sequence == sequence,
-      );
+      return rolls.firstWhere((roll) => roll.sequence == sequence);
     } catch (_) {
       return null;
     }
   }
 
   AvailableRolls add(DiceRoll roll) {
-    return AvailableRolls(
-      rolls: [
-        ...rolls,
-        roll,
-      ],
-    );
+    return AvailableRolls(rolls: [...rolls, roll]);
   }
 
   AvailableRolls removeBySequence(int sequence) {
@@ -60,9 +47,7 @@ class AvailableRolls extends Equatable {
       updatedRolls.add(roll);
     }
 
-    return AvailableRolls(
-      rolls: List.unmodifiable(updatedRolls),
-    );
+    return AvailableRolls(rolls: List.unmodifiable(updatedRolls));
   }
 
   AvailableRolls clear() {
@@ -70,7 +55,5 @@ class AvailableRolls extends Equatable {
   }
 
   @override
-  List<Object?> get props => [
-    rolls,
-  ];
+  List<Object?> get props => [rolls];
 }

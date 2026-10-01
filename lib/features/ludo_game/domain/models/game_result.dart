@@ -17,10 +17,7 @@ class GameResult extends Equatable {
   /// true عندما لا يوجد لاعبون غير منتهين.
   final bool isFinished;
 
-  const GameResult({
-    required this.players,
-    required this.isFinished,
-  });
+  const GameResult({required this.players, required this.isFinished});
 
   /// نتيجة لاعب واحد حسب الترتيب.
   GamePlayerResult? getPlayerResult(String playerId) {
@@ -37,10 +34,7 @@ class GameResult extends Equatable {
   int get rankedPlayersCount => players.length;
 
   @override
-  List<Object?> get props => [
-    players,
-    isFinished,
-  ];
+  List<Object?> get props => [players, isFinished];
 }
 
 class GamePlayerResult extends Equatable {
@@ -65,9 +59,5 @@ class GamePlayerResult extends Equatable {
   });
 
   @override
-  List<Object?> get props => [
-    playerId,
-    rank,
-    finished,
-  ];
+  List<Object?> get props => [playerId, rank, finished];
 }

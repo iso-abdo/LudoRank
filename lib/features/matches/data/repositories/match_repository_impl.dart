@@ -11,21 +11,14 @@ class MatchRepositoryImpl implements MatchRepository {
   Future<List<Match>> getAllMatches() async {
     final rows = await dao.getAllMatches();
 
-    return rows
-        .map(MatchModel.fromDrift)
-        .toList();
+    return rows.map(MatchModel.fromDrift).toList();
   }
-  @override
-  Future<List<Match>> getTournamentMatches(
-      String tournamentId,
-      ) async {
-    final rows = await dao.getTournamentMatches(
-      tournamentId,
-    );
 
-    return rows
-        .map(MatchModel.fromDrift)
-        .toList();
+  @override
+  Future<List<Match>> getTournamentMatches(String tournamentId) async {
+    final rows = await dao.getTournamentMatches(tournamentId);
+
+    return rows.map(MatchModel.fromDrift).toList();
   }
 
   @override
@@ -40,33 +33,21 @@ class MatchRepositoryImpl implements MatchRepository {
   }
 
   @override
-  Future<void> create(
-      Match match,
-      ) async {
+  Future<void> create(Match match) async {
     final model = MatchModel.fromEntity(match);
 
-    await dao.insertMatch(
-      model.toCompanion(),
-    );
+    await dao.insertMatch(model.toCompanion());
   }
 
   @override
-  Future<void> update(
-      Match match,
-      ) async {
+  Future<void> update(Match match) async {
     final model = MatchModel.fromEntity(match);
 
-    await dao.updateMatch(
-      model.toCompanion(),
-    );
+    await dao.updateMatch(model.toCompanion());
   }
 
   @override
-  Future<void> delete(
-      String id,
-      ) async {
+  Future<void> delete(String id) async {
     await dao.deleteMatch(id);
   }
-
-
 }

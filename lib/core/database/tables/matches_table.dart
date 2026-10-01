@@ -8,8 +8,7 @@ class Matches extends Table {
   TextColumn get id => text()();
 
   /// Tournament ID
-  TextColumn get tournamentId =>
-      text().references(Tournaments, #id)();
+  TextColumn get tournamentId => text().references(Tournaments, #id)();
 
   /// Match number داخل البطولة
   IntColumn get matchNumber => integer()();
@@ -21,22 +20,21 @@ class Matches extends Table {
   TextColumn get status => text()();
 
   /// Created At
-  DateTimeColumn get createdAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   /// Updated At
-  DateTimeColumn get updatedAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   /// Number of players
-  IntColumn get playersCount =>
-      integer().withDefault(const Constant(0))();
+  IntColumn get playersCount => integer().withDefault(const Constant(0))();
 
   @override
   Set<Column> get primaryKey => {id};
   // داخل كلاس Matches
   List<Index> get indexes => [
-    Index('idx_matches_tournament',
-        'CREATE INDEX idx_matches_tournament ON matches (tournament_id)'),
+    Index(
+      'idx_matches_tournament',
+      'CREATE INDEX idx_matches_tournament ON matches (tournament_id)',
+    ),
   ];
 }

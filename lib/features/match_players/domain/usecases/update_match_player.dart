@@ -6,8 +6,7 @@ class UpdateMatchPlayer {
 
   UpdateMatchPlayer(this.repository);
 
-  Future<void> call(
-      MatchPlayer player,
-      ) {
-    return repository.updateMatchPlayer(player);  }
+  Future<void> call(MatchPlayer player) {
+    return repository.updateMatchPlayer(player);
+  }
 }

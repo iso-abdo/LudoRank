@@ -17,10 +17,5 @@ class TournamentPlayer extends Equatable {
   });
 
   @override
-  List<Object?> get props => [
-    id,
-    tournamentId,
-    playerId,
-    joinedAt,
-  ];
+  List<Object?> get props => [id, tournamentId, playerId, joinedAt];
 }

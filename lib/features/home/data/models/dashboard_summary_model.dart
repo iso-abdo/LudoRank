@@ -8,9 +8,7 @@ class DashboardSummaryModel extends DashboardSummary {
     required super.finishedTournamentsCount,
   });
 
-  factory DashboardSummaryModel.fromEntity(
-      DashboardSummary entity,
-      ) {
+  factory DashboardSummaryModel.fromEntity(DashboardSummary entity) {
     return DashboardSummaryModel(
       playersCount: entity.playersCount,
       tournamentsCount: entity.tournamentsCount,

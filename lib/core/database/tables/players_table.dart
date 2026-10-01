@@ -11,8 +11,7 @@ class Players extends Table {
 
   TextColumn get notes => text().nullable()();
 
-  BoolColumn get isActive =>
-      boolean().withDefault(const Constant(true))();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 
   DateTimeColumn get createdAt => dateTime()();
 

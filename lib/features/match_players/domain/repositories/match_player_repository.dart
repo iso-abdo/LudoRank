@@ -16,9 +16,4 @@ abstract class MatchPlayerRepository {
   Future<void> removePlayer(String id);
 
   Future<void> removeMatchPlayers(String matchId);
-
-
-
-
 }
-

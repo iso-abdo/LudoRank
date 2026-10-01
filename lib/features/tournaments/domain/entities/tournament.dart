@@ -1,12 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum TournamentStatus {
-  draft,
-  ready,
-  running,
-  finished,
-  cancelled,
-}
+enum TournamentStatus { draft, ready, running, finished, cancelled }
 
 class Tournament extends Equatable {
   final String id;
@@ -49,12 +43,5 @@ class Tournament extends Equatable {
   }
 
   @override
-  List<Object?> get props => [
-    id,
-    name,
-    status,
-    rounds,
-    createdAt,
-    updatedAt,
-  ];
+  List<Object?> get props => [id, name, status, rounds, createdAt, updatedAt];
 }

@@ -1,6 +1,1 @@
-enum MatchStatus {
-  pending,
-  playing,
-  finished,
-  cancelled,
-}
+enum MatchStatus { pending, playing, finished, cancelled }

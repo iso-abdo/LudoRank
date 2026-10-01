@@ -21,15 +21,9 @@ class AppScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        centerTitle: true,
-        actions: actions,
-      ),
+      appBar: AppBar(title: Text(title), centerTitle: true, actions: actions),
       drawer: drawer,
-      body: SafeArea(
-        child: body,
-      ),
+      body: SafeArea(child: body),
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
     );

@@ -69,9 +69,7 @@ class _AddPlayerDialogState extends State<AddPlayerDialog> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'اسم اللاعب',
-                ),
+                decoration: const InputDecoration(labelText: 'اسم اللاعب'),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'الاسم مطلوب';
@@ -85,18 +83,14 @@ class _AddPlayerDialogState extends State<AddPlayerDialog> {
 
               TextFormField(
                 controller: _nicknameController,
-                decoration: const InputDecoration(
-                  labelText: 'اللقب',
-                ),
+                decoration: const InputDecoration(labelText: 'اللقب'),
               ),
 
               const SizedBox(height: 16),
 
               TextFormField(
                 controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'ملاحظات',
-                ),
+                decoration: const InputDecoration(labelText: 'ملاحظات'),
                 maxLines: 3,
               ),
             ],
@@ -112,10 +106,7 @@ class _AddPlayerDialogState extends State<AddPlayerDialog> {
           child: const Text('إلغاء'),
         ),
 
-        ElevatedButton(
-          onPressed: _save,
-          child: const Text('حفظ'),
-        ),
+        ElevatedButton(onPressed: _save, child: const Text('حفظ')),
       ],
     );
   }

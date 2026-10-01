@@ -36,95 +36,84 @@ class _HomePageState extends State<HomePage> {
           body: provider.isLoading
               ? const AppLoading()
               : SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
 
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.emoji_events),
+                        label: const Text('إنشاء بطولة جديدة'),
+                      ),
 
-                ElevatedButton.icon(
-                  onPressed: () {
+                      const SizedBox(height: 24),
 
-                  },
-                  icon: const Icon(Icons.emoji_events),
-                  label: const Text(
-                    'إنشاء بطولة جديدة',
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 1.3,
+
+                        children: [
+                          DashboardCard(
+                            icon: Icons.people,
+                            title: 'اللاعبون',
+                            value: provider.playersCount,
+                            onTap: () {
+                              context.push(AppRoutes.players);
+                            },
+                          ),
+
+                          DashboardCard(
+                            icon: Icons.emoji_events,
+                            title: 'البطولات',
+                            value: provider.tournamentsCount,
+                            onTap: () {
+                              context.push(AppRoutes.tournaments);
+                            },
+                          ),
+
+                          DashboardCard(
+                            icon: Icons.sports_esports,
+                            title: 'المباريات',
+                            value: provider.matchesCount,
+                          ),
+
+                          DashboardCard(
+                            icon: Icons.workspace_premium,
+                            title: 'بطولات منتهية',
+                            value: provider.finishedTournamentsCount,
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'آخر بطولة',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              const Text('لا توجد بطولة حالياً'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-
-                const SizedBox(height: 24),
-
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.3,
-
-                  children: [
-
-                    DashboardCard(
-                      icon: Icons.people,
-                      title: 'اللاعبون',
-                      value: provider.playersCount,
-                      onTap: () {
-                        context.push(AppRoutes.players);
-                      },
-                    ),
-
-                    DashboardCard(
-                      icon: Icons.emoji_events,
-                      title: 'البطولات',
-                      value: provider.tournamentsCount,
-                      onTap: () {
-                        context.push(AppRoutes.tournaments);},
-                    ),
-
-                    DashboardCard(
-                      icon: Icons.sports_esports,
-                      title: 'المباريات',
-                      value: provider.matchesCount,
-                    ),
-
-                    DashboardCard(
-                      icon: Icons.workspace_premium,
-                      title: 'بطولات منتهية',
-                      value: provider.finishedTournamentsCount,
-                    ),
-
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-
-                        Text(
-                          'آخر بطولة',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        const Text(
-                          'لا توجد بطولة حالياً',
-                        ),
-
-                      ],
-                    ),
-                  ),
-                ),
-
-              ],
-            ),
-          ),
         );
       },
     );

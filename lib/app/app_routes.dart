@@ -7,7 +7,6 @@ class AppRoutes {
 
   static const String tournaments = '/tournaments';
 
-
   static const String matches = '/matches';
 
   static const String leaderboard = '/leaderboard';
@@ -15,4 +14,5 @@ class AppRoutes {
   static const String statistics = '/statistics';
 
   static const String settings = '/settings';
-  static const tournamentDetails = '/tournaments/:id';}
+  static const tournamentDetails = '/tournaments/:id';
+}

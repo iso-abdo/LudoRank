@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:ludo_rank/features/tournaments/domain/entities/tournament.dart';
 
 extension TournamentStatusExtension on TournamentStatus {
-
   String get title {
     switch (this) {
       case TournamentStatus.draft:
@@ -41,6 +40,7 @@ extension TournamentStatusExtension on TournamentStatus {
         return Colors.red;
     }
   }
+
   IconData get icon {
     switch (this) {
       case TournamentStatus.draft:
@@ -59,5 +59,4 @@ extension TournamentStatusExtension on TournamentStatus {
         return Icons.cancel;
     }
   }
-
 }

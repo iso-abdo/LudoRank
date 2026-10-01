@@ -9,12 +9,10 @@ class CreateTournamentDialog extends StatefulWidget {
   const CreateTournamentDialog({super.key});
 
   @override
-  State<CreateTournamentDialog> createState() =>
-      _CreateTournamentDialogState();
+  State<CreateTournamentDialog> createState() => _CreateTournamentDialogState();
 }
 
-class _CreateTournamentDialogState
-    extends State<CreateTournamentDialog> {
+class _CreateTournamentDialogState extends State<CreateTournamentDialog> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
@@ -39,9 +37,7 @@ class _CreateTournamentDialogState
       updatedAt: DateTime.now(),
     );
 
-    await context
-        .read<TournamentProvider>()
-        .addTournament(tournament);
+    await context.read<TournamentProvider>().addTournament(tournament);
 
     if (mounted) {
       Navigator.pop(context);
@@ -60,12 +56,9 @@ class _CreateTournamentDialogState
           mainAxisSize: MainAxisSize.min,
 
           children: [
-
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: "اسم البطولة",
-              ),
+              decoration: const InputDecoration(labelText: "اسم البطولة"),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return "أدخل اسم البطولة";
@@ -79,9 +72,7 @@ class _CreateTournamentDialogState
             DropdownButtonFormField<int>(
               initialValue: _rounds,
 
-              decoration: const InputDecoration(
-                labelText: "عدد الجولات",
-              ),
+              decoration: const InputDecoration(labelText: "عدد الجولات"),
 
               items: const [
                 DropdownMenuItem(value: 1, child: Text("1")),
@@ -102,23 +93,17 @@ class _CreateTournamentDialogState
                 });
               },
             ),
-
           ],
         ),
       ),
 
       actions: [
-
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text("إلغاء"),
         ),
 
-        FilledButton(
-          onPressed: _save,
-          child: const Text("إنشاء"),
-        ),
-
+        FilledButton(onPressed: _save, child: const Text("إنشاء")),
       ],
     );
   }

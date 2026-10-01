@@ -4,11 +4,7 @@ class AppErrorWidget extends StatelessWidget {
   final String message;
   final VoidCallback? onRetry;
 
-  const AppErrorWidget({
-    super.key,
-    required this.message,
-    this.onRetry,
-  });
+  const AppErrorWidget({super.key, required this.message, this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -20,18 +16,11 @@ class AppErrorWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
 
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 72,
-              color: Colors.red,
-            ),
+            const Icon(Icons.error_outline, size: 72, color: Colors.red),
 
             const SizedBox(height: 16),
 
-            Text(
-              "حدث خطأ",
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text("حدث خطأ", style: Theme.of(context).textTheme.titleLarge),
 
             const SizedBox(height: 8),
 

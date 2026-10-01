@@ -6,7 +6,7 @@ import 'package:ludo_rank/core/dependency_injection/injection_container.dart';
 import 'package:ludo_rank/features/matches/domain/entities/match.dart';
 import 'package:ludo_rank/features/matches/domain/entities/match_status.dart';
 import 'package:ludo_rank/features/match_players/domain/entities/match_player.dart';
-import 'package:ludo_rank/features/matches/domain/usecases/create_match.dart';
+import 'package:ludo_rank/features/matches/domain/Use-cases/create_match.dart';
 
 import 'package:ludo_rank/features/tournament_players/presentation/providers/tournament_player_provider.dart';
 import 'package:ludo_rank/features/players/presentation/providers/player_provider.dart';
@@ -15,25 +15,18 @@ import 'package:ludo_rank/shared/widgets/app_scaffold.dart';
 class CreateMatchPage extends StatefulWidget {
   final String tournamentId;
 
-  const CreateMatchPage({
-    super.key,
-    required this.tournamentId,
-  });
+  const CreateMatchPage({super.key, required this.tournamentId});
 
   @override
   State<CreateMatchPage> createState() => _CreateMatchPageState();
 }
 
-
-
 class _CreateMatchPageState extends State<CreateMatchPage> {
   final TournamentPlayerProvider tournamentPlayerProvider =
       sl<TournamentPlayerProvider>();
 
-  final CreateMatch createMatch =
-      sl<CreateMatch>();
-  final PlayerProvider playerProvider =
-      sl<PlayerProvider>();
+  final CreateMatch createMatch = sl<CreateMatch>();
+  final PlayerProvider playerProvider = sl<PlayerProvider>();
   final Uuid uuid = const Uuid();
 
   int? _playersCount;
@@ -46,11 +39,8 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
   void initState() {
     super.initState();
 
-    tournamentPlayerProvider.loadPlayers(
-      widget.tournamentId,
-    );
+    tournamentPlayerProvider.loadPlayers(widget.tournamentId);
     playerProvider.loadPlayers();
-
   }
 
   void _selectPlayersCount(int count) {
@@ -109,8 +99,7 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
         updatedAt: now,
       );
 
-      final selectedPlayers =
-      _selectedPlayerIds.toList();
+      final selectedPlayers = _selectedPlayerIds.toList();
 
       final matchPlayers = <MatchPlayer>[];
 
@@ -128,20 +117,15 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
         );
       }
 
-      await createMatch(
-        match: match,
-        players: matchPlayers,
-      );
+      await createMatch(match: match, players: matchPlayers);
 
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم إنشاء المباراة بنجاح'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم إنشاء المباراة بنجاح')));
 
       Navigator.pop(context, true);
     } catch (e) {
@@ -149,13 +133,9 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'فشل إنشاء المباراة: $e',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('فشل إنشاء المباراة: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -173,42 +153,27 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
         listenable: tournamentPlayerProvider,
         builder: (context, _) {
           if (tournamentPlayerProvider.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (tournamentPlayerProvider.error != null) {
-            return Center(
-              child: Text(
-                tournamentPlayerProvider.error!,
-              ),
-            );
+            return Center(child: Text(tournamentPlayerProvider.error!));
           }
 
-          final players =
-              tournamentPlayerProvider.players;
+          final players = tournamentPlayerProvider.players;
 
           if (players.isEmpty) {
-            return const Center(
-              child: Text(
-                'لا يوجد لاعبين داخل البطولة',
-              ),
-            );
+            return const Center(child: Text('لا يوجد لاعبين داخل البطولة'));
           }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
                   'عدد اللاعبين في المباراة',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
 
                 const SizedBox(height: 12),
@@ -218,8 +183,7 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
                     Expanded(
                       child: _PlayersCountButton(
                         count: 2,
-                        selected:
-                        _playersCount == 2,
+                        selected: _playersCount == 2,
                         onTap: () {
                           _selectPlayersCount(2);
                         },
@@ -229,8 +193,7 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
                     Expanded(
                       child: _PlayersCountButton(
                         count: 3,
-                        selected:
-                        _playersCount == 3,
+                        selected: _playersCount == 3,
                         onTap: () {
                           _selectPlayersCount(3);
                         },
@@ -240,8 +203,7 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
                     Expanded(
                       child: _PlayersCountButton(
                         count: 4,
-                        selected:
-                        _playersCount == 4,
+                        selected: _playersCount == 4,
                         onTap: () {
                           _selectPlayersCount(4);
                         },
@@ -269,71 +231,52 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
 
                   const SizedBox(height: 12),
 
-                  ...players.map(
-                        (tournamentPlayer) {
-                      final playerId =
-                          tournamentPlayer.playerId;
+                  ...players.map((tournamentPlayer) {
+                    final playerId = tournamentPlayer.playerId;
 
-                      final selected =
-                      _selectedPlayerIds
-                          .contains(playerId);
+                    final selected = _selectedPlayerIds.contains(playerId);
 
-                      final disabled =
-                          !selected &&
-                              _selectedPlayerIds.length >=
-                                  _playersCount!;
+                    final disabled =
+                        !selected &&
+                        _selectedPlayerIds.length >= _playersCount!;
 
-                      return Card(
-                        child: CheckboxListTile(
-                          value: selected,
-                          onChanged: disabled
-                              ? null
-                              : (_) {
-                            _togglePlayer(
-                              playerId,
-                            );
-                          },
-                          title: Text(
-                            playerProvider.getPlayerName(playerId),
-                          ),
-                          subtitle: Text(
-                            'المقعد: ${selected ? _getSeat(playerId) : '-'}',
-                          ),
+                    return Card(
+                      child: CheckboxListTile(
+                        value: selected,
+                        onChanged: disabled
+                            ? null
+                            : (_) {
+                                _togglePlayer(playerId);
+                              },
+                        title: Text(playerProvider.getPlayerName(playerId)),
+                        subtitle: Text(
+                          'المقعد: ${selected ? _getSeat(playerId) : '-'}',
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  }),
 
                   const SizedBox(height: 20),
 
                   Text(
                     'تم اختيار ${_selectedPlayerIds.length} '
-                        'من $_playersCount',
+                    'من $_playersCount',
                     textAlign: TextAlign.center,
                   ),
 
                   const SizedBox(height: 16),
 
                   ElevatedButton.icon(
-                    onPressed: _canCreateMatch
-                        ? _createNewMatch
-                        : null,
+                    onPressed: _canCreateMatch ? _createNewMatch : null,
                     icon: _isCreating
                         ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child:
-                      CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
-                    )
-                        : const Icon(
-                      Icons.add,
-                    ),
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.add),
                     label: Text(
-                      _isCreating
-                          ? 'جاري إنشاء المباراة...'
-                          : 'إنشاء المباراة',
+                      _isCreating ? 'جاري إنشاء المباراة...' : 'إنشاء المباراة',
                     ),
                   ),
                 ],
@@ -346,9 +289,7 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
   }
 
   int _getSeat(String playerId) {
-    final index = _selectedPlayerIds
-        .toList()
-        .indexOf(playerId);
+    final index = _selectedPlayerIds.toList().indexOf(playerId);
 
     return index == -1 ? 0 : index + 1;
   }
@@ -370,13 +311,9 @@ class _PlayersCountButton extends StatelessWidget {
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(
-          vertical: 16,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 16),
       ),
-      child: Text(
-        '$count لاعبين',
-      ),
+      child: Text('$count لاعبين'),
     );
   }
 }

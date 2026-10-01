@@ -11,19 +11,13 @@ import 'package:ludo_rank/features/players/presentation/providers/player_provide
 class SelectPlayersPage extends StatefulWidget {
   final String tournamentId;
 
-  const SelectPlayersPage({
-    super.key,
-    required this.tournamentId,
-  });
+  const SelectPlayersPage({super.key, required this.tournamentId});
 
   @override
-  State<SelectPlayersPage> createState() =>
-      _SelectPlayersPageState();
+  State<SelectPlayersPage> createState() => _SelectPlayersPageState();
 }
 
-class _SelectPlayersPageState
-    extends State<SelectPlayersPage> {
-
+class _SelectPlayersPageState extends State<SelectPlayersPage> {
   final Set<String> selectedPlayers = {};
 
   @override
@@ -39,7 +33,6 @@ class _SelectPlayersPageState
   Widget build(BuildContext context) {
     return Consumer<PlayerProvider>(
       builder: (context, provider, child) {
-
         return AppScaffold(
           title: "اختيار اللاعبين",
 
@@ -49,10 +42,7 @@ class _SelectPlayersPageState
     );
   }
 
-  Widget _buildBody(
-      PlayerProvider provider,
-      ) {
-
+  Widget _buildBody(PlayerProvider provider) {
     if (provider.isLoading) {
       return const AppLoading();
     }
@@ -67,41 +57,30 @@ class _SelectPlayersPageState
 
     return Column(
       children: [
-
         Expanded(
           child: ListView.builder(
             itemCount: provider.players.length,
 
             itemBuilder: (_, index) {
+              final Player player = provider.players[index];
 
-              final Player player =
-              provider.players[index];
-
-              final selected =
-              selectedPlayers.contains(player.id);
+              final selected = selectedPlayers.contains(player.id);
 
               return CheckboxListTile(
-
                 value: selected,
 
                 title: Text(player.name),
 
-                subtitle: Text(
-                  player.nickname ?? "",
-                ),
+                subtitle: Text(player.nickname ?? ""),
 
                 onChanged: (_) {
-
                   setState(() {
-
                     if (selected) {
                       selectedPlayers.remove(player.id);
                     } else {
                       selectedPlayers.add(player.id);
                     }
-
                   });
-
                 },
               );
             },
@@ -113,25 +92,16 @@ class _SelectPlayersPageState
             padding: const EdgeInsets.all(16),
 
             child: FilledButton.icon(
-
               onPressed: () {
-
-                Navigator.pop(
-                  context,
-                  selectedPlayers.toList(),
-                );
-
+                Navigator.pop(context, selectedPlayers.toList());
               },
 
               icon: const Icon(Icons.check),
 
-              label: Text(
-                "حفظ (${selectedPlayers.length})",
-              ),
+              label: Text("حفظ (${selectedPlayers.length})"),
             ),
           ),
         ),
-
       ],
     );
   }

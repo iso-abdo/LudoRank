@@ -12,41 +12,31 @@ class ContinueTournament {
   final TournamentValidator validator;
 
   ContinueTournament(
-      this.tournamentRepository,
-      this.tournamentPlayerRepository,
-      this.validator,
-      );
+    this.tournamentRepository,
+    this.tournamentPlayerRepository,
+    this.validator,
+  );
 
-  Future<void> call(
-      String tournamentId,
-      ) async {
-    final tournament =
-    await tournamentRepository.getTournamentById(
+  Future<void> call(String tournamentId) async {
+    final tournament = await tournamentRepository.getTournamentById(
       tournamentId,
     );
 
     if (tournament == null) {
-      throw Exception(
-        'Tournament not found',
-      );
+      throw Exception('Tournament not found');
     }
 
-    final players =
-    await tournamentPlayerRepository
-        .getTournamentPlayers(
+    final players = await tournamentPlayerRepository.getTournamentPlayers(
       tournamentId,
     );
 
     validator.validatePlayers(players);
 
-    final updatedTournament =
-    tournament.copyWith(
+    final updatedTournament = tournament.copyWith(
       status: TournamentStatus.running,
       updatedAt: DateTime.now(),
     );
 
-    await tournamentRepository.updateTournament(
-      updatedTournament,
-    );
+    await tournamentRepository.updateTournament(updatedTournament);
   }
 }

@@ -30,9 +30,7 @@ class PlayerProvider extends ChangeNotifier {
 
   Player? getPlayerById(String id) {
     try {
-      return _players.firstWhere(
-            (player) => player.id == id,
-      );
+      return _players.firstWhere((player) => player.id == id);
     } catch (_) {
       return null;
     }

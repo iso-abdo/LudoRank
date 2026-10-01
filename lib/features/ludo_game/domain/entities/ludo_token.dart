@@ -2,13 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import 'position.dart';
 
-enum LudoTokenState {
-  initial,
-  normal,
-  safe,
-  safeInPair,
-  finished,
-}
+enum LudoTokenState { initial, normal, safe, safeInPair, finished }
 
 class LudoToken extends Equatable {
   final String id;
@@ -41,15 +35,12 @@ class LudoToken extends Equatable {
     required this.state,
   });
 
-  bool get isFinished =>
-      state == LudoTokenState.finished;
+  bool get isFinished => state == LudoTokenState.finished;
 
-  bool get isInitial =>
-      state == LudoTokenState.initial;
+  bool get isInitial => state == LudoTokenState.initial;
 
   bool get isSafe =>
-      state == LudoTokenState.safe ||
-          state == LudoTokenState.safeInPair;
+      state == LudoTokenState.safe || state == LudoTokenState.safeInPair;
 
   LudoToken copyWith({
     String? id,
@@ -64,8 +55,7 @@ class LudoToken extends Equatable {
       playerId: playerId ?? this.playerId,
       tokenIndex: tokenIndex ?? this.tokenIndex,
       position: position ?? this.position,
-      positionInPath:
-      positionInPath ?? this.positionInPath,
+      positionInPath: positionInPath ?? this.positionInPath,
       state: state ?? this.state,
     );
   }

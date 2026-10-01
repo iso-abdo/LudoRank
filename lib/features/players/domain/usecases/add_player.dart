@@ -11,31 +11,22 @@ class AddPlayer {
     final name = player.name.trim();
 
     if (name.isEmpty) {
-      throw ArgumentError(
-        'اسم اللاعب لا يمكن أن يكون فارغًا.',
-      );
+      throw ArgumentError('اسم اللاعب لا يمكن أن يكون فارغًا.');
     }
 
     final players = await repository.getAllPlayers();
 
     final exists = players.any(
-          (existingPlayer) =>
-      existingPlayer.name.trim().toLowerCase() ==
-          name.toLowerCase(),
+      (existingPlayer) =>
+          existingPlayer.name.trim().toLowerCase() == name.toLowerCase(),
     );
 
     if (exists) {
-      throw ArgumentError(
-        'لا يمكن إضافة لاعب بنفس الاسم.',
-      );
+      throw ArgumentError('لا يمكن إضافة لاعب بنفس الاسم.');
     }
 
-    final normalizedPlayer = player.copyWith(
-      name: name,
-    );
+    final normalizedPlayer = player.copyWith(name: name);
 
-    await repository.addPlayer(
-      normalizedPlayer,
-    );
+    await repository.addPlayer(normalizedPlayer);
   }
 }

@@ -10,17 +10,12 @@ class DiceRoll extends Equatable {
   /// 3 = ثالث رمية
   final int sequence;
 
-  const DiceRoll({
-    required this.value,
-    required this.sequence,
-  })  : assert(value >= 1 && value <= 6),
-        assert(sequence >= 1);
+  const DiceRoll({required this.value, required this.sequence})
+    : assert(value >= 1 && value <= 6),
+      assert(sequence >= 1);
 
   bool get isSix => value == 6;
 
   @override
-  List<Object?> get props => [
-    value,
-    sequence,
-  ];
+  List<Object?> get props => [value, sequence];
 }
