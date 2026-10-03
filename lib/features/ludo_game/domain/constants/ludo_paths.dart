@@ -128,10 +128,10 @@ class LudoPath {
   ///   0..50 -> Main Loop
   ///   51..55 -> Home Lane
   ///   56 -> Finish
-  Position positionAt({required int step, required bool hasCaptured}) {
+  Position positionAt({required int step, required bool useHomeLane}) {
     _validateStep(step);
 
-    if (!hasCaptured) {
+    if (!useHomeLane) {
       return mainLoopPath[step];
     }
 
@@ -158,10 +158,10 @@ class LudoPath {
   ///   ...
   ///   55 -> 56
   ///   56 -> 56
-  int nextStep({required int currentStep, required bool hasCaptured}) {
+  int nextStep({required int currentStep, required bool useHomeLane}) {
     _validateStep(currentStep);
 
-    if (hasCaptured) {
+    if (useHomeLane) {
       if (currentStep >= finishStep) {
         return finishStep;
       }

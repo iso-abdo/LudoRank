@@ -521,12 +521,31 @@ class LudoGameEngine {
     //
     // After Capture:
     //   50 -> 51(Home) -> 52...
+
+    bool _shouldUseHomeLane({
+      required LudoPlayer player,
+      required LudoToken token,
+    }) {
+      if (!player.hasCaptured) {
+        return false;
+      }
+
+      // Token الذي عمل Capture على Step 51
+      // يجب أن يكمل Main Loop عند وجوده فعليًا على 51.
+      if (token.homeEntryPending &&
+          token.positionInPath == LudoPath.lastMainLoopStep) {
+        return false;
+      }
+
+      return true;
+    }
     final destinationStep = _calculateDestinationStep(
       path: path,
       currentStep: token.positionInPath,
       steps: roll.value,
       hasCaptured: player.hasCaptured,
     );
+
 
     // Exact finish / overshoot.
     if (destinationStep == null) {
@@ -573,6 +592,7 @@ class LudoGameEngine {
     required LudoPath path,
     required int currentStep,
     required int steps,
+    required bool useHomeLane,
     required bool hasCaptured,
   }) {
     if (steps <= 0) {
@@ -591,7 +611,7 @@ class LudoGameEngine {
         return null;
       }
 
-      step = path.nextStep(currentStep: step, hasCaptured: hasCaptured);
+      step = path.nextStep(currentStep: step, useHomeLane: useHomeLane);
     }
 
     return step;

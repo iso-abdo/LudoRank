@@ -14,7 +14,7 @@ class SafeCells {
     Position(row: 9, column: 3),
     Position(row: 3, column: 7),
     Position(row: 7, column: 13),
-    Position(row: 8, column: 15),
+    Position(row: 13, column: 9),
   ];
 
   static bool contains(Position position) {

@@ -25,7 +25,13 @@ class LudoToken extends Equatable {
 
   /// حالة الـ Token
   final LudoTokenState state;
-
+  /// هل دخول الـ Home Lane مؤجل لهذا الـ Token؟
+  ///
+  /// يحدث فقط عندما يقوم هذا الـ Token نفسه
+  /// بعمل Capture على Main Loop Step 51.
+  /// في هذه الحالة:
+  /// 51 -> 0 -> 1 -> ... -> 50 -> 51(Home Lane)
+  final bool homeEntryPending;
   const LudoToken({
     required this.id,
     required this.playerId,
@@ -33,6 +39,7 @@ class LudoToken extends Equatable {
     required this.position,
     required this.positionInPath,
     required this.state,
+    this.homeEntryPending = false,
   });
 
   bool get isFinished => state == LudoTokenState.finished;
@@ -49,6 +56,7 @@ class LudoToken extends Equatable {
     Position? position,
     int? positionInPath,
     LudoTokenState? state,
+    bool? homeEntryPending,
   }) {
     return LudoToken(
       id: id ?? this.id,
@@ -57,6 +65,7 @@ class LudoToken extends Equatable {
       position: position ?? this.position,
       positionInPath: positionInPath ?? this.positionInPath,
       state: state ?? this.state,
+      homeEntryPending: homeEntryPending ?? this.homeEntryPending,
     );
   }
 
@@ -68,5 +77,6 @@ class LudoToken extends Equatable {
     position,
     positionInPath,
     state,
+    homeEntryPending,
   ];
 }
