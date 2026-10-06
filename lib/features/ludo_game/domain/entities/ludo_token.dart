@@ -15,22 +15,27 @@ class LudoToken extends Equatable {
   final int tokenIndex;
 
   /// مكان الـ Token الحالي على الـ Board
+
   final Position position;
 
   /// مكانه المنطقي داخل الـ Path
   ///
   /// -1 = لم يدخل الـ Path
   /// 0..56 = داخل المسار
+
   final int positionInPath;
 
   /// حالة الـ Token
+
   final LudoTokenState state;
+
   /// هل دخول الـ Home Lane مؤجل لهذا الـ Token؟
-  ///
+
   /// يحدث فقط عندما يقوم هذا الـ Token نفسه
   /// بعمل Capture على Main Loop Step 51.
   /// في هذه الحالة:
   /// 51 -> 0 -> 1 -> ... -> 50 -> 51(Home Lane)
+
   final bool homeEntryPending;
   const LudoToken({
     required this.id,

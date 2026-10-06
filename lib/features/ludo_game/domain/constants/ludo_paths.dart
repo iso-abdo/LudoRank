@@ -5,9 +5,16 @@ import '../entities/position.dart';
 ///
 /// IMPORTANT:
 /// - The main loop contains logical steps 0..51.
-/// - Before the first capture, step 51 is the last main-loop cell
-///   and the next step wraps to step 0.
-/// - After a capture, step 51 becomes the first Home Lane cell.
+/// - Step 51 has two possible meanings:
+///
+///   1. Main Loop Step 51
+///      - Used while the token is still completing the circular loop.
+///      - The next step is 0.
+///
+///   2. Home Lane Step 51
+///      - Used when the token is entering Home Lane.
+///      - The next step is 52.
+///
 /// - Step 56 is the final Finish cell.
 ///
 /// Therefore:
@@ -16,6 +23,11 @@ import '../entities/position.dart';
 ///
 /// Step 51 is state-dependent and MUST be resolved through
 /// [positionAt] or [nextStep] when game state is relevant.
+///
+/// NOTE:
+/// The special rule for a Token that captures on Main Loop Step 51
+/// does NOT belong here. That rule is handled by LudoGameEngine
+/// using the Token's state (homeEntryPending).
 class LudoPath {
   /// Main-loop physical positions.
   ///
@@ -30,7 +42,10 @@ class LudoPath {
   /// 56      = Finish
   final List<Position> homePath;
 
-  const LudoPath({required this.mainLoopPath, required this.homePath});
+  const LudoPath({
+    required this.mainLoopPath,
+    required this.homePath,
+  });
 
   // ============================================================
   // LOGICAL CONSTANTS
@@ -42,7 +57,7 @@ class LudoPath {
   /// Last logical step belonging to the main loop.
   static const int lastMainLoopStep = 51;
 
-  /// First Home Lane logical step after Capture.
+  /// First Home Lane logical step.
   static const int homeLaneStartStep = 51;
 
   /// Last logical step before Finish.
@@ -53,23 +68,26 @@ class LudoPath {
 
   /// Total logical positions in the complete path.
   ///
-  /// Steps:
-  /// 0..50  = Main Loop
-  /// 51..55 = Home Lane
-  /// 56     = Finish
+  /// Logical range:
+  /// 0..56
   static const int totalLength = finishStep + 1;
 
   // ============================================================
   // PATH VIEWS
   // ============================================================
 
-  /// Main-loop path used before the first Capture.
+  /// Main-loop path used when Home Lane is not active.
   List<Position> get beforeCapture => mainLoopPath;
 
-  /// Full logical path used after Capture.
+  /// Full logical path used when Home Lane is active.
   ///
-  /// Step 51 in this view is the first Home Lane position,
-  /// not mainLoopPath[51].
+  /// In this view:
+  /// - 0..50  = Main Loop
+  /// - 51..55 = Home Lane
+  /// - 56     = Finish
+  ///
+  /// This view intentionally omits mainLoopPath[51], because
+  /// logical Step 51 is interpreted as the Home Lane entry.
   List<Position> get afterCapture => [
     ...mainLoopPath.take(lastMainLoopStep),
     ...homePath,
@@ -99,12 +117,11 @@ class LudoPath {
   /// List-like access to a logical position.
   ///
   /// IMPORTANT:
-  /// Step 51 is state-dependent:
+  /// Game logic should NOT depend on operator [] when Step 51
+  /// has state-dependent meaning.
   ///
-  /// - Before Capture -> mainLoopPath[51]
-  /// - After Capture  -> homePath[0]
-  ///
-  /// Therefore game logic should prefer [positionAt].
+  /// Use [positionAt] instead when deciding whether Step 51
+  /// is Main Loop or Home Lane.
   Position operator [](int index) {
     _validateStep(index);
 
@@ -121,14 +138,20 @@ class LudoPath {
 
   /// Resolves a logical step to its physical board position.
   ///
-  /// Before Capture:
+  /// When [useHomeLane] is false:
   ///   0..51 -> Main Loop
   ///
-  /// After Capture:
+  /// When [useHomeLane] is true:
   ///   0..50 -> Main Loop
   ///   51..55 -> Home Lane
   ///   56 -> Finish
-  Position positionAt({required int step, required bool useHomeLane}) {
+  ///
+  /// The LudoGameEngine decides whether [useHomeLane] should be
+  /// true or false for the current token and movement context.
+  Position positionAt({
+    required int step,
+    required bool useHomeLane,
+  }) {
     _validateStep(step);
 
     if (!useHomeLane) {
@@ -148,17 +171,25 @@ class LudoPath {
 
   /// Returns the next logical step.
   ///
-  /// Before Capture:
+  /// When [useHomeLane] is false:
   ///   50 -> 51
   ///   51 -> 0
   ///
-  /// After Capture:
+  /// When [useHomeLane] is true:
   ///   50 -> 51
   ///   51 -> 52
   ///   ...
   ///   55 -> 56
   ///   56 -> 56
-  int nextStep({required int currentStep, required bool useHomeLane}) {
+  ///
+  /// The special "capture on Main Loop Step 51 and complete
+  /// one more full lap" rule is NOT implemented here.
+  /// The Engine decides when a token should switch from the
+  /// Main Loop interpretation to the Home Lane interpretation.
+  int nextStep({
+    required int currentStep,
+    required bool useHomeLane,
+  }) {
     _validateStep(currentStep);
 
     if (useHomeLane) {
@@ -210,7 +241,12 @@ class LudoPath {
 
   void _validateStep(int step) {
     if (step < 0 || step > finishStep) {
-      throw RangeError.range(step, 0, finishStep, 'step');
+      throw RangeError.range(
+        step,
+        0,
+        finishStep,
+        'step',
+      );
     }
   }
 }
