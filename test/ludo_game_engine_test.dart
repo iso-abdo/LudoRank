@@ -17,6 +17,8 @@ void main() {
       LudoTokenState state = LudoTokenState.initial,
       int positionInPath = -1,
       Position? position,
+      bool hasCaptured = false,
+      bool homeEntryPending = false,
     }) {
       return LudoToken(
         id: '$playerId-token-$tokenIndex',
@@ -25,6 +27,7 @@ void main() {
         position: position ?? const Position(row: 0, column: 0),
         positionInPath: positionInPath,
         state: state,
+        homeEntryPending: homeEntryPending,
       );
     }
 
@@ -102,7 +105,7 @@ void main() {
       final defenderPath = LudoPaths.yellow;
       final destination = attackerPath.positionAt(
         step: attackerStep + 4,
-        hasCaptured: false,
+        useHomeLane: false,
       );
       final defenderStep = defenderPath.mainLoopPath.indexOf(destination);
 
@@ -119,7 +122,7 @@ void main() {
         positionInPath: attackerStep,
         position: attackerPath.positionAt(
           step: attackerStep,
-          hasCaptured: false,
+          useHomeLane: false,
         ),
       );
 
@@ -394,7 +397,7 @@ void main() {
       const destinationStep = 9;
       final blockPosition = path.positionAt(
         step: blockStep,
-        hasCaptured: false,
+        useHomeLane: false,
       );
 
       final attacker = createToken(
@@ -482,7 +485,7 @@ void main() {
       const destinationStep = 9;
       final destination = path.positionAt(
         step: destinationStep,
-        hasCaptured: false,
+        useHomeLane: false,
       );
 
       final attacker = createToken(
@@ -553,7 +556,7 @@ void main() {
       const destinationStep = 9;
       final destination = path.positionAt(
         step: destinationStep,
-        hasCaptured: false,
+        useHomeLane: false,
       );
 
       final attacker = createToken(
