@@ -224,11 +224,478 @@ void main() {
         ],
       );
     }
+    LudoGameEngine createStep51CaptureEngine() {
+      final attackerPath = LudoPaths.green;
+      final defenderPath = LudoPaths.yellow;
 
+      final destination = attackerPath.mainLoopPath[51];
+      final defenderStep = defenderPath.mainLoopPath.indexOf(destination);
+
+      if (defenderStep == -1) {
+        throw StateError(
+          'Step 51 physical position is not on the defender path.',
+        );
+      }
+
+      final attacker = createToken(
+        playerId: 'player-1',
+        tokenIndex: 0,
+        state: LudoTokenState.normal,
+        positionInPath: 50,
+        position: attackerPath.mainLoopPath[50],
+      );
+
+      final defender = createToken(
+        playerId: 'player-2',
+        tokenIndex: 0,
+        state: LudoTokenState.normal,
+        positionInPath: defenderStep,
+        position: destination,
+      );
+
+      return createEngine(
+        players: [
+          createPlayer(
+            playerId: 'player-1',
+            seat: 1,
+            color: LudoPlayerColor.green,
+            tokens: [
+              attacker,
+              ...List.generate(
+                3,
+                    (index) => createToken(
+                  playerId: 'player-1',
+                  tokenIndex: index + 1,
+                ),
+              ),
+            ],
+          ),
+          createPlayer(
+            playerId: 'player-2',
+            seat: 2,
+            color: LudoPlayerColor.yellow,
+            tokens: [
+              defender,
+              ...List.generate(
+                3,
+                    (index) => createToken(
+                  playerId: 'player-2',
+                  tokenIndex: index + 1,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+    LudoGameEngine createStep51DefenderEngine() {
+      final attackerPath = LudoPaths.yellow;
+      final defenderPath = LudoPaths.green;
+
+      final destination = defenderPath.mainLoopPath[51];
+      final attackerStep = attackerPath.mainLoopPath.indexOf(destination) - 1;
+
+      if (attackerStep < 0) {
+        throw StateError(
+          'Could not determine attacker step for Step 51 capture.',
+        );
+      }
+
+      final attacker = createToken(
+        playerId: 'player-1',
+        tokenIndex: 0,
+        state: LudoTokenState.normal,
+        positionInPath: attackerStep,
+        position: attackerPath.mainLoopPath[attackerStep],
+      );
+
+      final defender = createToken(
+        playerId: 'player-2',
+        tokenIndex: 0,
+        state: LudoTokenState.normal,
+        positionInPath: 51,
+        position: destination,
+      );
+
+      return createEngine(
+        players: [
+          createPlayer(
+            playerId: 'player-1',
+            seat: 1,
+            color: LudoPlayerColor.yellow,
+            tokens: [
+              attacker,
+              ...List.generate(
+                3,
+                    (index) => createToken(
+                  playerId: 'player-1',
+                  tokenIndex: index + 1,
+                ),
+              ),
+            ],
+          ),
+          createPlayer(
+            playerId: 'player-2',
+            seat: 2,
+            color: LudoPlayerColor.green,
+            tokens: [
+              defender,
+              ...List.generate(
+                3,
+                    (index) => createToken(
+                  playerId: 'player-2',
+                  tokenIndex: index + 1,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+    // ==========================================================
+    // ==========================================================
+// STEP 51 PATH SEMANTICS
+// ==========================================================
+
+    test('Step 51 is Main Loop when Home Lane is not active', () {
+      final path = LudoPaths.green;
+
+      expect(
+        path.positionAt(
+          step: LudoPath.lastMainLoopStep,
+          useHomeLane: false,
+        ),
+        path.mainLoopPath[51],
+      );
+
+      expect(
+        path.nextStep(
+          currentStep: LudoPath.lastMainLoopStep,
+          useHomeLane: false,
+        ),
+        0,
+      );
+    });
+
+    test('Step 51 is Home Lane when Home Lane is active', () {
+      final path = LudoPaths.green;
+
+      expect(
+        path.positionAt(
+          step: LudoPath.homeLaneStartStep,
+          useHomeLane: true,
+        ),
+        path.homePath[0],
+      );
+
+      expect(
+        path.nextStep(
+          currentStep: LudoPath.lastMainLoopStep,
+          useHomeLane: true,
+        ),
+        52,
+      );
+    });
+// Test: أقدر أقف على Step 51
+    test('Step 51 is a normal playable Main Loop cell before capture', () {
+      final path = LudoPaths.green;
+
+      final token = createToken(
+        playerId: 'player-1',
+        tokenIndex: 0,
+        state: LudoTokenState.normal,
+        positionInPath: 50,
+        position: path.mainLoopPath[50],
+      );
+
+      final engine = createEngine(
+        players: [
+          createPlayer(
+            playerId: 'player-1',
+            seat: 1,
+            color: LudoPlayerColor.green,
+            tokens: [
+              token,
+              ...List.generate(
+                3,
+                    (index) => createToken(
+                  playerId: 'player-1',
+                  tokenIndex: index + 1,
+                ),
+              ),
+            ],
+          ),
+          createPlayer(
+            playerId: 'player-2',
+            seat: 2,
+            color: LudoPlayerColor.yellow,
+          ),
+        ],
+      );
+
+      engine.registerDiceRoll(
+        value: 1,
+        sequence: 1,
+      );
+
+      final move = engine.getValidMoves().firstWhere(
+            (option) =>
+        option is MoveToken &&
+            option.tokenId == 'player-1-token-0' &&
+            option.rollSequence == 1,
+      );
+
+      engine.executeMove(move);
+
+      final updated = getToken(
+        engine,
+        'player-1',
+        0,
+      );
+
+      expect(updated.positionInPath, 51);
+      expect(
+        updated.position,
+        path.mainLoopPath[51],
+      );
+      expect(updated.state, LudoTokenState.normal);
+      expect(updated.homeEntryPending, isFalse);
+    });
+//Test: أقدر آكل على 51
+    test('A Token can capture an enemy Token on Main Loop Step 51', () {
+      final engine = createStep51CaptureEngine();
+
+      engine.registerDiceRoll(
+        value: 1,
+        sequence: 1,
+      );
+
+      final move = engine.getValidMoves().firstWhere(
+            (option) =>
+        option is MoveToken &&
+            option.tokenId == 'player-1-token-0' &&
+            option.rollSequence == 1,
+      );
+
+      engine.executeMove(move);
+
+      final attacker = getToken(
+        engine,
+        'player-1',
+        0,
+      );
+
+      final defender = getToken(
+        engine,
+        'player-2',
+        0,
+      );
+
+      final attackerPlayer = engine.state.players.firstWhere(
+            (player) => player.playerId == 'player-1',
+      );
+
+      expect(attacker.positionInPath, 51);
+      expect(
+        attacker.position,
+        LudoPaths.green.mainLoopPath[51],
+      );
+
+      expect(attackerPlayer.hasCaptured, isTrue);
+      expect(attacker.homeEntryPending, isTrue);
+
+      expect(
+        defender.positionInPath,
+        -1,
+      );
+      expect(
+        defender.position,
+        const Position(row: 0, column: 0),
+      );
+      expect(
+        defender.state,
+        LudoTokenState.initial,
+      );
+      expect(
+        defender.homeEntryPending,
+        isFalse,
+      );
+    });
+// Test: ممكن أتآكل وأنا واقف على 51
+    test('A Token standing on Main Loop Step 51 can be captured', () {
+      final engine = createStep51DefenderEngine();
+
+      engine.registerDiceRoll(
+        value: 1,
+        sequence: 1,
+      );
+
+      final move = engine.getValidMoves().firstWhere(
+            (option) =>
+        option is MoveToken &&
+            option.tokenId == 'player-1-token-0' &&
+            option.rollSequence == 1,
+      );
+
+      engine.executeMove(move);
+
+      final attacker = getToken(
+        engine,
+        'player-1',
+        0,
+      );
+
+      final defender = getToken(
+        engine,
+        'player-2',
+        0,
+      );
+
+      expect(
+        attacker.position,
+        LudoPaths.yellow.mainLoopPath[38],
+      );
+
+      expect(
+        defender.positionInPath,
+        -1,
+      );
+
+      expect(
+        defender.position,
+        const Position(row: 0, column: 0),
+      );
+
+      expect(
+        defender.state,
+        LudoTokenState.initial,
+      );
+    });
+// أهم Test: الـ Token الذي أكل على 51 يكمل الدورة
+    test(
+      'Token that captured on Step 51 completes one full lap before entering Home Lane',
+          () {
+        final token = createToken(
+          playerId: 'player-1',
+          tokenIndex: 0,
+          state: LudoTokenState.normal,
+          positionInPath: 51,
+          position: LudoPaths.green.mainLoopPath[51],
+          homeEntryPending: true,
+        );
+
+        final engine = createEngine(
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+              hasCaptured: true,
+              tokens: [
+                token,
+                ...List.generate(
+                  3,
+                      (index) => createToken(
+                    playerId: 'player-1',
+                    tokenIndex: index + 1,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+
+        // 51 -> 0
+        engine.registerDiceRoll(
+          value: 1,
+          sequence: 1,
+        );
+
+        var move = engine.getValidMoves().firstWhere(
+              (option) =>
+          option is MoveToken &&
+              option.tokenId == 'player-1-token-0',
+        );
+
+        engine.executeMove(move);
+
+        var updated = getToken(
+          engine,
+          'player-1',
+          0,
+        );
+
+        expect(updated.positionInPath, 0);
+        expect(
+          updated.position,
+          LudoPaths.green.mainLoopPath[0],
+        );
+        expect(updated.homeEntryPending, isTrue);
+
+        // 0 -> 1 -> ... -> 50
+        for (var expectedStep = 1; expectedStep <= 50; expectedStep++) {
+          engine.registerDiceRoll(
+            value: 1,
+            sequence: 1,
+          );
+
+          move = engine.getValidMoves().firstWhere(
+                (option) =>
+            option is MoveToken &&
+                option.tokenId == 'player-1-token-0',
+          );
+
+          engine.executeMove(move);
+
+          updated = getToken(
+            engine,
+            'player-1',
+            0,
+          );
+
+          expect(updated.positionInPath, expectedStep);
+          expect(updated.homeEntryPending, isTrue);
+        }
+
+        // 50 -> 51(Home Lane)
+        engine.registerDiceRoll(
+          value: 1,
+          sequence: 1,
+        );
+
+        move = engine.getValidMoves().firstWhere(
+              (option) =>
+          option is MoveToken &&
+              option.tokenId == 'player-1-token-0',
+        );
+
+        engine.executeMove(move);
+
+        updated = getToken(
+          engine,
+          'player-1',
+          0,
+        );
+
+        expect(
+          updated.positionInPath,
+          LudoPath.homeLaneStartStep,
+        );
+
+        expect(
+          updated.position,
+          LudoPaths.green.homePath[0],
+        );
+
+        expect(
+          updated.homeEntryPending,
+          isFalse,
+        );
+      },
+    );
 
     // ==========================================================
     // 1. HOME LANE LOCK
-    // ==========================================================
 
     test('Home Lane is locked before the first capture', () {
       final token = createToken(
@@ -652,10 +1119,27 @@ void main() {
 
       expect(attacker.hasCaptured, isTrue);
       expect(attackerToken.positionInPath, 9);
-      expect(defenderToken.positionInPath, 0);
+  //    expect(defenderToken.positionInPath, -1);
+    //  expect(
+      //  defenderToken.position,
+        //  const Position(row: 0, column: 0)
+      //  LudoPaths.yellow.startingPosition,
+      //);
+      expect(defenderToken.positionInPath, -1);
+
       expect(
         defenderToken.position,
-        LudoPaths.yellow.startingPosition,
+        const Position(row: 0, column: 0),
+      );
+
+      expect(
+        defenderToken.state,
+        LudoTokenState.initial,
+      );
+
+      expect(
+        defenderToken.homeEntryPending,
+        isFalse,
       );
     });
 
