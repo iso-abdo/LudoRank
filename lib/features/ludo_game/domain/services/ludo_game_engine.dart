@@ -11,7 +11,23 @@ import '../models/game_result.dart';
 import '../models/ludo_game_state.dart';
 import '../models/move_option.dart';
 import '../models/turn_state.dart';
+class _PathDestination {
+  final int step;
 
+  /// يحدد تفسير Step 51 عند الوصول إليه.
+  ///
+  /// true  = Home Lane route
+  /// false = Main Loop route
+  ///
+  /// عند Finish (56) تكون true لأن Position 56 موجود
+  /// داخل الجزء الممتد بعد Main Loop في LudoPath.
+  final bool useHomeLane;
+
+  const _PathDestination({
+    required this.step,
+    required this.useHomeLane,
+  });
+}
 /// Core domain engine for a Fast Mode Ludo match.
 ///
 /// Responsibilities:
@@ -38,6 +54,9 @@ import '../models/turn_state.dart';
 /// - SQLite / Drift
 /// - Provider
 /// - UI
+
+
+
 class LudoGameEngine {
   LudoGameState _state;
 
@@ -522,39 +541,38 @@ class LudoGameEngine {
     // After Capture:
     //   50 -> 51(Home) -> 52...
 
-    bool _shouldUseHomeLane({
-      required LudoPlayer player,
-      required LudoToken token,
-    }) {
-      if (!player.hasCaptured) {
-        return false;
-      }
 
-      // Token الذي عمل Capture على Step 51
-      // يجب أن يكمل Main Loop عند وجوده فعليًا على 51.
-      if (token.homeEntryPending &&
-          token.positionInPath == LudoPath.lastMainLoopStep) {
-        return false;
-      }
-
-      return true;
-    }
-    final destinationStep = _calculateDestinationStep(
+    final destination = _calculateDestinationStep(
       path: path,
-      currentStep: token.positionInPath,
+      player: player,
+      token: token,
       steps: roll.value,
-      hasCaptured: player.hasCaptured,
     );
 
-
-    // Exact finish / overshoot.
-    if (destinationStep == null) {
+    if (destination == null) {
       return null;
     }
 
-    final destination = path.positionAt(
-      step: destinationStep,
-      hasCaptured: player.hasCaptured,
+    final destinationPosition = path.positionAt(
+      step: destination.step,
+      useHomeLane: destination.useHomeLane,
+    );
+
+    final destinationIsHomeLane =
+    path.isHomeLaneStep(destination.step);
+
+    if (_isBlockedDestination(
+      player: player,
+      destination: destinationPosition,
+      isHomeLane: destinationIsHomeLane,
+    )) {
+      return null;
+    }
+
+    return MoveToken(
+      tokenId: token.id,
+      steps: roll.value,
+      rollSequence: roll.sequence,
     );
 
     // Home Lane is intrinsically safe.
@@ -588,35 +606,99 @@ class LudoGameEngine {
   ///   currentStep + steps
   ///
   /// because step 51 is state-dependent.
-  int? _calculateDestinationStep({
+  _PathDestination? _calculateDestinationStep({
     required LudoPath path,
-    required int currentStep,
+    required LudoPlayer player,
+    required LudoToken token,
     required int steps,
-    required bool useHomeLane,
-    required bool hasCaptured,
   }) {
     if (steps <= 0) {
       return null;
     }
 
-    if (currentStep < 0 || currentStep > LudoPath.finishStep) {
+    if (token.positionInPath < 0 ||
+        token.positionInPath > LudoPath.finishStep) {
       return null;
     }
 
-    var step = currentStep;
+    var step = token.positionInPath;
+
+    // مهم جدًا:
+    //
+    // homeEntryPending حالة خاصة بهذا الـ Token،
+    // لذلك أثناء حساب الحركة نحاكي تغييرها محليًا.
+    //
+    // لا نعدّل الـ Token الحقيقي هنا لأن هذه الدالة
+    // مجرد حساب للـ Destination.
+    var homeEntryPending = token.homeEntryPending;
 
     for (var i = 0; i < steps; i++) {
-      // Finish is terminal.
+      // Finish نقطة نهائية ولا يمكن تجاوزها.
       if (step == LudoPath.finishStep) {
         return null;
       }
 
-      step = path.nextStep(currentStep: step, useHomeLane: useHomeLane);
+      // ==========================================================
+      // RESOLVE CURRENT ROUTE
+      // ==========================================================
+      //
+      // إذا اللاعب لم يعمل Capture:
+      //   51 = Main Loop
+      //
+      // إذا اللاعب عمل Capture:
+      //   51 = Home Lane
+      //
+      // الاستثناء:
+      //   Token نفسه Pending وهو واقف على Main Loop 51
+      //   فيجب أن يخرج من 51 إلى 0.
+      //
+      final useHomeLane =
+          player.hasCaptured &&
+              !(homeEntryPending && step == LudoPath.lastMainLoopStep);
+
+      final nextStep = path.nextStep(
+        currentStep: step,
+        useHomeLane: useHomeLane,
+      );
+
+      // ==========================================================
+      // ENTER HOME LANE
+      // ==========================================================
+      //
+      // الانتقال:
+      //
+      //   50 -> 51(Home)
+      //
+      // يعني أن الـ Token دخل Home Lane فعليًا،
+      // وبالتالي لم يعد محتاجًا إلى homeEntryPending.
+      //
+      if (useHomeLane &&
+          step == LudoPath.lastMainLoopStep - 1 &&
+          nextStep == LudoPath.homeLaneStartStep) {
+        homeEntryPending = false;
+      }
+
+      step = nextStep;
     }
 
-    return step;
-  }
+    // ==========================================================
+    // RESOLVE FINAL STEP 51
+    // ==========================================================
+    //
+    // بعد انتهاء عدد الخطوات، نحدد هل الـ 51 النهائي
+    // Main Loop أم Home Lane.
+    //
+    // هذا مهم لأن الرقم وحده لا يكفي.
+    //
+    final finalUseHomeLane =
+        player.hasCaptured &&
+            !(homeEntryPending && step == LudoPath.lastMainLoopStep);
 
+    return _PathDestination(
+      step: step,
+      useHomeLane: finalUseHomeLane,
+    );
+  }
   // ============================================================
   // BLOCKS
   // ============================================================
@@ -751,12 +833,29 @@ class LudoGameEngine {
 
     final path = _pathFor(player.color);
 
-    final newPathIndex = _calculateDestinationStep(
+    final destination = _calculateDestinationStep(
       path: path,
-      currentStep: token.positionInPath,
+      player: player,
+      token: token,
       steps: move.steps,
-      hasCaptured: player.hasCaptured,
     );
+
+    if (destination == null) {
+      throw StateError('الحركة تتجاوز نهاية المسار.');
+    }
+
+    final newPathIndex = destination.step;
+
+    final newPosition = path.positionAt(
+      step: destination.step,
+      useHomeLane: destination.useHomeLane,
+    );
+
+    final reachesFinish =
+        destination.step == LudoPath.finishStep;
+
+    final isHomeLane =
+    path.isHomeLaneStep(destination.step);
 
     if (newPathIndex == null) {
       throw StateError('الحركة تتجاوز نهاية المسار.');
