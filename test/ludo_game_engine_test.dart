@@ -1115,28 +1115,322 @@ void main() {
     // 11. ALL PLAYERS FINISHED -> GAME COMPLETED
     // ==========================================================
 
-    test('All players finished marks the game as completed', () {
-      final engine = createFinishingEngine();
+    test(
+      '2-player match ends immediately when the first player reaches Finish',
+      () {
+        final finishingToken = createToken(
+          playerId: 'player-1',
+          tokenIndex: 0,
+          state: LudoTokenState.normal,
+          positionInPath: LudoPath.finishStep - 1,
+          position: LudoPaths.green.homePath[4],
+        );
 
+        final activeToken1 = createToken(
+          playerId: 'player-1',
+          tokenIndex: 1,
+          state: LudoTokenState.normal,
+          positionInPath: 10,
+          position: LudoPaths.green.mainLoopPath[10],
+        );
+
+        final activeToken2 = createToken(
+          playerId: 'player-1',
+          tokenIndex: 2,
+          state: LudoTokenState.normal,
+          positionInPath: 20,
+          position: LudoPaths.green.mainLoopPath[20],
+        );
+
+        final activeToken3 = createToken(
+          playerId: 'player-1',
+          tokenIndex: 3,
+          state: LudoTokenState.normal,
+          positionInPath: 30,
+          position: LudoPaths.green.mainLoopPath[30],
+        );
+
+        final engine = createEngine(
+          players: [
+            createPlayer(
+              playerId: 'player-1',
+              seat: 1,
+              color: LudoPlayerColor.green,
+              hasCaptured: true,
+              tokens: [
+                finishingToken,
+                activeToken1,
+                activeToken2,
+                activeToken3,
+              ],
+            ),
+            createPlayer(
+              playerId: 'player-2',
+              seat: 2,
+              color: LudoPlayerColor.yellow,
+            ),
+          ],
+        );
+
+        engine.registerDiceRoll(value: 1, sequence: 1);
+
+        final finishMove = engine.getValidMoves().firstWhere(
+          (option) =>
+              option is MoveToken && option.tokenId == 'player-1-token-0',
+        );
+
+        engine.executeMove(finishMove);
+
+        // المباراة انتهت فورًا.
+        expect(engine.isFinished, isTrue);
+
+        expect(engine.state.turnState.phase, TurnPhase.completed);
+
+        // اللاعب الثاني لم يحتج إلى اللعب.
+        expect(engine.currentPlayer.playerId, 'player-1');
+
+        // يوجد Finisher واحد فقط.
+        expect(engine.state.finishedPlayerIds, ['player-1']);
+
+        // Token الذي وصل Finish يبقى في Finish.
+        final finishedToken = getToken(engine, 'player-1', 0);
+
+        expect(finishedToken.positionInPath, LudoPath.finishStep);
+
+        expect(finishedToken.state, LudoTokenState.finished);
+
+        // باقي Tokens رجعت Home.
+        for (final tokenIndex in [1, 2, 3]) {
+          final token = getToken(engine, 'player-1', tokenIndex);
+
+          expect(token.positionInPath, -1);
+          expect(token.position, const Position(row: 0, column: 0));
+          expect(token.state, LudoTokenState.initial);
+          expect(token.homeEntryPending, isFalse);
+        }
+
+        // الترتيب النهائي كامل.
+        final result = engine.getResult();
+
+        expect(result.isFinished, isTrue);
+        expect(result.players, hasLength(2));
+
+        final first = result.getPlayerResult('player-1');
+        final second = result.getPlayerResult('player-2');
+
+        expect(first, isNotNull);
+        expect(second, isNotNull);
+
+        expect(first!.rank, 1);
+        expect(first.finished, isTrue);
+
+        expect(second!.rank, 2);
+        expect(second.finished, isFalse);
+      },
+    );
+
+    test('3-player match ends when the second player reaches Finish', () {
+      final player1Token = createToken(
+        playerId: 'player-1',
+        tokenIndex: 0,
+        state: LudoTokenState.normal,
+        positionInPath: LudoPath.finishStep - 1,
+        position: LudoPaths.green.homePath[4],
+      );
+
+      final player2Token = createToken(
+        playerId: 'player-2',
+        tokenIndex: 0,
+        state: LudoTokenState.normal,
+        positionInPath: LudoPath.finishStep - 1,
+        position: LudoPaths.yellow.homePath[4],
+      );
+
+      final engine = createEngine(
+        players: [
+          createPlayer(
+            playerId: 'player-1',
+            seat: 1,
+            color: LudoPlayerColor.green,
+            hasCaptured: true,
+            tokens: [
+              player1Token,
+              ...List.generate(
+                3,
+                (index) =>
+                    createToken(playerId: 'player-1', tokenIndex: index + 1),
+              ),
+            ],
+          ),
+          createPlayer(
+            playerId: 'player-2',
+            seat: 2,
+            color: LudoPlayerColor.yellow,
+            hasCaptured: true,
+            tokens: [
+              player2Token,
+              ...List.generate(
+                3,
+                (index) =>
+                    createToken(playerId: 'player-2', tokenIndex: index + 1),
+              ),
+            ],
+          ),
+          createPlayer(
+            playerId: 'player-3',
+            seat: 3,
+            color: LudoPlayerColor.red,
+          ),
+        ],
+      );
+
+      // Player 1 finishes.
       engine.registerDiceRoll(value: 1, sequence: 1);
-      final firstMove = engine.getValidMoves().firstWhere(
+
+      var move = engine.getValidMoves().firstWhere(
         (option) => option is MoveToken && option.tokenId == 'player-1-token-0',
       );
-      engine.executeMove(firstMove);
+
+      engine.executeMove(move);
+
+      expect(engine.isFinished, isFalse);
+      expect(engine.state.finishedPlayerIds, ['player-1']);
+      expect(engine.currentPlayer.playerId, 'player-2');
+
+      // Player 2 finishes.
+      engine.registerDiceRoll(value: 1, sequence: 1);
+
+      move = engine.getValidMoves().firstWhere(
+        (option) => option is MoveToken && option.tokenId == 'player-2-token-0',
+      );
+
+      engine.executeMove(move);
+
+      // لا ننتظر Player 3.
+      expect(engine.isFinished, isTrue);
+
+      expect(engine.state.turnState.phase, TurnPhase.completed);
+
+      expect(engine.state.finishedPlayerIds, ['player-1', 'player-2']);
+
+      final result = engine.getResult();
+
+      expect(result.players, hasLength(3));
+
+      expect(result.getPlayerResult('player-1')!.rank, 1);
+
+      expect(result.getPlayerResult('player-1')!.finished, isTrue);
+
+      expect(result.getPlayerResult('player-2')!.rank, 2);
+
+      expect(result.getPlayerResult('player-2')!.finished, isTrue);
+
+      expect(result.getPlayerResult('player-3')!.rank, 3);
+
+      expect(result.getPlayerResult('player-3')!.finished, isFalse);
+    });
+    test('4-player match ends when the third player reaches Finish', () {
+      final colors = [
+        LudoPlayerColor.green,
+        LudoPlayerColor.yellow,
+        LudoPlayerColor.red,
+        LudoPlayerColor.blue,
+      ];
+
+      final players = List.generate(4, (index) {
+        final playerId = 'player-${index + 1}';
+        final color = colors[index];
+
+        final finishingToken = createToken(
+          playerId: playerId,
+          tokenIndex: 0,
+          state: LudoTokenState.normal,
+          positionInPath: LudoPath.finishStep - 1,
+          position: LudoPaths.forColor(color).homePath[4],
+        );
+
+        return createPlayer(
+          playerId: playerId,
+          seat: index + 1,
+          color: color,
+          hasCaptured: true,
+          tokens: [
+            finishingToken,
+            ...List.generate(
+              3,
+              (tokenIndex) =>
+                  createToken(playerId: playerId, tokenIndex: tokenIndex + 1),
+            ),
+          ],
+        );
+      });
+
+      final engine = createEngine(players: players);
+
+      // Player 1 finishes.
+      engine.registerDiceRoll(value: 1, sequence: 1);
+
+      var move = engine.getValidMoves().firstWhere(
+        (option) => option is MoveToken && option.tokenId == 'player-1-token-0',
+      );
+
+      engine.executeMove(move);
 
       expect(engine.isFinished, isFalse);
       expect(engine.currentPlayer.playerId, 'player-2');
-      expect(engine.state.finishedPlayerIds, ['player-1']);
 
+      // Player 2 finishes.
       engine.registerDiceRoll(value: 1, sequence: 1);
-      final secondMove = engine.getValidMoves().firstWhere(
+
+      move = engine.getValidMoves().firstWhere(
         (option) => option is MoveToken && option.tokenId == 'player-2-token-0',
       );
-      engine.executeMove(secondMove);
 
+      engine.executeMove(move);
+
+      expect(engine.isFinished, isFalse);
+      expect(engine.currentPlayer.playerId, 'player-3');
+
+      // Player 3 finishes.
+      engine.registerDiceRoll(value: 1, sequence: 1);
+
+      move = engine.getValidMoves().firstWhere(
+        (option) => option is MoveToken && option.tokenId == 'player-3-token-0',
+      );
+
+      engine.executeMove(move);
+
+      // المباراة انتهت هنا.
+      // لا ننتظر Player 4.
       expect(engine.isFinished, isTrue);
+
       expect(engine.state.turnState.phase, TurnPhase.completed);
-      expect(engine.state.finishedPlayerIds, ['player-1', 'player-2']);
+
+      expect(engine.state.finishedPlayerIds, [
+        'player-1',
+        'player-2',
+        'player-3',
+      ]);
+
+      final result = engine.getResult();
+
+      expect(result.players, hasLength(4));
+
+      expect(result.getPlayerResult('player-1')!.rank, 1);
+
+      expect(result.getPlayerResult('player-2')!.rank, 2);
+
+      expect(result.getPlayerResult('player-3')!.rank, 3);
+
+      expect(result.getPlayerResult('player-4')!.rank, 4);
+
+      expect(result.getPlayerResult('player-1')!.finished, isTrue);
+
+      expect(result.getPlayerResult('player-2')!.finished, isTrue);
+
+      expect(result.getPlayerResult('player-3')!.finished, isTrue);
+
+      expect(result.getPlayerResult('player-4')!.finished, isFalse);
     });
 
     // ==========================================================

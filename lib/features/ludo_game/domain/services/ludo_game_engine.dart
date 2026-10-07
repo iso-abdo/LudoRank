@@ -362,9 +362,7 @@ class LudoGameEngine {
 
     final validMoves = getValidMoves();
 
-    final isValid = validMoves.any(
-          (option) => _sameMove(option, move),
-    );
+    final isValid = validMoves.any((option) => _sameMove(option, move));
 
     if (!isValid) {
       throw StateError('الحركة المحددة غير قانونية.');
@@ -394,36 +392,26 @@ class LudoGameEngine {
     // PLAYER FINISH
     // ==========================================================
 
-    final playerFinished = _hasPlayerFinished(
-      updatedPlayer,
-    );
+    final playerFinished = _hasPlayerFinished(updatedPlayer);
 
     if (playerFinished) {
       // أول Token وصل Finish.
       //
       // جميع Tokens الأخرى الخاصة بهذا اللاعب
       // تعود فورًا إلى Home.
-      _resetRemainingTokensAfterPlayerFinish(
-        updatedPlayer.playerId,
-      );
+      _resetRemainingTokensAfterPlayerFinish(updatedPlayer.playerId);
 
       // تسجيل Rank الحقيقي للاعب الذي وصل Finish.
-      _registerPlayerFinished(
-        updatedPlayer.playerId,
-      );
+      _registerPlayerFinished(updatedPlayer.playerId);
     }
 
     // ==========================================================
     // CONSUME USED ROLL
     // ==========================================================
 
-    final updatedTurn = _consumeRoll(
-      move.rollSequence,
-    );
+    final updatedTurn = _consumeRoll(move.rollSequence);
 
-    _state = _state.copyWith(
-      turnState: updatedTurn,
-    );
+    _state = _state.copyWith(turnState: updatedTurn);
 
     // ==========================================================
     // MATCH END
@@ -468,9 +456,7 @@ class LudoGameEngine {
 
     if (_lastMoveWasCapture) {
       _state = _state.copyWith(
-        turnState: updatedTurn.copyWith(
-          phase: TurnPhase.rolling,
-        ),
+        turnState: updatedTurn.copyWith(phase: TurnPhase.rolling),
       );
 
       _lastMoveWasCapture = false;
@@ -493,9 +479,7 @@ class LudoGameEngine {
       }
 
       _state = _state.copyWith(
-        turnState: updatedTurn.copyWith(
-          phase: TurnPhase.playing,
-        ),
+        turnState: updatedTurn.copyWith(phase: TurnPhase.playing),
       );
 
       return _state;
@@ -1097,18 +1081,16 @@ class LudoGameEngine {
   /// هل وصلت المباراة إلى العدد المطلوب من اللاعبين
   /// الذين أنهوا اللعبة فعليًا؟
   bool get _matchEndReached {
-    return _state.finishedPlayerIds.length >=
-        _requiredFinishedPlayers;
+    return _state.finishedPlayerIds.length >= _requiredFinishedPlayers;
   }
+
   /// بعد وصول أول Token للاعب إلى Finish:
   /// جميع Tokens الأخرى تعود إلى Home.
   ///
   /// الـ Token الذي وصل Finish يظل كما هو.
-  void _resetRemainingTokensAfterPlayerFinish(
-      String playerId,
-      ) {
+  void _resetRemainingTokensAfterPlayerFinish(String playerId) {
     final playerIndex = _state.players.indexWhere(
-          (player) => player.playerId == playerId,
+      (player) => player.playerId == playerId,
     );
 
     if (playerIndex == -1) {
@@ -1117,37 +1099,30 @@ class LudoGameEngine {
 
     final player = _state.players[playerIndex];
 
-    final updatedTokens = player.tokens.map((token) {
-      // Token الذي وصل Finish يظل في Finish.
-      if (token.isFinished) {
-        return token;
-      }
+    final updatedTokens = player.tokens
+        .map((token) {
+          // Token الذي وصل Finish يظل في Finish.
+          if (token.isFinished) {
+            return token;
+          }
 
-      // كل Token آخر يرجع إلى Home.
-      return token.copyWith(
-        position: const Position(
-          row: 0,
-          column: 0,
-        ),
-        positionInPath: -1,
-        state: LudoTokenState.initial,
-        homeEntryPending: false,
-      );
-    }).toList(growable: false);
+          // كل Token آخر يرجع إلى Home.
+          return token.copyWith(
+            position: const Position(row: 0, column: 0),
+            positionInPath: -1,
+            state: LudoTokenState.initial,
+            homeEntryPending: false,
+          );
+        })
+        .toList(growable: false);
 
-    final updatedPlayer = player.copyWith(
-      tokens: updatedTokens,
-    );
+    final updatedPlayer = player.copyWith(tokens: updatedTokens);
 
-    final updatedPlayers = [
-      ..._state.players,
-    ];
+    final updatedPlayers = [..._state.players];
 
     updatedPlayers[playerIndex] = updatedPlayer;
 
-    _state = _state.copyWith(
-      players: updatedPlayers,
-    );
+    _state = _state.copyWith(players: updatedPlayers);
   }
 
   // ============================================================
@@ -1323,19 +1298,11 @@ class LudoGameEngine {
     // REAL FINISHERS
     // ==========================================================
 
-    for (
-    var index = 0;
-    index < _state.finishedPlayerIds.length;
-    index++
-    ) {
+    for (var index = 0; index < _state.finishedPlayerIds.length; index++) {
       final playerId = _state.finishedPlayerIds[index];
 
       results.add(
-        GamePlayerResult(
-          playerId: playerId,
-          rank: index + 1,
-          finished: true,
-        ),
+        GamePlayerResult(playerId: playerId, rank: index + 1, finished: true),
       );
 
       rankedPlayerIds.add(playerId);
@@ -1373,10 +1340,7 @@ class LudoGameEngine {
       }
     }
 
-    return GameResult(
-      players: results,
-      isFinished: _state.isFinished,
-    );
+    return GameResult(players: results, isFinished: _state.isFinished);
   }
 
   // ============================================================
