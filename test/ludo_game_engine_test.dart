@@ -1441,16 +1441,19 @@ void main() {
       final engine = createFinishingEngine();
 
       engine.registerDiceRoll(value: 1, sequence: 1);
+
       final firstMove = engine.getValidMoves().firstWhere(
         (option) => option is MoveToken && option.tokenId == 'player-1-token-0',
       );
+
       engine.executeMove(firstMove);
 
-      engine.registerDiceRoll(value: 1, sequence: 1);
-      final secondMove = engine.getValidMoves().firstWhere(
-        (option) => option is MoveToken && option.tokenId == 'player-2-token-0',
-      );
-      engine.executeMove(secondMove);
+      // في مباراة من لاعبين:
+      // أول لاعب يصل Finish ينهي المباراة فورًا.
+      expect(engine.isFinished, isTrue);
+      expect(engine.state.turnState.phase, TurnPhase.completed);
+
+      expect(engine.state.finishedPlayerIds, ['player-1']);
 
       final result = engine.getResult();
 
@@ -1462,10 +1465,16 @@ void main() {
 
       expect(first, isNotNull);
       expect(second, isNotNull);
+
+      // اللاعب الذي وصل Finish فعليًا.
       expect(first!.rank, 1);
       expect(first.finished, isTrue);
+
+      // اللاعب المتبقي يحصل على آخر Rank تلقائيًا،
+      // لكنه لم يصل Finish فعليًا.
       expect(second!.rank, 2);
-      expect(second.finished, isTrue);
+      expect(second.finished, isFalse);
+
       expect(result.rankedPlayersCount, 2);
     });
   });
