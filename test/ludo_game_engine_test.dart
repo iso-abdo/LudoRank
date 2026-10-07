@@ -45,20 +45,16 @@ void main() {
         color: color,
         seat: seat,
         hasCaptured: hasCaptured,
-        tokens: tokens ??
+        tokens:
+            tokens ??
             List.generate(
               4,
-                  (index) => createToken(
-                playerId: playerId,
-                tokenIndex: index,
-              ),
+              (index) => createToken(playerId: playerId, tokenIndex: index),
             ),
       );
     }
 
-    LudoGameEngine createEngine({
-      required List<LudoPlayer> players,
-    }) {
+    LudoGameEngine createEngine({required List<LudoPlayer> players}) {
       final engine = LudoGameEngine(
         initialState: LudoGameState.initial(players: players),
       );
@@ -84,23 +80,15 @@ void main() {
       );
     }
 
-    LudoToken getToken(
-        LudoGameEngine engine,
-        String playerId,
-        int tokenIndex,
-        ) {
+    LudoToken getToken(LudoGameEngine engine, String playerId, int tokenIndex) {
       final player = engine.state.players.firstWhere(
-            (item) => item.playerId == playerId,
+        (item) => item.playerId == playerId,
       );
 
-      return player.tokens.firstWhere(
-            (item) => item.tokenIndex == tokenIndex,
-      );
+      return player.tokens.firstWhere((item) => item.tokenIndex == tokenIndex);
     }
 
-    LudoGameEngine createCaptureEngine({
-      required int attackerStep,
-    }) {
+    LudoGameEngine createCaptureEngine({required int attackerStep}) {
       final attackerPath = LudoPaths.green;
       final defenderPath = LudoPaths.yellow;
       final destination = attackerPath.positionAt(
@@ -110,9 +98,7 @@ void main() {
       final defenderStep = defenderPath.mainLoopPath.indexOf(destination);
 
       if (defenderStep == -1) {
-        throw StateError(
-          'Destination is not present on defender path.',
-        );
+        throw StateError('Destination is not present on defender path.');
       }
 
       final attacker = createToken(
@@ -144,10 +130,8 @@ void main() {
               attacker,
               ...List.generate(
                 3,
-                    (index) => createToken(
-                  playerId: 'player-1',
-                  tokenIndex: index + 1,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-1', tokenIndex: index + 1),
               ),
             ],
           ),
@@ -159,10 +143,8 @@ void main() {
               defender,
               ...List.generate(
                 3,
-                    (index) => createToken(
-                  playerId: 'player-2',
-                  tokenIndex: index + 1,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-2', tokenIndex: index + 1),
               ),
             ],
           ),
@@ -198,10 +180,8 @@ void main() {
               greenFinisher,
               ...List.generate(
                 3,
-                    (index) => createToken(
-                  playerId: 'player-1',
-                  tokenIndex: index + 1,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-1', tokenIndex: index + 1),
               ),
             ],
           ),
@@ -214,16 +194,15 @@ void main() {
               yellowFinisher,
               ...List.generate(
                 3,
-                    (index) => createToken(
-                  playerId: 'player-2',
-                  tokenIndex: index + 1,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-2', tokenIndex: index + 1),
               ),
             ],
           ),
         ],
       );
     }
+
     LudoGameEngine createStep51CaptureEngine() {
       final attackerPath = LudoPaths.green;
       final defenderPath = LudoPaths.yellow;
@@ -263,10 +242,8 @@ void main() {
               attacker,
               ...List.generate(
                 3,
-                    (index) => createToken(
-                  playerId: 'player-1',
-                  tokenIndex: index + 1,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-1', tokenIndex: index + 1),
               ),
             ],
           ),
@@ -278,16 +255,15 @@ void main() {
               defender,
               ...List.generate(
                 3,
-                    (index) => createToken(
-                  playerId: 'player-2',
-                  tokenIndex: index + 1,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-2', tokenIndex: index + 1),
               ),
             ],
           ),
         ],
       );
     }
+
     LudoGameEngine createStep51DefenderEngine() {
       final attackerPath = LudoPaths.yellow;
       final defenderPath = LudoPaths.green;
@@ -327,10 +303,8 @@ void main() {
               attacker,
               ...List.generate(
                 3,
-                    (index) => createToken(
-                  playerId: 'player-1',
-                  tokenIndex: index + 1,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-1', tokenIndex: index + 1),
               ),
             ],
           ),
@@ -342,10 +316,8 @@ void main() {
               defender,
               ...List.generate(
                 3,
-                    (index) => createToken(
-                  playerId: 'player-2',
-                  tokenIndex: index + 1,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-2', tokenIndex: index + 1),
               ),
             ],
           ),
@@ -354,17 +326,14 @@ void main() {
     }
     // ==========================================================
     // ==========================================================
-// STEP 51 PATH SEMANTICS
-// ==========================================================
+    // STEP 51 PATH SEMANTICS
+    // ==========================================================
 
     test('Step 51 is Main Loop when Home Lane is not active', () {
       final path = LudoPaths.green;
 
       expect(
-        path.positionAt(
-          step: LudoPath.lastMainLoopStep,
-          useHomeLane: false,
-        ),
+        path.positionAt(step: LudoPath.lastMainLoopStep, useHomeLane: false),
         path.mainLoopPath[51],
       );
 
@@ -381,10 +350,7 @@ void main() {
       final path = LudoPaths.green;
 
       expect(
-        path.positionAt(
-          step: LudoPath.homeLaneStartStep,
-          useHomeLane: true,
-        ),
+        path.positionAt(step: LudoPath.homeLaneStartStep, useHomeLane: true),
         path.homePath[0],
       );
 
@@ -396,7 +362,7 @@ void main() {
         52,
       );
     });
-// Test: أقدر أقف على Step 51
+    // Test: أقدر أقف على Step 51
     test('Step 51 is a normal playable Main Loop cell before capture', () {
       final path = LudoPaths.green;
 
@@ -418,10 +384,8 @@ void main() {
               token,
               ...List.generate(
                 3,
-                    (index) => createToken(
-                  playerId: 'player-1',
-                  tokenIndex: index + 1,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-1', tokenIndex: index + 1),
               ),
             ],
           ),
@@ -433,148 +397,89 @@ void main() {
         ],
       );
 
-      engine.registerDiceRoll(
-        value: 1,
-        sequence: 1,
-      );
+      engine.registerDiceRoll(value: 1, sequence: 1);
 
       final move = engine.getValidMoves().firstWhere(
-            (option) =>
-        option is MoveToken &&
+        (option) =>
+            option is MoveToken &&
             option.tokenId == 'player-1-token-0' &&
             option.rollSequence == 1,
       );
 
       engine.executeMove(move);
 
-      final updated = getToken(
-        engine,
-        'player-1',
-        0,
-      );
+      final updated = getToken(engine, 'player-1', 0);
 
       expect(updated.positionInPath, 51);
-      expect(
-        updated.position,
-        path.mainLoopPath[51],
-      );
+      expect(updated.position, path.mainLoopPath[51]);
       expect(updated.state, LudoTokenState.normal);
       expect(updated.homeEntryPending, isFalse);
     });
-//Test: أقدر آكل على 51
+    //Test: أقدر آكل على 51
     test('A Token can capture an enemy Token on Main Loop Step 51', () {
       final engine = createStep51CaptureEngine();
 
-      engine.registerDiceRoll(
-        value: 1,
-        sequence: 1,
-      );
+      engine.registerDiceRoll(value: 1, sequence: 1);
 
       final move = engine.getValidMoves().firstWhere(
-            (option) =>
-        option is MoveToken &&
+        (option) =>
+            option is MoveToken &&
             option.tokenId == 'player-1-token-0' &&
             option.rollSequence == 1,
       );
 
       engine.executeMove(move);
 
-      final attacker = getToken(
-        engine,
-        'player-1',
-        0,
-      );
+      final attacker = getToken(engine, 'player-1', 0);
 
-      final defender = getToken(
-        engine,
-        'player-2',
-        0,
-      );
+      final defender = getToken(engine, 'player-2', 0);
 
       final attackerPlayer = engine.state.players.firstWhere(
-            (player) => player.playerId == 'player-1',
+        (player) => player.playerId == 'player-1',
       );
 
       expect(attacker.positionInPath, 51);
-      expect(
-        attacker.position,
-        LudoPaths.green.mainLoopPath[51],
-      );
+      expect(attacker.position, LudoPaths.green.mainLoopPath[51]);
 
       expect(attackerPlayer.hasCaptured, isTrue);
       expect(attacker.homeEntryPending, isTrue);
 
-      expect(
-        defender.positionInPath,
-        -1,
-      );
-      expect(
-        defender.position,
-        const Position(row: 0, column: 0),
-      );
-      expect(
-        defender.state,
-        LudoTokenState.initial,
-      );
-      expect(
-        defender.homeEntryPending,
-        isFalse,
-      );
+      expect(defender.positionInPath, -1);
+      expect(defender.position, const Position(row: 0, column: 0));
+      expect(defender.state, LudoTokenState.initial);
+      expect(defender.homeEntryPending, isFalse);
     });
-// Test: ممكن أتآكل وأنا واقف على 51
+    // Test: ممكن أتآكل وأنا واقف على 51
     test('A Token standing on Main Loop Step 51 can be captured', () {
       final engine = createStep51DefenderEngine();
 
-      engine.registerDiceRoll(
-        value: 1,
-        sequence: 1,
-      );
+      engine.registerDiceRoll(value: 1, sequence: 1);
 
       final move = engine.getValidMoves().firstWhere(
-            (option) =>
-        option is MoveToken &&
+        (option) =>
+            option is MoveToken &&
             option.tokenId == 'player-1-token-0' &&
             option.rollSequence == 1,
       );
 
       engine.executeMove(move);
 
-      final attacker = getToken(
-        engine,
-        'player-1',
-        0,
-      );
+      final attacker = getToken(engine, 'player-1', 0);
 
-      final defender = getToken(
-        engine,
-        'player-2',
-        0,
-      );
+      final defender = getToken(engine, 'player-2', 0);
 
-      expect(
-        attacker.position,
-        LudoPaths.yellow.mainLoopPath[38],
-      );
+      expect(attacker.position, LudoPaths.yellow.mainLoopPath[38]);
 
-      expect(
-        defender.positionInPath,
-        -1,
-      );
+      expect(defender.positionInPath, -1);
 
-      expect(
-        defender.position,
-        const Position(row: 0, column: 0),
-      );
+      expect(defender.position, const Position(row: 0, column: 0));
 
-      expect(
-        defender.state,
-        LudoTokenState.initial,
-      );
+      expect(defender.state, LudoTokenState.initial);
     });
-// أهم Test: الـ Token الذي أكل على 51 يكمل الدورة
+    // أهم Test: الـ Token الذي أكل على 51 يكمل الدورة
     test(
       'Token that captured on Step 51 completes one full lap before entering Home Lane',
-          () {
+      () {
         final token = createToken(
           playerId: 'player-1',
           tokenIndex: 0,
@@ -595,10 +500,8 @@ void main() {
                 token,
                 ...List.generate(
                   3,
-                      (index) => createToken(
-                    playerId: 'player-1',
-                    tokenIndex: index + 1,
-                  ),
+                  (index) =>
+                      createToken(playerId: 'player-1', tokenIndex: index + 1),
                 ),
               ],
             ),
@@ -606,91 +509,55 @@ void main() {
         );
 
         // 51 -> 0
-        engine.registerDiceRoll(
-          value: 1,
-          sequence: 1,
-        );
+        engine.registerDiceRoll(value: 1, sequence: 1);
 
         var move = engine.getValidMoves().firstWhere(
-              (option) =>
-          option is MoveToken &&
-              option.tokenId == 'player-1-token-0',
+          (option) =>
+              option is MoveToken && option.tokenId == 'player-1-token-0',
         );
 
         engine.executeMove(move);
 
-        var updated = getToken(
-          engine,
-          'player-1',
-          0,
-        );
+        var updated = getToken(engine, 'player-1', 0);
 
         expect(updated.positionInPath, 0);
-        expect(
-          updated.position,
-          LudoPaths.green.mainLoopPath[0],
-        );
+        expect(updated.position, LudoPaths.green.mainLoopPath[0]);
         expect(updated.homeEntryPending, isTrue);
 
         // 0 -> 1 -> ... -> 50
         for (var expectedStep = 1; expectedStep <= 50; expectedStep++) {
-          engine.registerDiceRoll(
-            value: 1,
-            sequence: 1,
-          );
+          engine.registerDiceRoll(value: 1, sequence: 1);
 
           move = engine.getValidMoves().firstWhere(
-                (option) =>
-            option is MoveToken &&
-                option.tokenId == 'player-1-token-0',
+            (option) =>
+                option is MoveToken && option.tokenId == 'player-1-token-0',
           );
 
           engine.executeMove(move);
 
-          updated = getToken(
-            engine,
-            'player-1',
-            0,
-          );
+          updated = getToken(engine, 'player-1', 0);
 
           expect(updated.positionInPath, expectedStep);
           expect(updated.homeEntryPending, isTrue);
         }
 
         // 50 -> 51(Home Lane)
-        engine.registerDiceRoll(
-          value: 1,
-          sequence: 1,
-        );
+        engine.registerDiceRoll(value: 1, sequence: 1);
 
         move = engine.getValidMoves().firstWhere(
-              (option) =>
-          option is MoveToken &&
-              option.tokenId == 'player-1-token-0',
+          (option) =>
+              option is MoveToken && option.tokenId == 'player-1-token-0',
         );
 
         engine.executeMove(move);
 
-        updated = getToken(
-          engine,
-          'player-1',
-          0,
-        );
+        updated = getToken(engine, 'player-1', 0);
 
-        expect(
-          updated.positionInPath,
-          LudoPath.homeLaneStartStep,
-        );
+        expect(updated.positionInPath, LudoPath.homeLaneStartStep);
 
-        expect(
-          updated.position,
-          LudoPaths.green.homePath[0],
-        );
+        expect(updated.position, LudoPaths.green.homePath[0]);
 
-        expect(
-          updated.homeEntryPending,
-          isFalse,
-        );
+        expect(updated.homeEntryPending, isFalse);
       },
     );
 
@@ -717,10 +584,8 @@ void main() {
               token,
               ...List.generate(
                 3,
-                    (index) => createToken(
-                  playerId: 'player-1',
-                  tokenIndex: index + 1,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-1', tokenIndex: index + 1),
               ),
             ],
           ),
@@ -734,8 +599,8 @@ void main() {
 
       engine.registerDiceRoll(value: 2, sequence: 1);
       final move = engine.getValidMoves().firstWhere(
-            (option) =>
-        option is MoveToken &&
+        (option) =>
+            option is MoveToken &&
             option.tokenId == 'player-1-token-0' &&
             option.steps == 2,
       );
@@ -748,10 +613,7 @@ void main() {
       // position. The token must wrap to step 0 instead of entering
       // the Home Lane.
       expect(updated.positionInPath, 0);
-      expect(
-        updated.position,
-        LudoPaths.green.startingPosition,
-      );
+      expect(updated.position, LudoPaths.green.startingPosition);
       expect(updated.state, isNot(LudoTokenState.finished));
     });
 
@@ -779,10 +641,8 @@ void main() {
               exactFinishToken,
               ...List.generate(
                 3,
-                    (index) => createToken(
-                  playerId: 'player-1',
-                  tokenIndex: index + 1,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-1', tokenIndex: index + 1),
               ),
             ],
           ),
@@ -796,17 +656,11 @@ void main() {
 
       exactEngine.registerDiceRoll(value: 1, sequence: 1);
       final finishMove = exactEngine.getValidMoves().firstWhere(
-            (option) =>
-        option is MoveToken &&
-            option.tokenId == 'player-1-token-0',
+        (option) => option is MoveToken && option.tokenId == 'player-1-token-0',
       );
       exactEngine.executeMove(finishMove);
 
-      final finishedToken = getToken(
-        exactEngine,
-        'player-1',
-        0,
-      );
+      final finishedToken = getToken(exactEngine, 'player-1', 0);
 
       expect(finishedToken.positionInPath, LudoPath.finishStep);
       expect(finishedToken.state, LudoTokenState.finished);
@@ -830,10 +684,8 @@ void main() {
               overshootToken,
               ...List.generate(
                 3,
-                    (index) => createToken(
-                  playerId: 'player-1',
-                  tokenIndex: index + 1,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-1', tokenIndex: index + 1),
               ),
             ],
           ),
@@ -847,10 +699,7 @@ void main() {
 
       overshootEngine.registerDiceRoll(value: 3, sequence: 1);
 
-      expect(
-        overshootEngine.getValidMoves().whereType<MoveToken>(),
-        isEmpty,
-      );
+      expect(overshootEngine.getValidMoves().whereType<MoveToken>(), isEmpty);
     });
 
     // ==========================================================
@@ -901,10 +750,8 @@ void main() {
               attacker,
               ...List.generate(
                 3,
-                    (index) => createToken(
-                  playerId: 'player-1',
-                  tokenIndex: index + 1,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-1', tokenIndex: index + 1),
               ),
             ],
           ),
@@ -917,10 +764,8 @@ void main() {
               enemy2,
               ...List.generate(
                 2,
-                    (index) => createToken(
-                  playerId: 'player-2',
-                  tokenIndex: index + 2,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-2', tokenIndex: index + 2),
               ),
             ],
           ),
@@ -931,8 +776,8 @@ void main() {
 
       expect(
         engine.getValidMoves().any(
-              (option) =>
-          option is MoveToken &&
+          (option) =>
+              option is MoveToken &&
               option.tokenId == 'player-1-token-0' &&
               option.steps == 4,
         ),
@@ -989,10 +834,7 @@ void main() {
               attacker,
               own1,
               own2,
-              createToken(
-                playerId: 'player-1',
-                tokenIndex: 3,
-              ),
+              createToken(playerId: 'player-1', tokenIndex: 3),
             ],
           ),
           createPlayer(
@@ -1007,7 +849,7 @@ void main() {
 
       expect(
         engine.getValidMoves().whereType<MoveToken>().any(
-              (option) => option.tokenId == 'player-1-token-0',
+          (option) => option.tokenId == 'player-1-token-0',
         ),
         isFalse,
       );
@@ -1066,25 +908,19 @@ void main() {
       engine.registerDiceRoll(value: 4, sequence: 1);
 
       final move = engine.getValidMoves().firstWhere(
-            (option) =>
-        option is MoveToken &&
+        (option) =>
+            option is MoveToken &&
             option.tokenId == 'player-1-token-0' &&
             option.steps == 4,
       );
 
       engine.executeMove(move);
 
-      expect(
-        getToken(engine, 'player-1', 0).positionInPath,
-        destinationStep,
-      );
-      expect(
-        getToken(engine, 'player-1', 0).position,
-        destination,
-      );
+      expect(getToken(engine, 'player-1', 0).positionInPath, destinationStep);
+      expect(getToken(engine, 'player-1', 0).position, destination);
     });
 
-//
+    //
     // ==========================================================
     // 6. SINGLE ENEMY CAPTURE
     // ==========================================================
@@ -1095,8 +931,8 @@ void main() {
       engine.registerDiceRoll(value: 4, sequence: 1);
 
       final move = engine.getValidMoves().firstWhere(
-            (option) =>
-        option is MoveToken &&
+        (option) =>
+            option is MoveToken &&
             option.tokenId == 'player-1-token-0' &&
             option.rollSequence == 1,
       );
@@ -1104,87 +940,82 @@ void main() {
       engine.executeMove(move);
 
       final attacker = engine.state.players.firstWhere(
-            (player) => player.playerId == 'player-1',
+        (player) => player.playerId == 'player-1',
       );
       final defender = engine.state.players.firstWhere(
-            (player) => player.playerId == 'player-2',
+        (player) => player.playerId == 'player-2',
       );
 
       final attackerToken = attacker.tokens.firstWhere(
-            (token) => token.tokenIndex == 0,
+        (token) => token.tokenIndex == 0,
       );
       final defenderToken = defender.tokens.firstWhere(
-            (token) => token.tokenIndex == 0,
+        (token) => token.tokenIndex == 0,
       );
 
       expect(attacker.hasCaptured, isTrue);
       expect(attackerToken.positionInPath, 9);
-  //    expect(defenderToken.positionInPath, -1);
-    //  expect(
+      //    expect(defenderToken.positionInPath, -1);
+      //  expect(
       //  defenderToken.position,
-        //  const Position(row: 0, column: 0)
+      //  const Position(row: 0, column: 0)
       //  LudoPaths.yellow.startingPosition,
       //);
       expect(defenderToken.positionInPath, -1);
 
-      expect(
-        defenderToken.position,
-        const Position(row: 0, column: 0),
-      );
+      expect(defenderToken.position, const Position(row: 0, column: 0));
 
-      expect(
-        defenderToken.state,
-        LudoTokenState.initial,
-      );
+      expect(defenderToken.state, LudoTokenState.initial);
 
-      expect(
-        defenderToken.homeEntryPending,
-        isFalse,
-      );
+      expect(defenderToken.homeEntryPending, isFalse);
     });
 
     // ==========================================================
     // 7. TRIPLE SIX FULL CANCELLATION
     // ==========================================================
-
     test('Third six fully cancels the current turn', () {
       final engine = createTwoPlayerEngine();
 
+      // ==========================================================
+      // FIRST SIX
+      // ==========================================================
+
       engine.registerDiceRoll(value: 6, sequence: 1);
-      engine.registerDiceRoll(value: 4, sequence: 2);
-
-      final move4 = engine.getValidMoves().firstWhere(
-            (option) =>
-        option is MoveToken &&
-            option.rollSequence == 2 &&
-            option.steps == 4,
-      );
-      engine.executeMove(move4);
 
       expect(engine.currentPlayer.playerId, 'player-1');
+
       expect(engine.state.turnState.phase, TurnPhase.rolling);
 
-      engine.registerDiceRoll(value: 6, sequence: 3);
-      engine.registerDiceRoll(value: 3, sequence: 4);
+      expect(engine.state.turnState.sixRollCount, 1);
 
-      final move3 = engine.getValidMoves().firstWhere(
-            (option) =>
-        option is MoveToken &&
-            option.rollSequence == 4 &&
-            option.steps == 3,
-      );
-      engine.executeMove(move3);
+      // ==========================================================
+      // SECOND SIX
+      // ==========================================================
+
+      engine.registerDiceRoll(value: 6, sequence: 2);
 
       expect(engine.currentPlayer.playerId, 'player-1');
+
       expect(engine.state.turnState.phase, TurnPhase.rolling);
+
       expect(engine.state.turnState.sixRollCount, 2);
 
-      engine.registerDiceRoll(value: 6, sequence: 5);
+      // ==========================================================
+      // THIRD SIX
+      // ==========================================================
 
+      engine.registerDiceRoll(value: 6, sequence: 3);
+
+      // Third six cancels the entire turn
+      // and moves to the next unfinished player.
       expect(engine.currentPlayer.playerId, 'player-2');
+
       expect(engine.state.turnState.sixRollCount, 0);
+
       expect(engine.state.turnState.rolls, isEmpty);
+
       expect(engine.state.turnState.availableRolls, isEmpty);
+
       expect(engine.state.turnState.phase, TurnPhase.rolling);
     });
 
@@ -1212,10 +1043,8 @@ void main() {
               token,
               ...List.generate(
                 3,
-                    (index) => createToken(
-                  playerId: 'player-1',
-                  tokenIndex: index + 1,
-                ),
+                (index) =>
+                    createToken(playerId: 'player-1', tokenIndex: index + 1),
               ),
             ],
           ),
@@ -1227,10 +1056,7 @@ void main() {
         ],
       );
 
-      final moves = engine.registerDiceRoll(
-        value: 4,
-        sequence: 1,
-      );
+      final moves = engine.registerDiceRoll(value: 4, sequence: 1);
 
       expect(moves, isEmpty);
       expect(engine.currentPlayer.playerId, 'player-2');
@@ -1247,19 +1073,19 @@ void main() {
       final engine = createTwoPlayerEngine();
 
       expect(
-            () => engine.registerDiceRoll(value: 0, sequence: 1),
+        () => engine.registerDiceRoll(value: 0, sequence: 1),
         throwsArgumentError,
       );
 
       expect(
-            () => engine.registerDiceRoll(value: 7, sequence: 1),
+        () => engine.registerDiceRoll(value: 7, sequence: 1),
         throwsArgumentError,
       );
 
       engine.registerDiceRoll(value: 6, sequence: 1);
 
       expect(
-            () => engine.registerDiceRoll(value: 6, sequence: 3),
+        () => engine.registerDiceRoll(value: 6, sequence: 3),
         throwsArgumentError,
       );
     });
@@ -1279,15 +1105,9 @@ void main() {
         rollSequence: 1,
       );
 
-      expect(
-            () => engine.executeMove(illegalMove),
-        throwsStateError,
-      );
+      expect(() => engine.executeMove(illegalMove), throwsStateError);
 
-      expect(
-        engine.state.turnState.availableRolls.values,
-        [4],
-      );
+      expect(engine.state.turnState.availableRolls.values, [4]);
       expect(engine.currentPlayer.playerId, 'player-1');
     });
 
@@ -1300,8 +1120,7 @@ void main() {
 
       engine.registerDiceRoll(value: 1, sequence: 1);
       final firstMove = engine.getValidMoves().firstWhere(
-            (option) => option is MoveToken &&
-            option.tokenId == 'player-1-token-0',
+        (option) => option is MoveToken && option.tokenId == 'player-1-token-0',
       );
       engine.executeMove(firstMove);
 
@@ -1311,20 +1130,13 @@ void main() {
 
       engine.registerDiceRoll(value: 1, sequence: 1);
       final secondMove = engine.getValidMoves().firstWhere(
-            (option) => option is MoveToken &&
-            option.tokenId == 'player-2-token-0',
+        (option) => option is MoveToken && option.tokenId == 'player-2-token-0',
       );
       engine.executeMove(secondMove);
 
       expect(engine.isFinished, isTrue);
-      expect(
-        engine.state.turnState.phase,
-        TurnPhase.completed,
-      );
-      expect(
-        engine.state.finishedPlayerIds,
-        ['player-1', 'player-2'],
-      );
+      expect(engine.state.turnState.phase, TurnPhase.completed);
+      expect(engine.state.finishedPlayerIds, ['player-1', 'player-2']);
     });
 
     // ==========================================================
@@ -1336,15 +1148,13 @@ void main() {
 
       engine.registerDiceRoll(value: 1, sequence: 1);
       final firstMove = engine.getValidMoves().firstWhere(
-            (option) => option is MoveToken &&
-            option.tokenId == 'player-1-token-0',
+        (option) => option is MoveToken && option.tokenId == 'player-1-token-0',
       );
       engine.executeMove(firstMove);
 
       engine.registerDiceRoll(value: 1, sequence: 1);
       final secondMove = engine.getValidMoves().firstWhere(
-            (option) => option is MoveToken &&
-            option.tokenId == 'player-2-token-0',
+        (option) => option is MoveToken && option.tokenId == 'player-2-token-0',
       );
       engine.executeMove(secondMove);
 

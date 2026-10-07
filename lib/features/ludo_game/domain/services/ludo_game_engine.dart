@@ -11,23 +11,25 @@ import '../models/game_result.dart';
 import '../models/ludo_game_state.dart';
 import '../models/move_option.dart';
 import '../models/turn_state.dart';
+
+/// نتيجة حساب Destination داخل المسار.
+///
+/// نحتاج الاثنين معًا لأن Step 51 له تفسيرين:
+///
+/// - Main Loop Step 51
+/// - Home Lane Step 51
+///
+/// لذلك لا يكفي أن نرجع رقم Step فقط.
 class _PathDestination {
   final int step;
 
-  /// يحدد تفسير Step 51 عند الوصول إليه.
-  ///
-  /// true  = Home Lane route
-  /// false = Main Loop route
-  ///
-  /// عند Finish (56) تكون true لأن Position 56 موجود
-  /// داخل الجزء الممتد بعد Main Loop في LudoPath.
+  /// true  = Step محسوب على مسار Home Lane
+  /// false = Step محسوب على Main Loop
   final bool useHomeLane;
 
-  const _PathDestination({
-    required this.step,
-    required this.useHomeLane,
-  });
+  const _PathDestination({required this.step, required this.useHomeLane});
 }
+
 /// Core domain engine for a Fast Mode Ludo match.
 ///
 /// Responsibilities:
@@ -54,9 +56,6 @@ class _PathDestination {
 /// - SQLite / Drift
 /// - Provider
 /// - UI
-
-
-
 class LudoGameEngine {
   LudoGameState _state;
 
@@ -202,7 +201,7 @@ class LudoGameEngine {
 
   /// Registers a deterministic dice roll.
   ///
-  /// This is mainly useful for unit tests and debugging.
+  /// Mainly useful for tests and debugging.
   List<MoveOption> registerDiceRoll({
     required int value,
     required int sequence,
@@ -293,6 +292,7 @@ class LudoGameEngine {
     // No legal movement at all.
     if (moves.isEmpty) {
       _finishTurnWithoutMove();
+
       return const [];
     }
 
@@ -434,7 +434,14 @@ class LudoGameEngine {
     // ==========================================================
     // CAPTURE BONUS
     // ==========================================================
-
+    //
+    // Capture gives an immediate extra roll.
+    //
+    // IMPORTANT:
+    // We do NOT consume or recreate old rolls here.
+    // The capture bonus simply changes the phase to Rolling,
+    // which allows one new die roll.
+    //
     if (_lastMoveWasCapture) {
       _state = _state.copyWith(
         turnState: updatedTurn.copyWith(phase: TurnPhase.rolling),
@@ -448,7 +455,18 @@ class LudoGameEngine {
     // ==========================================================
     // REMAINING ROLLS
     // ==========================================================
-
+    //
+    // IMPORTANT RULE:
+    //
+    // وجود 6 متبقية داخل availableRolls لا يعني
+    // أن اللاعب يأخذ Roll جديدة تلقائيًا.
+    //
+    // الـ 6 أعطت الـ Extra Roll لحظة تسجيلها بالفعل.
+    //
+    // إذا كانت هناك رميات لم تُستخدم بعد:
+    // - نظل Playing.
+    // - اللاعب يختار إحدى الحركات القانونية.
+    //
     if (_state.turnState.availableRolls.isNotEmpty) {
       final remainingMoves = getValidMoves();
 
@@ -456,21 +474,8 @@ class LudoGameEngine {
         return _finishTurnWithoutMove();
       }
 
-      // IMPORTANT:
-      //
-      // If a 6 is still available, the 6 itself
-      // represents a granted extra roll.
-      //
-      // Therefore the player goes back to Rolling
-      // before consuming the remaining 6.
-      final hasRemainingSix = _state.turnState.availableRolls.rolls.any(
-        (roll) => roll.isSix,
-      );
-
       _state = _state.copyWith(
-        turnState: updatedTurn.copyWith(
-          phase: hasRemainingSix ? TurnPhase.rolling : TurnPhase.playing,
-        ),
+        turnState: updatedTurn.copyWith(phase: TurnPhase.playing),
       );
 
       return _state;
@@ -506,7 +511,6 @@ class LudoGameEngine {
         return null;
       }
 
-      // Starting cells are safe cells.
       return ExitToken(tokenId: token.id, rollSequence: roll.sequence);
     }
 
@@ -530,17 +534,9 @@ class LudoGameEngine {
 
     final path = _pathFor(player.color);
 
-    // Resolve the destination by walking
-    // the actual logical path.
-    //
-    // This is required because:
-    //
-    // Before Capture:
-    //   50 -> 51 -> 0
-    //
-    // After Capture:
-    //   50 -> 51(Home) -> 52...
-
+    // ==========================================================
+    // DESTINATION
+    // ==========================================================
 
     final destination = _calculateDestinationStep(
       path: path,
@@ -558,29 +554,19 @@ class LudoGameEngine {
       useHomeLane: destination.useHomeLane,
     );
 
-    final destinationIsHomeLane =
-    path.isHomeLaneStep(destination.step);
+    // IMPORTANT:
+    //
+    // Do NOT use only:
+    //
+    // path.isHomeLaneStep(destination.step)
+    //
+    // because Step 51 can still be Main Loop.
+    //
+    final destinationIsHomeLane = destination.useHomeLane;
 
     if (_isBlockedDestination(
       player: player,
       destination: destinationPosition,
-      isHomeLane: destinationIsHomeLane,
-    )) {
-      return null;
-    }
-
-    return MoveToken(
-      tokenId: token.id,
-      steps: roll.value,
-      rollSequence: roll.sequence,
-    );
-
-    // Home Lane is intrinsically safe.
-    final destinationIsHomeLane = path.isHomeLaneStep(destinationStep);
-
-    if (_isBlockedDestination(
-      player: player,
-      destination: destination,
       isHomeLane: destinationIsHomeLane,
     )) {
       return null;
@@ -597,15 +583,6 @@ class LudoGameEngine {
   // DESTINATION CALCULATION
   // ============================================================
 
-  /// Walks the path one logical step at a time.
-  ///
-  /// Returns null when the move would overshoot Finish.
-  ///
-  /// This method MUST NOT simply use:
-  ///
-  ///   currentStep + steps
-  ///
-  /// because step 51 is state-dependent.
   _PathDestination? _calculateDestinationStep({
     required LudoPath path,
     required LudoPlayer player,
@@ -623,14 +600,13 @@ class LudoGameEngine {
 
     var step = token.positionInPath;
 
-    // مهم جدًا:
-    //
-    // homeEntryPending حالة خاصة بهذا الـ Token،
-    // لذلك أثناء حساب الحركة نحاكي تغييرها محليًا.
-    //
-    // لا نعدّل الـ Token الحقيقي هنا لأن هذه الدالة
-    // مجرد حساب للـ Destination.
+    // حالة محلية فقط أثناء محاكاة الحركة.
+    // لا نعدل الـ Token الحقيقي هنا.
     var homeEntryPending = token.homeEntryPending;
+
+    // هل الـ destination النهائي تم الوصول إليه
+    // من خلال Home Lane؟
+    var destinationUseHomeLane = false;
 
     for (var i = 0; i < steps; i++) {
       // Finish نقطة نهائية ولا يمكن تجاوزها.
@@ -638,67 +614,70 @@ class LudoGameEngine {
         return null;
       }
 
-      // ==========================================================
+      // ========================================================
       // RESOLVE CURRENT ROUTE
-      // ==========================================================
+      // ========================================================
       //
-      // إذا اللاعب لم يعمل Capture:
+      // قبل Capture:
       //   51 = Main Loop
       //
-      // إذا اللاعب عمل Capture:
+      // بعد Capture:
       //   51 = Home Lane
       //
       // الاستثناء:
-      //   Token نفسه Pending وهو واقف على Main Loop 51
-      //   فيجب أن يخرج من 51 إلى 0.
+      // Token نفسه عند 51 Main Loop ومعه
+      // homeEntryPending=true
+      //
+      // في هذه الحالة:
+      //   51(Main) -> 0
       //
       final useHomeLane =
           player.hasCaptured &&
-              !(homeEntryPending && step == LudoPath.lastMainLoopStep);
+          !(homeEntryPending && step == LudoPath.lastMainLoopStep);
 
       final nextStep = path.nextStep(
         currentStep: step,
         useHomeLane: useHomeLane,
       );
 
-      // ==========================================================
-      // ENTER HOME LANE
-      // ==========================================================
+      // ========================================================
+      // RESOLVE DESTINATION SEMANTICS
+      // ========================================================
       //
-      // الانتقال:
+      // الرقم 51 وحده لا يكفي.
       //
-      //   50 -> 51(Home)
+      // 50 -> 51 عندما useHomeLane=true
+      //      => 51 Home Lane
       //
-      // يعني أن الـ Token دخل Home Lane فعليًا،
-      // وبالتالي لم يعد محتاجًا إلى homeEntryPending.
+      // 50 -> 51 عندما useHomeLane=false
+      //      => 51 Main Loop
       //
-      if (useHomeLane &&
-          step == LudoPath.lastMainLoopStep - 1 &&
-          nextStep == LudoPath.homeLaneStartStep) {
+      // 51 -> 0 عندما useHomeLane=false
+      //      => 0 Main Loop
+      //
+      // 51 -> 52 عندما useHomeLane=true
+      //      => 52 Home Lane
+      //
+      destinationUseHomeLane =
+          useHomeLane && nextStep >= LudoPath.homeLaneStartStep;
+
+      // ========================================================
+      // COMPLETE SPECIAL PENDING STATE
+      // ========================================================
+      //
+      // بمجرد الوصول إلى 51 Home Lane،
+      // يكون الـ Token قد أكمل الدورة المطلوبة.
+      //
+      if (destinationUseHomeLane && nextStep == LudoPath.homeLaneStartStep) {
         homeEntryPending = false;
       }
 
       step = nextStep;
     }
 
-    // ==========================================================
-    // RESOLVE FINAL STEP 51
-    // ==========================================================
-    //
-    // بعد انتهاء عدد الخطوات، نحدد هل الـ 51 النهائي
-    // Main Loop أم Home Lane.
-    //
-    // هذا مهم لأن الرقم وحده لا يكفي.
-    //
-    final finalUseHomeLane =
-        player.hasCaptured &&
-            !(homeEntryPending && step == LudoPath.lastMainLoopStep);
-
-    return _PathDestination(
-      step: step,
-      useHomeLane: finalUseHomeLane,
-    );
+    return _PathDestination(step: step, useHomeLane: destinationUseHomeLane);
   }
+
   // ============================================================
   // BLOCKS
   // ============================================================
@@ -746,10 +725,12 @@ class LudoGameEngine {
       }
     }
 
+    // Own block.
     if (ownCount >= 2) {
       return true;
     }
 
+    // Enemy block.
     if (enemyCount >= 2) {
       return true;
     }
@@ -761,8 +742,7 @@ class LudoGameEngine {
   // EXIT TOKEN
   // ============================================================
 
-  /// Moves an initial token onto its
-  /// own Starting Cell.
+  /// Moves an Initial token onto its own Starting Cell.
   void _executeExitToken(ExitToken move) {
     final playerIndex = _state.currentPlayerIndex;
 
@@ -792,6 +772,7 @@ class LudoGameEngine {
       state: SafeCells.contains(startingPosition)
           ? LudoTokenState.safe
           : LudoTokenState.normal,
+      homeEntryPending: false,
     );
 
     final updatedTokens = [...player.tokens];
@@ -811,7 +792,7 @@ class LudoGameEngine {
   // NORMAL TOKEN MOVEMENT
   // ============================================================
 
-  /// Executes a normal token movement.
+  /// Executes a normal Token movement.
   void _executeMoveToken(MoveToken move) {
     final playerIndex = _state.currentPlayerIndex;
 
@@ -833,6 +814,10 @@ class LudoGameEngine {
 
     final path = _pathFor(player.color);
 
+    // ==========================================================
+    // DESTINATION
+    // ==========================================================
+
     final destination = _calculateDestinationStep(
       path: path,
       player: player,
@@ -851,30 +836,20 @@ class LudoGameEngine {
       useHomeLane: destination.useHomeLane,
     );
 
-    final reachesFinish =
-        destination.step == LudoPath.finishStep;
+    final reachesFinish = destination.step == LudoPath.finishStep;
 
-    final isHomeLane =
-    path.isHomeLaneStep(destination.step);
-
-    if (newPathIndex == null) {
-      throw StateError('الحركة تتجاوز نهاية المسار.');
-    }
-
-    final newPosition = path.positionAt(
-      step: newPathIndex,
-      hasCaptured: player.hasCaptured,
-    );
-
-    final reachesFinish = newPathIndex == LudoPath.finishStep;
-
-    final isHomeLane = path.isHomeLaneStep(newPathIndex);
+    // IMPORTANT:
+    //
+    // Use the actual route interpretation calculated above.
+    //
+    // Do not infer Step 51 from its number alone.
+    final isHomeLane = destination.useHomeLane;
 
     // ==========================================================
     // CAPTURE
     // ==========================================================
 
-    bool captureOccurred = false;
+    var captureOccurred = false;
 
     if (!reachesFinish && !isHomeLane) {
       captureOccurred = _applyCaptureIfNeeded(
@@ -884,6 +859,41 @@ class LudoGameEngine {
     }
 
     _lastMoveWasCapture = captureOccurred;
+
+    // ==========================================================
+    // HOME ENTRY PENDING
+    // ==========================================================
+    //
+    // Special rule:
+    //
+    // If THIS token performs the FIRST capture on Main Loop
+    // Step 51, it does NOT immediately enter Home Lane.
+    //
+    // Instead:
+    //
+    //   51(Main)
+    //      ↓
+    //   0
+    //      ↓
+    //   ...
+    //      ↓
+    //   50
+    //      ↓
+    //   51(Home)
+    //
+    final shouldDelayHomeEntry =
+        captureOccurred &&
+        !player.hasCaptured &&
+        newPathIndex == LudoPath.lastMainLoopStep &&
+        !isHomeLane;
+
+    final nextHomeEntryPending = reachesFinish
+        ? false
+        : isHomeLane
+        ? false
+        : shouldDelayHomeEntry
+        ? true
+        : token.homeEntryPending;
 
     // ==========================================================
     // TOKEN STATE
@@ -901,6 +911,7 @@ class LudoGameEngine {
       position: newPosition,
       positionInPath: newPathIndex,
       state: nextTokenState,
+      homeEntryPending: nextHomeEntryPending,
     );
 
     final updatedTokens = [...player.tokens];
@@ -910,7 +921,16 @@ class LudoGameEngine {
     // ==========================================================
     // PLAYER CAPTURE STATUS
     // ==========================================================
-
+    //
+    // Player-level state:
+    //
+    // hasCaptured = "this player has unlocked Home Lane"
+    //
+    // Token-level state:
+    //
+    // homeEntryPending = "this specific token must complete
+    //                     one extra loop before Home Lane"
+    //
     final updatedPlayer = player.copyWith(
       tokens: updatedTokens,
       hasCaptured: player.hasCaptured || captureOccurred,
@@ -928,9 +948,13 @@ class LudoGameEngine {
   // ============================================================
 
   /// Captures exactly one enemy token on
-  /// an ordinary non-safe cell.
+  /// an ordinary non-safe Main Loop cell.
   ///
   /// Returns true when a capture happened.
+  ///
+  /// IMPORTANT:
+  /// The defender returns to Home / Initial.
+  /// It does NOT return to its Starting Cell.
   bool _applyCaptureIfNeeded({
     required String attackerPlayerId,
     required Position destination,
@@ -940,8 +964,10 @@ class LudoGameEngine {
       return false;
     }
 
-    // An attacker reaching its own Home Lane
-    // cannot capture there.
+    // Home Lane cannot contain captures.
+    //
+    // We check all Home Lanes because physical positions
+    // belonging to Home Lane are never valid capture targets.
     for (final player in _state.players) {
       final path = _pathFor(player.color);
 
@@ -974,14 +1000,22 @@ class LudoGameEngine {
 
       final defenderToken = player.tokens[tokenIndex];
 
-      final defenderPath = _pathFor(player.color);
-
+      // ========================================================
+      // RESET DEFENDER TO HOME
+      // ========================================================
+      //
+      // This is intentionally:
+      //
+      // positionInPath = -1
+      // state = initial
+      // position = (0, 0)
+      //
+      // It does NOT use defenderPath.startingPosition.
       final resetToken = defenderToken.copyWith(
-        position: defenderPath.startingPosition,
-        positionInPath: 0,
-        state: SafeCells.contains(defenderPath.startingPosition)
-            ? LudoTokenState.safe
-            : LudoTokenState.normal,
+        position: const Position(row: 0, column: 0),
+        positionInPath: -1,
+        state: LudoTokenState.initial,
+        homeEntryPending: false,
       );
 
       final updatedTokens = [...player.tokens];
@@ -1177,6 +1211,7 @@ class LudoGameEngine {
         state: SafeCells.contains(startingPosition)
             ? LudoTokenState.safe
             : LudoTokenState.normal,
+        homeEntryPending: false,
       );
     }
 
