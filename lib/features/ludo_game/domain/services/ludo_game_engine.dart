@@ -362,7 +362,9 @@ class LudoGameEngine {
 
     final validMoves = getValidMoves();
 
-    final isValid = validMoves.any((option) => _sameMove(option, move));
+    final isValid = validMoves.any(
+          (option) => _sameMove(option, move),
+    );
 
     if (!isValid) {
       throw StateError('الحركة المحددة غير قانونية.');
@@ -392,28 +394,57 @@ class LudoGameEngine {
     // PLAYER FINISH
     // ==========================================================
 
-    final playerFinished = _hasPlayerFinished(updatedPlayer);
+    final playerFinished = _hasPlayerFinished(
+      updatedPlayer,
+    );
 
     if (playerFinished) {
-      _registerPlayerFinished(updatedPlayer.playerId);
+      // أول Token وصل Finish.
+      //
+      // جميع Tokens الأخرى الخاصة بهذا اللاعب
+      // تعود فورًا إلى Home.
+      _resetRemainingTokensAfterPlayerFinish(
+        updatedPlayer.playerId,
+      );
+
+      // تسجيل Rank الحقيقي للاعب الذي وصل Finish.
+      _registerPlayerFinished(
+        updatedPlayer.playerId,
+      );
     }
 
     // ==========================================================
     // CONSUME USED ROLL
     // ==========================================================
 
-    final updatedTurn = _consumeRoll(move.rollSequence);
+    final updatedTurn = _consumeRoll(
+      move.rollSequence,
+    );
 
-    _state = _state.copyWith(turnState: updatedTurn);
+    _state = _state.copyWith(
+      turnState: updatedTurn,
+    );
 
     // ==========================================================
-    // ALL PLAYERS FINISHED
+    // MATCH END
     // ==========================================================
-
-    if (_allPlayersFinished) {
+    //
+    // Fast Mode:
+    //
+    // 2 players -> 1 finisher
+    // 3 players -> 2 finishers
+    // 4 players -> 3 finishers
+    //
+    // بمجرد الوصول للعدد المطلوب:
+    // المباراة تنتهي فورًا.
+    //
+    if (_matchEndReached) {
       _state = _state.copyWith(
         isFinished: true,
-        turnState: updatedTurn.copyWith(phase: TurnPhase.completed),
+        turnState: updatedTurn.copyWith(
+          availableRolls: const AvailableRolls(),
+          phase: TurnPhase.completed,
+        ),
       );
 
       _lastMoveWasCapture = false;
@@ -422,7 +453,7 @@ class LudoGameEngine {
     }
 
     // ==========================================================
-    // PLAYER FINISHED
+    // PLAYER FINISHED BUT MATCH CONTINUES
     // ==========================================================
 
     if (playerFinished) {
@@ -434,17 +465,12 @@ class LudoGameEngine {
     // ==========================================================
     // CAPTURE BONUS
     // ==========================================================
-    //
-    // Capture gives an immediate extra roll.
-    //
-    // IMPORTANT:
-    // We do NOT consume or recreate old rolls here.
-    // The capture bonus simply changes the phase to Rolling,
-    // which allows one new die roll.
-    //
+
     if (_lastMoveWasCapture) {
       _state = _state.copyWith(
-        turnState: updatedTurn.copyWith(phase: TurnPhase.rolling),
+        turnState: updatedTurn.copyWith(
+          phase: TurnPhase.rolling,
+        ),
       );
 
       _lastMoveWasCapture = false;
@@ -456,16 +482,8 @@ class LudoGameEngine {
     // REMAINING ROLLS
     // ==========================================================
     //
-    // IMPORTANT RULE:
-    //
-    // وجود 6 متبقية داخل availableRolls لا يعني
-    // أن اللاعب يأخذ Roll جديدة تلقائيًا.
-    //
-    // الـ 6 أعطت الـ Extra Roll لحظة تسجيلها بالفعل.
-    //
-    // إذا كانت هناك رميات لم تُستخدم بعد:
-    // - نظل Playing.
-    // - اللاعب يختار إحدى الحركات القانونية.
+    // وجود Roll 6 متبقية لا يعيد اللاعب إلى Rolling.
+    // الرميات المتاحة تُستخدم مباشرة.
     //
     if (_state.turnState.availableRolls.isNotEmpty) {
       final remainingMoves = getValidMoves();
@@ -475,7 +493,9 @@ class LudoGameEngine {
       }
 
       _state = _state.copyWith(
-        turnState: updatedTurn.copyWith(phase: TurnPhase.playing),
+        turnState: updatedTurn.copyWith(
+          phase: TurnPhase.playing,
+        ),
       );
 
       return _state;
@@ -1060,8 +1080,74 @@ class LudoGameEngine {
     );
   }
 
-  bool get _allPlayersFinished {
-    return _state.finishedPlayerIds.length == _state.players.length;
+  /// عدد اللاعبين الذين يجب أن يصلوا إلى Finish
+  /// حتى تنتهي المباراة.
+  ///
+  /// 2 لاعبين -> 1
+  /// 3 لاعبين -> 2
+  /// 4 لاعبين -> 3
+  int get _requiredFinishedPlayers {
+    if (_state.players.length <= 1) {
+      return 1;
+    }
+
+    return _state.players.length - 1;
+  }
+
+  /// هل وصلت المباراة إلى العدد المطلوب من اللاعبين
+  /// الذين أنهوا اللعبة فعليًا؟
+  bool get _matchEndReached {
+    return _state.finishedPlayerIds.length >=
+        _requiredFinishedPlayers;
+  }
+  /// بعد وصول أول Token للاعب إلى Finish:
+  /// جميع Tokens الأخرى تعود إلى Home.
+  ///
+  /// الـ Token الذي وصل Finish يظل كما هو.
+  void _resetRemainingTokensAfterPlayerFinish(
+      String playerId,
+      ) {
+    final playerIndex = _state.players.indexWhere(
+          (player) => player.playerId == playerId,
+    );
+
+    if (playerIndex == -1) {
+      throw StateError('اللاعب غير موجود.');
+    }
+
+    final player = _state.players[playerIndex];
+
+    final updatedTokens = player.tokens.map((token) {
+      // Token الذي وصل Finish يظل في Finish.
+      if (token.isFinished) {
+        return token;
+      }
+
+      // كل Token آخر يرجع إلى Home.
+      return token.copyWith(
+        position: const Position(
+          row: 0,
+          column: 0,
+        ),
+        positionInPath: -1,
+        state: LudoTokenState.initial,
+        homeEntryPending: false,
+      );
+    }).toList(growable: false);
+
+    final updatedPlayer = player.copyWith(
+      tokens: updatedTokens,
+    );
+
+    final updatedPlayers = [
+      ..._state.players,
+    ];
+
+    updatedPlayers[playerIndex] = updatedPlayer;
+
+    _state = _state.copyWith(
+      players: updatedPlayers,
+    );
   }
 
   // ============================================================
@@ -1088,10 +1174,13 @@ class LudoGameEngine {
       throw StateError('اللعبة لا تحتوي على لاعبين.');
     }
 
-    if (_allPlayersFinished) {
+    if (_matchEndReached) {
       _state = _state.copyWith(
         isFinished: true,
-        turnState: _state.turnState.copyWith(phase: TurnPhase.completed),
+        turnState: _state.turnState.copyWith(
+          availableRolls: const AvailableRolls(),
+          phase: TurnPhase.completed,
+        ),
       );
 
       return _state;
@@ -1228,16 +1317,66 @@ class LudoGameEngine {
   /// calculated outside the engine.
   GameResult getResult() {
     final results = <GamePlayerResult>[];
+    final rankedPlayerIds = <String>{};
 
-    for (var index = 0; index < _state.finishedPlayerIds.length; index++) {
+    // ==========================================================
+    // REAL FINISHERS
+    // ==========================================================
+
+    for (
+    var index = 0;
+    index < _state.finishedPlayerIds.length;
+    index++
+    ) {
       final playerId = _state.finishedPlayerIds[index];
 
       results.add(
-        GamePlayerResult(playerId: playerId, rank: index + 1, finished: true),
+        GamePlayerResult(
+          playerId: playerId,
+          rank: index + 1,
+          finished: true,
+        ),
       );
+
+      rankedPlayerIds.add(playerId);
     }
 
-    return GameResult(players: results, isFinished: _state.isFinished);
+    // ==========================================================
+    // REMAINING PLAYER
+    // ==========================================================
+    //
+    // عندما تنتهي المباراة عند playersCount - 1:
+    //
+    // يوجد لاعب واحد فقط لم يصل Finish.
+    //
+    // هذا اللاعب يحصل تلقائيًا على آخر Rank،
+    // لكن finished = false لأنه لم يصل Finish فعليًا.
+    //
+    if (_state.isFinished) {
+      var nextRank = results.length + 1;
+
+      for (final player in _state.players) {
+        if (rankedPlayerIds.contains(player.playerId)) {
+          continue;
+        }
+
+        results.add(
+          GamePlayerResult(
+            playerId: player.playerId,
+            rank: nextRank,
+            finished: false,
+          ),
+        );
+
+        rankedPlayerIds.add(player.playerId);
+        nextRank++;
+      }
+    }
+
+    return GameResult(
+      players: results,
+      isFinished: _state.isFinished,
+    );
   }
 
   // ============================================================
