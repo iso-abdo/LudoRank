@@ -310,48 +310,173 @@ class MatchGameService {
     required List<MatchPlayer> matchPlayers,
     required GameResult result,
   }) {
-    if (matchPlayers.length != match.playersCount) {
-      throw StateError('عدد MatchPlayers لا يطابق عدد لاعبي Match.');
+    if (match.playersCount < 2 || match.playersCount > 4) {
+      throw StateError(
+        'عدد لاعبي المباراة يجب أن يكون 2 أو 3 أو 4.',
+      );
     }
 
-    if (result.players.length != match.playersCount) {
-      throw StateError('GameResult لا يحتوي على ترتيب كامل للاعبين.');
+    if (matchPlayers.length != match.playersCount) {
+      throw StateError(
+        'عدد MatchPlayers لا يطابق عدد لاعبي Match.',
+      );
     }
 
     if (!result.isFinished) {
-      throw StateError('GameResult غير مكتمل.');
+      throw StateError(
+        'GameResult غير مكتمل.',
+      );
     }
 
-    final expectedPlayerIds = matchPlayers.map((player) => player.playerId);
+    // ==========================================================
+    // COMPLETE PLAYER COUNT
+    // ==========================================================
 
-    final actualPlayerIds = result.players.map((player) => player.playerId);
-
-    if (expectedPlayerIds.toSet().length != actualPlayerIds.toSet().length) {
-      throw StateError('GameResult يحتوي على لاعبين مكررين.');
+    if (result.players.length != match.playersCount) {
+      throw StateError(
+        'GameResult لا يحتوي على ترتيب كامل للاعبين.',
+      );
     }
 
-    if (!actualPlayerIds.toSet().containsAll(expectedPlayerIds) ||
-        !expectedPlayerIds.toSet().containsAll(actualPlayerIds)) {
-      throw StateError('GameResult لا يطابق لاعبي المباراة.');
+    // ==========================================================
+    // PLAYER IDS
+    // ==========================================================
+
+    final expectedPlayerIds = matchPlayers
+        .map((player) => player.playerId)
+        .toSet();
+
+    final actualPlayerIds = result.players
+        .map((player) => player.playerId)
+        .toSet();
+
+    if (actualPlayerIds.length != result.players.length) {
+      throw StateError(
+        'GameResult يحتوي على لاعبين مكررين.',
+      );
     }
 
-    final ranks = result.players.map((player) => player.rank).toSet();
+    if (expectedPlayerIds.length != matchPlayers.length) {
+      throw StateError(
+        'MatchPlayers يحتوي على لاعبين مكررين.',
+      );
+    }
+
+    if (!actualPlayerIds.containsAll(expectedPlayerIds) ||
+        !expectedPlayerIds.containsAll(actualPlayerIds)) {
+      throw StateError(
+        'GameResult لا يطابق لاعبي المباراة.',
+      );
+    }
+
+    // ==========================================================
+    // RANKS
+    // ==========================================================
+
+    final ranks = result.players
+        .map((player) => player.rank)
+        .toSet();
 
     if (ranks.length != match.playersCount) {
-      throw StateError('رتب اللاعبين يجب أن تكون فريدة.');
+      throw StateError(
+        'رتب اللاعبين يجب أن تكون فريدة.',
+      );
     }
 
-    for (var rank = 1; rank <= match.playersCount; rank++) {
+    for (
+    var rank = 1;
+    rank <= match.playersCount;
+    rank++
+    ) {
       if (!ranks.contains(rank)) {
         throw StateError(
-          'الرتب يجب أن تبدأ من 1 وتنتهي عند ${match.playersCount}.',
+          'الرتب يجب أن تبدأ من 1 وتنتهي عند '
+              '${match.playersCount}.',
         );
       }
     }
 
-    for (final player in result.players) {
-      if (!player.finished) {
-        throw StateError('كل لاعب في GameResult المكتمل يجب أن يكون Finished.');
+    // ==========================================================
+    // FINISHERS
+    // ==========================================================
+    //
+    // Fast Mode:
+    //
+    // 2 players -> 1 finisher
+    // 3 players -> 2 finishers
+    // 4 players -> 3 finishers
+    //
+    // أي:
+    //
+    // requiredFinishedPlayers = playersCount - 1
+    //
+    final requiredFinishedPlayers =
+        match.playersCount - 1;
+
+    final finishedPlayers = result.players
+        .where((player) => player.finished)
+        .toList();
+
+    final unfinishedPlayers = result.players
+        .where((player) => !player.finished)
+        .toList();
+
+    // يجب أن يكون لدينا بالضبط:
+    //
+    // playersCount - 1 Finished
+    // 1 Unfinished
+    if (finishedPlayers.length != requiredFinishedPlayers) {
+      throw StateError(
+        'عدد اللاعبين Finished يجب أن يكون '
+            '${requiredFinishedPlayers}.',
+      );
+    }
+
+    if (unfinishedPlayers.length != 1) {
+      throw StateError(
+        'يجب أن يكون هناك لاعب واحد فقط غير Finished.',
+      );
+    }
+
+    // ==========================================================
+    // LAST PLAYER
+    // ==========================================================
+    //
+    // اللاعب الذي لم يصل Finish يحصل تلقائيًا
+    // على آخر Rank.
+    //
+    // مثال:
+    //
+    // 4 players:
+    // 1 -> Finished
+    // 2 -> Finished
+    // 3 -> Finished
+    // 4 -> Unfinished
+    //
+    // لذلك اللاعب الوحيد غير Finished
+    // يجب أن يكون Rank = playersCount.
+    final lastPlayer = unfinishedPlayers.first;
+
+    if (lastPlayer.rank != match.playersCount) {
+      throw StateError(
+        'اللاعب غير Finished يجب أن يحصل على '
+            'آخر Rank وهو ${match.playersCount}.',
+      );
+    }
+
+    // ==========================================================
+    // REAL FINISHERS RANK RANGE
+    // ==========================================================
+    //
+    // كل من وصل Finish فعليًا يجب أن يكون
+    // بين Rank 1 و Rank playersCount - 1.
+    for (final player in finishedPlayers) {
+      if (player.rank < 1 ||
+          player.rank > requiredFinishedPlayers) {
+        throw StateError(
+          'اللاعب Finished يجب أن تكون رتبته بين '
+              '1 و $requiredFinishedPlayers.',
+        );
       }
     }
   }
