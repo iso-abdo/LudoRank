@@ -502,6 +502,11 @@ void main() {
             MatchStatus.finished,
           );
 
+          final storedPlayers =
+          await matchPlayerRepository.getMatchPlayers(
+            'match-1',
+          );
+
           final storedPlayer1 = storedPlayers.firstWhere(
                 (player) => player.playerId == 'player-1',
           );
