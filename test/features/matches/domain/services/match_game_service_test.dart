@@ -371,8 +371,7 @@ void main() {
             },
           );
 
-          final completedResult =
-          GameResult(
+          final completedResult = GameResult(
             isFinished: true,
             players: const [
               GamePlayerResult(
@@ -393,7 +392,7 @@ void main() {
               GamePlayerResult(
                 playerId: 'player-2',
                 rank: 4,
-                finished: true,
+                finished: false,
               ),
             ],
           );
@@ -460,7 +459,7 @@ void main() {
 
           expect(
             player2.finished,
-            isTrue,
+            isFalse,
           );
 
           expect(
@@ -503,20 +502,33 @@ void main() {
             MatchStatus.finished,
           );
 
-          final storedPlayers =
-          await matchPlayerRepository
-              .getMatchPlayers(
-            'match-1',
+          final storedPlayer1 = storedPlayers.firstWhere(
+                (player) => player.playerId == 'player-1',
           );
 
-          expect(
-            storedPlayers.every(
-                  (player) =>
-              player.finished &&
-                  player.rank != null,
-            ),
-            isTrue,
+          final storedPlayer2 = storedPlayers.firstWhere(
+                (player) => player.playerId == 'player-2',
           );
+
+          final storedPlayer3 = storedPlayers.firstWhere(
+                (player) => player.playerId == 'player-3',
+          );
+
+          final storedPlayer4 = storedPlayers.firstWhere(
+                (player) => player.playerId == 'player-4',
+          );
+
+          expect(storedPlayer1.rank, 2);
+          expect(storedPlayer1.finished, isTrue);
+
+          expect(storedPlayer2.rank, 4);
+          expect(storedPlayer2.finished, isFalse);
+
+          expect(storedPlayer3.rank, 1);
+          expect(storedPlayer3.finished, isTrue);
+
+          expect(storedPlayer4.rank, 3);
+          expect(storedPlayer4.finished, isTrue);
         },
       );
 
