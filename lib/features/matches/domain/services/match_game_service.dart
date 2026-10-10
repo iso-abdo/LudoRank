@@ -427,8 +427,7 @@ class MatchGameService {
     // 1 Unfinished
     if (finishedPlayers.length != requiredFinishedPlayers) {
       throw StateError(
-        'عدد اللاعبين Finished يجب أن يكون '
-            '${requiredFinishedPlayers}.',
+        'عدد اللاعبين Finished يجب أن يكون $requiredFinishedPlayers.',
       );
     }
 
