@@ -2,21 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:ludo_rank/core/dependency_injection/injection_container.dart';
+import 'package:ludo_rank/features/ludo_game/domain/entities/ludo_player.dart';
 import 'package:ludo_rank/features/ludo_game/domain/entities/ludo_token.dart';
 import 'package:ludo_rank/features/ludo_game/domain/models/move_option.dart';
-import 'package:ludo_rank/features/ludo_game/presentation/widgets/ludo_board.dart';
-import 'package:ludo_rank/features/ludo_game/presentation/widgets/ludo_dice_panel.dart';
 import 'package:ludo_rank/features/ludo_game/presentation/widgets/ludo_game_result_overlay.dart';
-import 'package:ludo_rank/features/ludo_game/presentation/widgets/ludo_move_hint.dart';
-import 'package:ludo_rank/features/ludo_game/presentation/widgets/ludo_player_bar.dart';
-import 'package:ludo_rank/features/ludo_game/presentation/widgets/ludo_turn_indicator.dart';
+import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/ludo_match_board.dart';
+import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/ludo_match_footer.dart';
+import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/ludo_match_player_section.dart';
 import 'package:ludo_rank/features/matches/presentation/providers/match_game_provider.dart';
 
 class MatchGamePage extends StatefulWidget {
+  /// Database match ID.
   final String matchId;
 
-  /// Key   = playerId
-  /// Value = player name
+  /// Key = playerId, value = name.
   final Map<String, String> playerNames;
 
   const MatchGamePage({
@@ -35,9 +34,7 @@ class _MatchGamePageState extends State<MatchGamePage> {
   @override
   void initState() {
     super.initState();
-
     provider = sl<MatchGameProvider>();
-
     provider.startMatch(
       matchId: widget.matchId,
       playerNames: widget.playerNames,
@@ -50,64 +47,41 @@ class _MatchGamePageState extends State<MatchGamePage> {
     super.dispose();
   }
 
-  // ============================================================
-  // TOKEN TAP
-  // ============================================================
-
   void _onTokenTap(LudoToken token) {
     provider.selectToken(token.id);
   }
-
-  // ============================================================
-  // MOVE TAP
-  // ============================================================
 
   Future<void> _executeMove(MoveOption move) async {
     await provider.executeMove(move);
   }
 
-  // ============================================================
-  // BACK
-  // ============================================================
-
   Future<void> _handleBack() async {
     if (provider.isGameFinished && provider.isFinished) {
-      if (mounted) {
-        Navigator.pop(context, true);
-      }
-
+      if (mounted) Navigator.pop(context, true);
       return;
     }
 
     final shouldLeave = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('مغادرة المباراة؟'),
-          content: const Text(
-            'الحالة الحالية للمباراة لن يتم حفظها كحالة قابلة للاستكمال في هذه المرحلة.',
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('مغادرة المباراة؟'),
+        content: const Text(
+          'الحالة الحالية للمباراة لن يتم حفظها كحالة قابلة للاستكمال في هذه المرحلة.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('البقاء'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context, false);
-              },
-              child: const Text('البقاء'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(context, true);
-              },
-              child: const Text('مغادرة'),
-            ),
-          ],
-        );
-      },
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('مغادرة'),
+          ),
+        ],
+      ),
     );
 
-    if (shouldLeave == true && mounted) {
-      Navigator.pop(context);
-    }
+    if (shouldLeave == true && mounted) Navigator.pop(context);
   }
 
   @override
@@ -118,16 +92,18 @@ class _MatchGamePageState extends State<MatchGamePage> {
         builder: (context, gameProvider, _) {
           return Scaffold(
             appBar: AppBar(
-              title: Text(
-                gameProvider.match == null
-                    ? 'المباراة'
-                    : 'المباراة ${gameProvider.match!.id}',
+              toolbarHeight: 48,
+              centerTitle: true,
+              title: const Text(
+                'LudoRank',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
               ),
               leading: IconButton(
                 onPressed: gameProvider.isLoading ? null : _handleBack,
-                icon: const Icon(Icons.arrow_back),
+                tooltip: 'رجوع',
+                icon: const Icon(Icons.arrow_back_rounded),
               ),
-              actions: [
+              actions: <Widget>[
                 if (gameProvider.isGameFinished && !gameProvider.isFinished)
                   IconButton(
                     onPressed: gameProvider.isLoading
@@ -135,29 +111,38 @@ class _MatchGamePageState extends State<MatchGamePage> {
                         : gameProvider.retryFinishPersistence,
                     tooltip: 'إعادة حفظ النتيجة',
                     icon: const Icon(Icons.sync),
-                  ),
+                  )
+                else
+                  const SizedBox(width: 48),
               ],
+              bottom: const PreferredSize(
+                preferredSize: Size.fromHeight(1),
+                child: Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Color(0xFF51465E),
+                ),
+              ),
             ),
             body: SafeArea(
+              top: false,
               child: Stack(
-                children: [
-                  _MatchGameContent(
+                children: <Widget>[
+                  _LiveMatchLayout(
                     provider: gameProvider,
                     onTokenTap: _onTokenTap,
                     onMove: _executeMove,
                   ),
-
                   if (gameProvider.error != null)
                     Positioned(
-                      left: 12,
-                      right: 12,
-                      bottom: 12,
+                      left: 10,
+                      right: 10,
+                      bottom: 8,
                       child: _ErrorBanner(
                         message: gameProvider.error!,
                         onClose: gameProvider.clearError,
                       ),
                     ),
-
                   if (gameProvider.isGameFinished)
                     Positioned.fill(
                       child: IgnorePointer(
@@ -168,9 +153,7 @@ class _MatchGamePageState extends State<MatchGamePage> {
                           isLoading: gameProvider.isLoading,
                           onRetry: gameProvider.retryFinishPersistence,
                           onClose: gameProvider.isFinished
-                              ? () {
-                                  Navigator.pop(context, true);
-                                }
+                              ? () => Navigator.pop(context, true)
                               : null,
                         ),
                       ),
@@ -185,17 +168,12 @@ class _MatchGamePageState extends State<MatchGamePage> {
   }
 }
 
-// ==================================================================
-// CONTENT
-// ==================================================================
-
-class _MatchGameContent extends StatelessWidget {
+class _LiveMatchLayout extends StatelessWidget {
   final MatchGameProvider provider;
-
   final ValueChanged<LudoToken> onTokenTap;
   final ValueChanged<MoveOption> onMove;
 
-  const _MatchGameContent({
+  const _LiveMatchLayout({
     required this.provider,
     required this.onTokenTap,
     required this.onMove,
@@ -203,193 +181,187 @@ class _MatchGameContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final players = provider.players;
+    final currentPlayer = provider.currentPlayer;
+
+    if (players.isEmpty || currentPlayer == null) {
+      return const Center(
+        child: CircularProgressIndicator(strokeWidth: 2.5),
+      );
+    }
+
+    final playersByColor = <LudoPlayerColor, LudoPlayer>{
+      for (final player in players) player.color: player,
+    };
+    final green = playersByColor[LudoPlayerColor.green];
+    final yellow = playersByColor[LudoPlayerColor.yellow];
+    final red = playersByColor[LudoPlayerColor.red];
+    final blue = playersByColor[LudoPlayerColor.blue];
+
+    final topHasCurrent = _isCurrent(green, currentPlayer) ||
+        _isCurrent(yellow, currentPlayer);
+    final bottomHasCurrent = _isCurrent(red, currentPlayer) ||
+        _isCurrent(blue, currentPlayer);
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 900;
+        final shortScreen = constraints.maxHeight < 630;
+        final activeCardHeight = shortScreen ? 110.0 : 126.0;
+        final inactiveCardHeight = shortScreen ? 34.0 : 42.0;
+        final rowGap = shortScreen ? 4.0 : 6.0;
+        final sidePadding = constraints.maxWidth < 360 ? 8.0 : 12.0;
+        final footerHeight = shortScreen ? 48.0 : 58.0;
 
-        if (isWide) {
-          return _WideLayout(
-            provider: provider,
-            onTokenTap: onTokenTap,
-            onMove: onMove,
-          );
-        }
+        final topHasPlayers = green != null || yellow != null;
+        final bottomHasPlayers = red != null || blue != null;
+        final topHeight = topHasCurrent
+            ? activeCardHeight
+            : (topHasPlayers ? inactiveCardHeight : 0.0);
+        final bottomHeight = bottomHasCurrent
+            ? activeCardHeight
+            : (bottomHasPlayers ? inactiveCardHeight : 0.0);
 
-        return _CompactLayout(
-          provider: provider,
-          onTokenTap: onTokenTap,
-          onMove: onMove,
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(sidePadding, 5, sidePadding, 5),
+              child: Column(
+                children: <Widget>[
+                  if (topHeight > 0) ...<Widget>[
+                    SizedBox(
+                      height: topHeight,
+                      child: _buildHomeSideRow(
+                        left: green,
+                        right: yellow,
+                        currentPlayer: currentPlayer,
+                        activeCardHeight: activeCardHeight,
+                        inactiveCardHeight: inactiveCardHeight,
+                      ),
+                    ),
+                    SizedBox(height: rowGap),
+                  ],
+                  Expanded(
+                    child: Center(
+                      child: LayoutBuilder(
+                        builder: (context, boardConstraints) {
+                          final side = boardConstraints.maxWidth < boardConstraints.maxHeight
+                              ? boardConstraints.maxWidth
+                              : boardConstraints.maxHeight;
+                          return SizedBox.square(
+                            dimension: side,
+                            child: LudoMatchBoard(
+                              players: players,
+                              currentPlayerId: currentPlayer.playerId,
+                              availableMoves: provider.availableMoves,
+                              selectedTokenId: provider.selectedTokenId,
+                              onTokenTap: onTokenTap,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  if (bottomHeight > 0) ...<Widget>[
+                    SizedBox(height: rowGap),
+                    SizedBox(
+                      height: bottomHeight,
+                      child: _buildHomeSideRow(
+                        left: red,
+                        right: blue,
+                        currentPlayer: currentPlayer,
+                        activeCardHeight: activeCardHeight,
+                        inactiveCardHeight: inactiveCardHeight,
+                      ),
+                    ),
+                  ],
+                  SizedBox(height: rowGap),
+                  LudoMatchFooter(
+                    height: footerHeight,
+                    selectedTokenId: provider.selectedTokenId,
+                    availableMoves: provider.availableMoves,
+                    turnState: provider.turnState,
+                    onMove: onMove,
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       },
     );
   }
-}
 
-// ==================================================================
-// WIDE
-// ==================================================================
+  bool _isCurrent(LudoPlayer? player, LudoPlayer currentPlayer) {
+    return player?.playerId == currentPlayer.playerId;
+  }
 
-class _WideLayout extends StatelessWidget {
-  final MatchGameProvider provider;
-
-  final ValueChanged<LudoToken> onTokenTap;
-  final ValueChanged<MoveOption> onMove;
-
-  const _WideLayout({
-    required this.provider,
-    required this.onTokenTap,
-    required this.onMove,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
+  /// The two slots follow the physical homes and never reorder the colors.
+  /// LTR slots preserve green/yellow and red/blue board-side positioning;
+  /// each player's own contents stay RTL Arabic.
+  Widget _buildHomeSideRow({
+    required LudoPlayer? left,
+    required LudoPlayer? right,
+    required LudoPlayer currentPlayer,
+    required double activeCardHeight,
+    required double inactiveCardHeight,
+  }) {
+    return Directionality(
+      textDirection: TextDirection.ltr,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+        children: <Widget>[
           Expanded(
-            flex: 7,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 760,
-                  maxHeight: 760,
-                ),
-                child: LudoBoard(
-                  players: provider.players,
-                  availableMoves: provider.availableMoves,
-                  selectedTokenId: provider.selectedTokenId,
-                  onTokenTap: onTokenTap,
-                ),
-              ),
+            child: _buildPlayerSlot(
+              left,
+              currentPlayer,
+              activeCardHeight,
+              inactiveCardHeight,
             ),
           ),
-          const SizedBox(width: 16),
-          SizedBox(
-            width: 320,
-            child: SingleChildScrollView(
-              child: _GameSidePanel(provider: provider, onMove: onMove),
+          const SizedBox(width: 7),
+          Expanded(
+            child: _buildPlayerSlot(
+              right,
+              currentPlayer,
+              activeCardHeight,
+              inactiveCardHeight,
             ),
           ),
         ],
       ),
     );
   }
-}
 
-// ==================================================================
-// COMPACT
-// ==================================================================
+  Widget _buildPlayerSlot(
+    LudoPlayer? player,
+    LudoPlayer currentPlayer,
+    double activeCardHeight,
+    double inactiveCardHeight,
+  ) {
+    if (player == null) return const SizedBox.shrink();
 
-class _CompactLayout extends StatelessWidget {
-  final MatchGameProvider provider;
-
-  final ValueChanged<LudoToken> onTokenTap;
-  final ValueChanged<MoveOption> onMove;
-
-  const _CompactLayout({
-    required this.provider,
-    required this.onTokenTap,
-    required this.onMove,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          LudoTurnIndicator(
-            currentPlayer: provider.currentPlayer,
+    final isCurrent = player.playerId == currentPlayer.playerId;
+    return Align(
+      alignment: Alignment.center,
+      child: SizedBox(
+        width: double.infinity,
+        height: isCurrent ? activeCardHeight : inactiveCardHeight,
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: LudoMatchPlayerSection(
+            player: player,
+            isCurrent: isCurrent,
             turnState: provider.turnState,
-          ),
-
-          const SizedBox(height: 10),
-
-          LudoPlayerBar(players: provider.players, gameState: provider.state),
-
-          const SizedBox(height: 12),
-
-          LudoBoard(
-            players: provider.players,
-            availableMoves: provider.availableMoves,
-            selectedTokenId: provider.selectedTokenId,
-            onTokenTap: onTokenTap,
-          ),
-
-          const SizedBox(height: 12),
-
-          LudoDicePanel(
-            turnState: provider.turnState,
-            availableRolls: provider.availableRolls,
-            canRoll: provider.canRollDice,
+            availableRolls: isCurrent ? provider.availableRolls : provider.availableRolls.clear(),
+            canRoll: isCurrent && provider.canRollDice,
             onRoll: provider.rollDice,
+            height: isCurrent ? activeCardHeight : inactiveCardHeight,
           ),
-
-          const SizedBox(height: 10),
-
-          LudoMoveHint(
-            selectedTokenId: provider.selectedTokenId,
-            availableMoves: provider.availableMoves,
-            turnState: provider.turnState,
-            onMove: onMove,
-          ),
-        ],
+        ),
       ),
     );
   }
 }
-
-// ==================================================================
-// SIDE PANEL
-// ==================================================================
-
-class _GameSidePanel extends StatelessWidget {
-  final MatchGameProvider provider;
-  final ValueChanged<MoveOption> onMove;
-
-  const _GameSidePanel({required this.provider, required this.onMove});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        LudoTurnIndicator(
-          currentPlayer: provider.currentPlayer,
-          turnState: provider.turnState,
-        ),
-
-        const SizedBox(height: 12),
-
-        LudoPlayerBar(players: provider.players, gameState: provider.state),
-
-        const SizedBox(height: 12),
-
-        LudoDicePanel(
-          turnState: provider.turnState,
-          availableRolls: provider.availableRolls,
-          canRoll: provider.canRollDice,
-          onRoll: provider.rollDice,
-        ),
-
-        const SizedBox(height: 12),
-
-        LudoMoveHint(
-          selectedTokenId: provider.selectedTokenId,
-          availableMoves: provider.availableMoves,
-          turnState: provider.turnState,
-          onMove: onMove,
-        ),
-      ],
-    );
-  }
-}
-
-// ==================================================================
-// ERROR
-// ==================================================================
 
 class _ErrorBanner extends StatelessWidget {
   final String message;
@@ -406,7 +378,7 @@ class _ErrorBanner extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
-          children: [
+          children: <Widget>[
             Icon(
               Icons.error_outline,
               color: Theme.of(context).colorScheme.onErrorContainer,
