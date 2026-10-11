@@ -68,7 +68,10 @@ class LudoGameResultOverlay extends StatelessWidget {
                   const SizedBox(height: 18),
 
                   if (sortedPlayers.isNotEmpty)
-                    _ResultsList(players: sortedPlayers),
+                    _ResultsList(
+                      players: sortedPlayers,
+                      playerNames: playerNames,
+                    ),
 
                   const SizedBox(height: 18),
 
@@ -118,8 +121,12 @@ class LudoGameResultOverlay extends StatelessWidget {
 
 class _ResultsList extends StatelessWidget {
   final List<MatchPlayer> players;
+  final Map<String, String> playerNames;
 
-  const _ResultsList({required this.players});
+  const _ResultsList({
+    required this.players,
+    required this.playerNames,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +135,11 @@ class _ResultsList extends StatelessWidget {
         for (final player in players)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: _ResultRow(player: player),
+            child: _ResultRow(
+              player: player,
+              displayName: playerNames[player.playerId]
+                  ?? 'اللاعب ${player.seat}',
+            ),
           ),
       ],
     );
@@ -137,13 +148,20 @@ class _ResultsList extends StatelessWidget {
 
 class _ResultRow extends StatelessWidget {
   final MatchPlayer player;
+  final String displayName;
 
-  const _ResultRow({required this.player});
+  const _ResultRow({
+    required this.player,
+    required this.displayName,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 10,
+      ),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -160,15 +178,16 @@ class _ResultRow extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              player.playerId,
+              displayName,
               style: const TextStyle(fontWeight: FontWeight.w700),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           Text(
             '${player.points} نقطة',
-            style: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context)
+                .textTheme.labelLarge
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
         ],
       ),
