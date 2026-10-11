@@ -535,7 +535,10 @@ class _PrototypeBoardPainter extends CustomPainter {
           break;
         }
       }
-      final isUnlocked = owner?.hasCaptured ?? false;
+      // Once this player has captured at least once, remove the marker
+      // completely. The Home Lane remains visually open without an icon.
+      if (owner?.hasCaptured ?? false) continue;
+
       final entry = _pathFor(color).homePath.first;
       final center = geometry.cellCenter(entry, side);
       final tone = prototypeColorFor(color);
@@ -582,14 +585,10 @@ class _PrototypeBoardPainter extends CustomPainter {
           center.dx + w * .30,
           center.dy - cell * .075,
         );
-      if (isUnlocked) {
-        // Open shackle indicates the Home Lane is visually unlocked.
-        shackle
-          ..moveTo(center.dx + w * .30, center.dy - cell * .075)
-          ..lineTo(center.dx + w * .43, center.dy - cell * .16);
-      } else {
-        shackle.lineTo(center.dx + w * .30, center.dy + cell * .015);
-      }
+      // This badge is drawn only while the lane is locked, so always draw
+      // the closed shackle here. After the first capture, the loop continues
+      // above and no badge is painted for this player. 
+      shackle.lineTo(center.dx + w * .30, center.dy + cell * .015);
       canvas.drawPath(shackle, iconPaint);
       canvas.drawRRect(
         RRect.fromRectAndRadius(bodyRect, Radius.circular(cell * .035)),
