@@ -9,7 +9,6 @@ import 'package:ludo_rank/features/ludo_game/presentation/geometry/ludo_board_ge
 import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/match_ui_colors.dart';
 
 /// Live match board treatment used by MatchGamePage.
-///
 /// It reuses the existing board geometry and domain paths for exact locations,
 /// while reproducing the stronger home quadrants, recessed home pads, bold
 /// colored lanes, circular token medallions and four-triangle center from the

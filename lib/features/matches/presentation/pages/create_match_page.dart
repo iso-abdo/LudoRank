@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
@@ -7,7 +9,7 @@ import 'package:ludo_rank/features/matches/domain/entities/match.dart';
 import 'package:ludo_rank/features/matches/domain/entities/match_status.dart';
 import 'package:ludo_rank/features/match_players/domain/entities/match_player.dart';
 import 'package:ludo_rank/features/matches/domain/Use-cases/create_match.dart';
-
+import 'package:ludo_rank/features/ludo_game/presentation/pages/match_game_page.dart';
 import 'package:ludo_rank/features/tournament_players/presentation/providers/tournament_player_provider.dart';
 import 'package:ludo_rank/features/players/presentation/providers/player_provider.dart';
 import 'package:ludo_rank/shared/widgets/app_scaffold.dart';
@@ -101,6 +103,16 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
 
       final selectedPlayers = _selectedPlayerIds.toList();
 
+      await playerProvider.loadPlayers();
+
+      final playerNames = <String, String>{
+        for (final playerId in selectedPlayers)
+          playerId: playerProvider.getPlayerName(playerId),
+      };
+
+      if (playerNames.values.any((name) => name == 'لاعب غير معروف')) {
+        throw StateError('تعذر تحميل أسماء كل اللاعبين المختارين.');
+      }
       final matchPlayers = <MatchPlayer>[];
 
       for (var i = 0; i < selectedPlayers.length; i++) {
@@ -123,16 +135,15 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم إنشاء المباراة بنجاح')));
-
-      Navigator.pop(context, true);
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
+      await Navigator.of(context).pushReplacement<bool, bool>(
+        MaterialPageRoute<bool>(
+          builder: (_) => MatchGamePage(
+            matchId: match.id,
+            playerNames: playerNames,
+          ),
+        ),
+        result: true,
+      );
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('فشل إنشاء المباراة: $e')));
