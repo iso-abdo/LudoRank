@@ -149,6 +149,7 @@ class _MatchGamePageState extends State<MatchGamePage> {
                         ignoring: gameProvider.isLoading,
                         child: LudoGameResultOverlay(
                           players: gameProvider.completedPlayers,
+                          playerNames: widget.playerNames,
                           isSaved: gameProvider.isFinished,
                           isLoading: gameProvider.isLoading,
                           onRetry: gameProvider.retryFinishPersistence,

@@ -4,7 +4,7 @@ import 'package:ludo_rank/features/match_players/domain/entities/match_player.da
 
 class LudoGameResultOverlay extends StatelessWidget {
   final List<MatchPlayer> players;
-
+  final Map<String, String> playerNames;
   final bool isSaved;
   final bool isLoading;
 
@@ -14,6 +14,7 @@ class LudoGameResultOverlay extends StatelessWidget {
   const LudoGameResultOverlay({
     super.key,
     required this.players,
+    this.playerNames = const <String, String>{},
     required this.isSaved,
     required this.isLoading,
     required this.onRetry,
