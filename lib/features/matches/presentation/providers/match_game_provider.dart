@@ -27,6 +27,7 @@ class MatchGameProvider extends ChangeNotifier {
   final List<MatchPlayer> _completedPlayers = [];
 
   String? _selectedTokenId;
+  int? _selectedRollSequence;
 
   bool _isLoading = false;
 
@@ -46,6 +47,8 @@ class MatchGameProvider extends ChangeNotifier {
   /// status هنا هو الـ snapshot الأصلي الموجود داخل Session.
   /// استخدم [matchStatus] لمعرفة الـ lifecycle الحالي.
   Match? get match => _session?.match;
+
+
 
   // ============================================================
   // GAME STATE
@@ -114,6 +117,8 @@ class MatchGameProvider extends ChangeNotifier {
   MatchStatus? get matchStatus => _matchStatus;
 
   String? get selectedTokenId => _selectedTokenId;
+  int? get selectedRollSequence => _selectedRollSequence;
+
 
   bool get isLoading => _isLoading;
 
@@ -156,6 +161,33 @@ class MatchGameProvider extends ChangeNotifier {
         !isGameFinished &&
         turnState?.isPlaying == true &&
         availableMoves.isNotEmpty;
+  }
+  // ============================================================
+  // ROLL DICE HELPERS
+  // ============================================================
+  AvailableRolls get selectableRolls {
+    final legalSequences = availableMoves
+        .where((move) {
+      if (_selectedTokenId == null) return true;
+
+      if (move is MoveToken) {
+        return move.tokenId == _selectedTokenId;
+      }
+
+      if (move is ExitToken) {
+        return move.tokenId == _selectedTokenId;
+      }
+
+      return false;
+    })
+        .map((move) => move.rollSequence)
+        .toSet();
+
+    return AvailableRolls(
+      rolls: availableRolls.rolls
+          .where((roll) => legalSequences.contains(roll.sequence))
+          .toList(growable: false),
+    );
   }
 
   // ============================================================
@@ -243,7 +275,6 @@ class MatchGameProvider extends ChangeNotifier {
     final currentSession = _session;
     final activePlayer = currentPlayer;
 
-    // Reject taps outside an active playing turn.
     if (currentSession == null ||
         activePlayer == null ||
         token.playerId != activePlayer.playerId ||
@@ -253,40 +284,49 @@ class MatchGameProvider extends ChangeNotifier {
       return;
     }
 
-    // Use only legal moves returned by the existing engine.
     final tokenMoves = availableMoves.where((move) {
-      if (move is MoveToken) {
-        return move.tokenId == token.id;
-      }
-
-      if (move is ExitToken) {
-        return move.tokenId == token.id;
-      }
-
+      if (move is MoveToken) return move.tokenId == token.id;
+      if (move is ExitToken) return move.tokenId == token.id;
       return false;
     }).toList(growable: false);
 
-    // This token has no legal move.
-    if (tokenMoves.isEmpty) {
-      clearSelection();
+    if (tokenMoves.isEmpty) return;
+
+    // إذا اختير النرد أولًا، نحاول تنفيذ الحركة المطابقة له فقط.
+    if (_selectedRollSequence != null) {
+      final matchingMoves = tokenMoves
+          .where((move) => move.rollSequence == _selectedRollSequence)
+          .toList(growable: false);
+
+      if (matchingMoves.length == 1) {
+        await executeMove(matchingMoves.single);
+        return;
+      }
+
+      if (matchingMoves.isNotEmpty) {
+        _selectedTokenId = token.id;
+        notifyListeners();
+        return;
+      }
+
+      // الرمية المختارة لا تناسب هذا التوكن.
+      // نحدد التوكن ونترك الواجهة تعرض رمياته القانونية.
+      _selectedTokenId = token.id;
+      _selectedRollSequence = null;
+      notifyListeners();
       return;
     }
 
-    // Exactly one legal move: execute it immediately.
+    // لمسة واحدة تكفي عندما توجد حركة قانونية واحدة فقط.
     if (tokenMoves.length == 1) {
       await executeMove(tokenMoves.single);
       return;
     }
 
-    // Multiple legal moves: select the token so the footer
-    // can display the corresponding roll/move options.
-    // Do not toggle it off if the player taps it again.
-    if (_selectedTokenId != token.id) {
-      _selectedTokenId = token.id;
-      notifyListeners();
-    }
-  }
-  /// UI-only token selection.
+    // تعدد الحركات: نحدد التوكن ليختار اللاعب النرد المناسب.
+    _selectedTokenId = token.id;
+    notifyListeners();
+  }  /// UI-only token selection.
   ///
   /// This method NEVER moves a token
   /// and NEVER changes the LudoGameEngine.
@@ -299,6 +339,7 @@ class MatchGameProvider extends ChangeNotifier {
 
     notifyListeners();
   }
+
 
   void clearSelection() {
     if (_selectedTokenId == null) {
@@ -349,6 +390,46 @@ class MatchGameProvider extends ChangeNotifier {
 
       notifyListeners();
     }
+  }
+
+  // ============================================================
+  // HANDLE ROLL TAP
+  // ============================================================
+  Future<void> handleAvailableRollTap(int sequence) async {
+    if (turnState?.isPlaying != true ||
+        isLoading ||
+        isGameFinished ||
+        !availableRolls.containsSequence(sequence)) {
+      return;
+    }
+
+    final options = availableMoves.where((move) {
+      if (move.rollSequence != sequence) return false;
+
+      if (_selectedTokenId == null) return true;
+
+      if (move is MoveToken) {
+        return move.tokenId == _selectedTokenId;
+      }
+
+      if (move is ExitToken) {
+        return move.tokenId == _selectedTokenId;
+      }
+
+      return false;
+    }).toList(growable: false);
+
+    if (options.isEmpty) return;
+
+    // عند تحديد توكن، اختيار النرد ينفذ الحركة القانونية المرتبطة به.
+    if (_selectedTokenId != null && options.length == 1) {
+      await executeMove(options.single);
+      return;
+    }
+
+    // قبل تحديد التوكن، نحتفظ باختيار النرد حتى يختار اللاعب حجرًا.
+    _selectedRollSequence = sequence;
+    notifyListeners();
   }
 
   // ============================================================
