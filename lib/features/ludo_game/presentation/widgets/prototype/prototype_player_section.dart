@@ -160,7 +160,7 @@ class PrototypePlayerSection extends StatelessWidget {
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: availableRolls.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 5),
+                      separatorBuilder: (_, _) => const SizedBox(width: 5),
                       itemBuilder: (context, index) {
                         return InkWell(
                           borderRadius: BorderRadius.circular(8),

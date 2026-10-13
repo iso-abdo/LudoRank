@@ -83,7 +83,7 @@ class LudoMatchFooter extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: moves.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
         itemBuilder: (context, index) {
           final move = moves[index];
           final rollValue = _rollValue(move.rollSequence);

@@ -47,8 +47,8 @@ class _MatchGamePageState extends State<MatchGamePage> {
     super.dispose();
   }
 
-  void _onTokenTap(LudoToken token) {
-    provider.selectToken(token.id);
+  Future<void> _onTokenTap(LudoToken token) async {
+    await provider.handleTokenTap(token);
   }
 
   Future<void> _executeMove(MoveOption move) async {

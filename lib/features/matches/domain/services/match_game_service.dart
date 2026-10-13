@@ -81,6 +81,7 @@ class MatchGameService {
     final ludoPlayers = _buildLudoPlayers(
       matchPlayers: matchPlayers,
       playerNames: playerNames,
+      playersCount: match.playersCount,
     );
 
     final initialState = LudoGameState.initial(players: ludoPlayers);
@@ -210,6 +211,7 @@ class MatchGameService {
   List<LudoPlayer> _buildLudoPlayers({
     required List<MatchPlayer> matchPlayers,
     required Map<String, String> playerNames,
+    required int playersCount,
   }) {
     final sortedPlayers = [...matchPlayers]
       ..sort((a, b) => a.seat.compareTo(b.seat));
@@ -220,7 +222,10 @@ class MatchGameService {
             id: 'ludo-${matchPlayer.playerId}',
             playerId: matchPlayer.playerId,
             name: playerNames[matchPlayer.playerId]!,
-            color: _colorForSeat(matchPlayer.seat),
+            color: _colorForSeat(
+              matchPlayer.seat,
+              playersCount: playersCount,
+            ),
             seat: matchPlayer.seat,
             tokens: _createInitialTokens(playerId: matchPlayer.playerId),
           ),
@@ -243,7 +248,27 @@ class MatchGameService {
     );
   }
 
-  LudoPlayerColor _colorForSeat(int seat) {
+  LudoPlayerColor _colorForSeat(
+      int seat, {
+        required int playersCount,
+      }) {
+    // في مباراة لاعبين، نضعهما في زاويتين متقابلتين.
+    if (playersCount == 2) {
+      switch (seat) {
+        case 1:
+          return LudoPlayerColor.green;
+
+        case 2:
+          return LudoPlayerColor.blue;
+
+        default:
+          throw ArgumentError(
+            'Seat يجب أن يكون 1 أو 2 في مباراة اللاعبين الاثنين.',
+          );
+      }
+    }
+
+    // التوزيع الأصلي لمباريات 3 و4 لاعبين.
     switch (seat) {
       case 1:
         return LudoPlayerColor.green;

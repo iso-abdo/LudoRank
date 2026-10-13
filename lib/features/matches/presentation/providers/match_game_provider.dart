@@ -15,6 +15,7 @@ import '../../domain/entities/match.dart';
 import '../../domain/entities/match_status.dart';
 import '../../domain/services/match_game_service.dart';
 import '../../domain/services/match_game_session.dart';
+import 'package:ludo_rank/features/ludo_game/domain/entities/ludo_token.dart';
 
 class MatchGameProvider extends ChangeNotifier {
   final MatchGameService service;
@@ -233,7 +234,58 @@ class MatchGameProvider extends ChangeNotifier {
   // ============================================================
   // SELECT TOKEN
   // ============================================================
+  /// Handles a token tap using the legal moves from LudoGameEngine.
+  ///
+  /// One legal move  -> execute immediately.
+  /// Multiple moves  -> select the token and show its move options.
+  /// No legal moves  -> do not move the token.
+  Future<void> handleTokenTap(LudoToken token) async {
+    final currentSession = _session;
+    final activePlayer = currentPlayer;
 
+    // Reject taps outside an active playing turn.
+    if (currentSession == null ||
+        activePlayer == null ||
+        token.playerId != activePlayer.playerId ||
+        turnState?.isPlaying != true ||
+        isLoading ||
+        currentSession.isFinished) {
+      return;
+    }
+
+    // Use only legal moves returned by the existing engine.
+    final tokenMoves = availableMoves.where((move) {
+      if (move is MoveToken) {
+        return move.tokenId == token.id;
+      }
+
+      if (move is ExitToken) {
+        return move.tokenId == token.id;
+      }
+
+      return false;
+    }).toList(growable: false);
+
+    // This token has no legal move.
+    if (tokenMoves.isEmpty) {
+      clearSelection();
+      return;
+    }
+
+    // Exactly one legal move: execute it immediately.
+    if (tokenMoves.length == 1) {
+      await executeMove(tokenMoves.single);
+      return;
+    }
+
+    // Multiple legal moves: select the token so the footer
+    // can display the corresponding roll/move options.
+    // Do not toggle it off if the player taps it again.
+    if (_selectedTokenId != token.id) {
+      _selectedTokenId = token.id;
+      notifyListeners();
+    }
+  }
   /// UI-only token selection.
   ///
   /// This method NEVER moves a token

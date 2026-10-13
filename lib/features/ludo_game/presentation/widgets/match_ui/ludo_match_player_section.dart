@@ -153,7 +153,7 @@ class LudoMatchPlayerSection extends StatelessWidget {
                 ? ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: availableRolls.rolls.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 5),
+                    separatorBuilder: (_, _) => const SizedBox(width: 5),
                     itemBuilder: (context, index) {
                       final roll = availableRolls.rolls[index];
                       return Container(
