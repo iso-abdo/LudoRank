@@ -1,4 +1,3 @@
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
@@ -144,9 +143,15 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
         ),
         result: true,
       );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('فشل إنشاء المباراة: $e')));
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('فشل إنشاء المباراة: $e'),
+        ),
+      );
+
     } finally {
       if (mounted) {
         setState(() {
