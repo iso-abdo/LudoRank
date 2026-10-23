@@ -124,20 +124,37 @@ void main() {
     // START MATCH ERROR
     // ==========================================================
 
-    test('startMatch stores service error', () async {
+
+    test('startMatch stores service error and restores idle state', () async {
       service.startMatchError = StateError('cannot start');
 
-      await provider.startMatch(matchId: match.id, playerNames: playerNames);
+      var notifications = 0;
 
+      provider.addListener(() {
+        notifications++;
+      });
+
+      await provider.startMatch(
+        matchId: match.id,
+        playerNames: playerNames,
+      );
+
+      // الخدمة استُدعيت مرة واحدة وفشلت.
+      expect(service.startMatchCallCount, 1);
+
+      // لا توجد جلسة أو مباراة بدأت بنجاح.
       expect(provider.session, isNull);
-
       expect(provider.matchStatus, isNull);
-
-      expect(provider.error, contains('cannot start'));
-
       expect(provider.isStarted, isFalse);
+      expect(provider.isPlaying, isFalse);
+      expect(provider.isFinished, isFalse);
 
+      // الخطأ محفوظ، والتحميل انتهى.
+      expect(provider.error, contains('cannot start'));
       expect(provider.isLoading, isFalse);
+
+      // الواجهة تلقت إشعارات بتغيّر الحالة.
+      expect(notifications, greaterThan(0));
     });
 
     // ==========================================================
