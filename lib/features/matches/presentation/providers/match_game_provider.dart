@@ -379,6 +379,8 @@ class MatchGameProvider extends ChangeNotifier {
       currentSession.engine.executeMove(move);
 
       _selectedTokenId = null;
+      _selectedRollSequence = null;
+
 
       // Immediately update the game UI.
       notifyListeners();
@@ -522,6 +524,8 @@ class MatchGameProvider extends ChangeNotifier {
     _completedPlayers.clear();
 
     _selectedTokenId = null;
+
+    _selectedRollSequence = null;
 
     _error = null;
 
