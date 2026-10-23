@@ -254,6 +254,7 @@ class MatchGameProvider extends ChangeNotifier {
       _error = null;
 
       _selectedTokenId = null;
+      _selectedRollSequence = null;
 
       currentSession.engine.rollDice();
 
@@ -335,6 +336,7 @@ class MatchGameProvider extends ChangeNotifier {
   void selectToken(String tokenId) {
     if (_selectedTokenId == tokenId) {
       _selectedTokenId = null;
+      _selectedRollSequence = null;
     } else {
       _selectedTokenId = tokenId;
     }
