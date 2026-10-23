@@ -124,7 +124,6 @@ void main() {
     // START MATCH ERROR
     // ==========================================================
 
-
     test('startMatch stores service error and restores idle state', () async {
       service.startMatchError = StateError('cannot start');
 
@@ -134,10 +133,7 @@ void main() {
         notifications++;
       });
 
-      await provider.startMatch(
-        matchId: match.id,
-        playerNames: playerNames,
-      );
+      await provider.startMatch(matchId: match.id, playerNames: playerNames);
 
       // الخدمة استُدعيت مرة واحدة وفشلت.
       expect(service.startMatchCallCount, 1);
@@ -331,6 +327,96 @@ void main() {
     });
 
     // ==========================================================
+    // RETRY PERSISTENCE وقبل
+    // ==========================================================
+
+    test(
+      'executeMove preserves finished game when persistence fails and allows retry',
+      () async {
+        final engine = FakeLudoGameEngine(
+          initialState: createStartedState(),
+          finishAfterMove: true,
+        );
+
+        final session = MatchGameSession(
+          match: match.copyWith(status: MatchStatus.playing),
+          matchPlayers: matchPlayers,
+          engine: engine,
+        );
+
+        final completedPlayers = [
+          MatchPlayer(
+            id: 'mp-1',
+            matchId: match.id,
+            playerId: 'player-1',
+            seat: 1,
+            rank: 1,
+            points: 2,
+            finished: true,
+          ),
+          MatchPlayer(
+            id: 'mp-2',
+            matchId: match.id,
+            playerId: 'player-2',
+            seat: 2,
+            rank: 2,
+            points: 1,
+            finished: true,
+          ),
+        ];
+
+        service.startSession = session;
+        // لا نضبط completeMatchResult، حتى تفشل أول محاولة للحفظ.
+
+        await provider.startMatch(matchId: match.id, playerNames: playerNames);
+
+        await provider.executeMove(
+          MoveToken(tokenId: 'player-1-token-0', steps: 1, rollSequence: 1),
+        );
+
+        // الحركة أنهت اللعبة، رغم فشل حفظ النتيجة.
+        expect(engine.executeMoveCallCount, 1);
+        expect(provider.isGameFinished, isTrue);
+        expect(provider.result, isNotNull);
+
+        // حالة المباراة لم تُسجل Finished لأن الحفظ فشل.
+        expect(service.completeMatchCallCount, 1);
+        expect(provider.matchStatus, MatchStatus.playing);
+        expect(provider.isPlaying, isTrue);
+        expect(provider.isFinished, isFalse);
+
+        // الخطأ ظاهر، والتحميل انتهى، ولا توجد نتيجة محفوظة في المزود.
+        expect(
+          provider.error,
+          contains('Fake completeMatchResult was not configured'),
+        );
+        expect(provider.isLoading, isFalse);
+        expect(provider.completedPlayers, isEmpty);
+
+        // اختيار الحركة تم مسحه، ولن نحتاج لتنفيذها مرة ثانية.
+        expect(provider.selectedTokenId, isNull);
+        expect(provider.selectedRollSequence, isNull);
+
+        // نجهز نتيجة الحفظ ثم نعيد المحاولة.
+        service.completeMatchResult = completedPlayers;
+
+        await provider.retryFinishPersistence();
+
+        // تمت إعادة محاولة الحفظ فقط، دون إعادة تنفيذ الحركة.
+        expect(service.completeMatchCallCount, 2);
+        expect(engine.executeMoveCallCount, 1);
+
+        expect(provider.isGameFinished, isTrue);
+        expect(provider.isFinished, isTrue);
+        expect(provider.isPlaying, isFalse);
+        expect(provider.matchStatus, MatchStatus.finished);
+        expect(provider.completedPlayers, orderedEquals(completedPlayers));
+
+        expect(provider.error, isNull);
+        expect(provider.isLoading, isFalse);
+      },
+    );
+
     // RETRY PERSISTENCE
     // ==========================================================
 
