@@ -408,19 +408,53 @@ void main() {
     // CLEAR SELECTION
     // ==========================================================
 
-    test('clearSelection clears selected token', () async {
-      final session = createSession(
-        match: match.copyWith(status: MatchStatus.playing),
+    test('clearSelection clears selected token and roll sequence', () async {
+      final players = createStartedState().players;
+
+      final firstPlayer = players.first.copyWith(
+        tokens: [
+          players.first.tokens.first.copyWith(
+            positionInPath: 0,
+            state: LudoTokenState.normal,
+          ),
+          ...players.first.tokens.skip(1),
+        ],
       );
 
-      service.startSession = session;
+      const roll = DiceRoll(value: 1, sequence: 1);
+
+      final engine = LudoGameEngine(
+        initialState: createStartedState().copyWith(
+          players: [firstPlayer, players.last],
+          turnState: const TurnState(
+            playerId: 'player-1',
+            rolls: [roll],
+            availableRolls: AvailableRolls(rolls: [roll]),
+            phase: TurnPhase.playing,
+          ),
+        ),
+      );
+
+      service.startSession = MatchGameSession(
+        match: match.copyWith(status: MatchStatus.playing),
+        matchPlayers: matchPlayers,
+        engine: engine,
+      );
 
       await provider.startMatch(matchId: match.id, playerNames: playerNames);
 
+      // نحدد الرمية أولًا؛ بدون تحديد توكن.
+      await provider.handleAvailableRollTap(1);
+
+      expect(provider.selectedRollSequence, 1);
+
+      // نحدد التوكن بعد اختيار الرمية.
       provider.selectToken('player-1-token-0');
 
       expect(provider.selectedTokenId, 'player-1-token-0');
+      expect(provider.selectedRollSequence, 1);
 
+      // نتأكد إن المسح يلغي التحديدين فعلًا.
       provider.clearSelection();
 
       expect(provider.selectedTokenId, isNull);
