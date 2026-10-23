@@ -208,6 +208,8 @@ class MatchGameProvider extends ChangeNotifier {
     _error = null;
 
     _selectedTokenId = null;
+    _selectedRollSequence = null;
+
 
     _completedPlayers.clear();
 
@@ -342,11 +344,12 @@ class MatchGameProvider extends ChangeNotifier {
 
 
   void clearSelection() {
-    if (_selectedTokenId == null) {
+    if (_selectedTokenId == null && _selectedRollSequence == null) {
       return;
     }
 
     _selectedTokenId = null;
+    _selectedRollSequence = null;
 
     notifyListeners();
   }
