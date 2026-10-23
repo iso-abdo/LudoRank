@@ -375,6 +375,8 @@ void main() {
           provider.selectedTokenId,
           isNull,
         );
+        expect(provider.selectedRollSequence,
+            isNull);
 
         expect(
           provider.error,
@@ -474,6 +476,13 @@ void main() {
           provider.error,
           isNull,
         );
+        expect(
+          provider.selectedTokenId,
+          isNull,
+        );
+        expect(provider.selectedRollSequence,
+            isNull);
+
       },
     );
 
@@ -656,6 +665,9 @@ void main() {
           provider.selectedTokenId,
           isNull,
         );
+        expect(provider.selectedRollSequence,
+            isNull
+        );
       },
     );
 
@@ -734,6 +746,9 @@ void main() {
           provider.selectedTokenId,
           isNull,
         );
+        expect(provider.selectedRollSequence,
+            isNull);
+
 
         expect(
           provider.completedPlayers,
