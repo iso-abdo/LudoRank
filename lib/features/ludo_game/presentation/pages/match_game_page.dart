@@ -7,7 +7,6 @@ import 'package:ludo_rank/features/ludo_game/domain/entities/ludo_token.dart';
 import 'package:ludo_rank/features/ludo_game/domain/models/move_option.dart';
 import 'package:ludo_rank/features/ludo_game/presentation/widgets/ludo_game_result_overlay.dart';
 import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/ludo_match_board.dart';
-import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/ludo_match_footer.dart';
 import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/ludo_match_player_section.dart';
 import 'package:ludo_rank/features/matches/presentation/providers/match_game_provider.dart';
 import 'package:ludo_rank/features/match_players/domain/entities/match_player.dart';
@@ -197,6 +196,7 @@ class _LiveMatchLayout extends StatelessWidget {
     final playersByColor = <LudoPlayerColor, LudoPlayer>{
       for (final player in players) player.color: player,
     };
+
     final green = playersByColor[LudoPlayerColor.green];
     final yellow = playersByColor[LudoPlayerColor.yellow];
     final red = playersByColor[LudoPlayerColor.red];
@@ -204,6 +204,7 @@ class _LiveMatchLayout extends StatelessWidget {
 
     final topHasCurrent =
         _isCurrent(green, currentPlayer) || _isCurrent(yellow, currentPlayer);
+
     final bottomHasCurrent =
         _isCurrent(red, currentPlayer) || _isCurrent(blue, currentPlayer);
 
@@ -214,16 +215,12 @@ class _LiveMatchLayout extends StatelessWidget {
         final inactiveCardHeight = shortScreen ? 34.0 : 42.0;
         final rowGap = shortScreen ? 4.0 : 6.0;
         final sidePadding = constraints.maxWidth < 360 ? 8.0 : 12.0;
-        final footerHeight = shortScreen ? 48.0 : 58.0;
 
         final topHasPlayers = green != null || yellow != null;
         final bottomHasPlayers = red != null || blue != null;
-        final topHeight = topHasCurrent
-            ? activeCardHeight
-            : (topHasPlayers ? inactiveCardHeight : 0.0);
-        final bottomHeight = bottomHasCurrent
-            ? activeCardHeight
-            : (bottomHasPlayers ? inactiveCardHeight : 0.0);
+
+        final topHeight = topHasPlayers ? activeCardHeight : 0.0;
+        final bottomHeight = bottomHasPlayers ? activeCardHeight : 0.0;
 
         return Center(
           child: ConstrainedBox(
@@ -254,6 +251,7 @@ class _LiveMatchLayout extends StatelessWidget {
                                   boardConstraints.maxHeight
                               ? boardConstraints.maxWidth
                               : boardConstraints.maxHeight;
+
                           return SizedBox.square(
                             dimension: side,
                             child: LudoMatchBoard(
@@ -285,14 +283,6 @@ class _LiveMatchLayout extends StatelessWidget {
                       ),
                     ),
                   ],
-                  SizedBox(height: rowGap),
-                  LudoMatchFooter(
-                    height: footerHeight,
-                    selectedTokenId: provider.selectedTokenId,
-                    availableMoves: provider.availableMoves,
-                    turnState: provider.turnState,
-                    onMove: onMove,
-                  ),
                 ],
               ),
             ),
@@ -351,6 +341,7 @@ class _LiveMatchLayout extends StatelessWidget {
     if (player == null) return const SizedBox.shrink();
 
     final isCurrent = player.playerId == currentPlayer.playerId;
+
     return Align(
       alignment: Alignment.center,
       child: SizedBox(
