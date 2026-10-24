@@ -8,7 +8,7 @@ import 'package:ludo_rank/features/ludo_game/domain/models/move_option.dart';
 import 'package:ludo_rank/features/ludo_game/presentation/geometry/ludo_board_geometry.dart';
 import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/ludo_match_board_art.dart';
 import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/match_ui_colors.dart';
-
+import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/match_die_face.dart';
 /// Live interactive wrapper around the v4 visual board art.
 ///
 /// The painter owns only appearance. Token selection is routed back to the
@@ -19,6 +19,9 @@ class LudoMatchBoard extends StatelessWidget {
   final List<MoveOption> availableMoves;
   final String? selectedTokenId;
   final ValueChanged<LudoToken> onTokenTap;
+  final Map<Position, List<MoveOption>> legalMoveDestinations;
+  final int? Function(MoveOption) rollValueForMove;
+  final ValueChanged<MoveOption> onMoveTap;
 
   const LudoMatchBoard({
     super.key,
@@ -27,6 +30,9 @@ class LudoMatchBoard extends StatelessWidget {
     required this.availableMoves,
     required this.selectedTokenId,
     required this.onTokenTap,
+    required this.legalMoveDestinations,
+    required this.rollValueForMove,
+    required this.onMoveTap,
   });
 
   @override
@@ -78,6 +84,83 @@ class LudoMatchBoard extends StatelessWidget {
             );
       }
     }
+    // ============================================================
+    //
+    // ============================================================
+    _buildDestinationTargets(
+    destinations: legalMoveDestinations,
+    frame: frame,
+    innerSide: innerSide,
+    ),
+    List<Widget> _buildDestinationTargets({
+    required Map<Position, List<MoveOption>> destinations,
+    required double frame,
+    required double innerSide,
+    }) {
+    final geometry = LudoBoardGeometry.instance;
+    final cell = innerSide / LudoBoardGeometry.gridSize;
+    final result = <Widget>[];
+
+    for (final entry in destinations.entries) {
+    final center = geometry.cellCenter(entry.key, innerSide);
+    final moves = entry.value;
+    final markerWidth = math.min(cell * 2.8, innerSide * .48);
+    final markerHeight = cell * .82;
+
+    result.add(
+    Positioned(
+    key: ValueKey<String>(
+    'destination-${entry.key.row}-${entry.key.column}',
+    ),
+    left: frame + center.dx - markerWidth / 2,
+    top: frame + center.dy - markerHeight / 2,
+    width: markerWidth,
+    height: markerHeight,
+    child: Center(
+    child: Container(
+    padding: const EdgeInsets.all(2),
+    decoration: BoxDecoration(
+    color: const Color(0xEE241B30),
+    borderRadius: BorderRadius.circular(20),
+    border: Border.all(
+    color: const Color(0xFFFFD66B),
+    width: 1.5,
+    ),
+    boxShadow: const <BoxShadow>[
+    BoxShadow(
+    color: Color(0x77000000),
+    blurRadius: 6,
+    ),
+    ],
+    ),
+    child: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: moves.map((move) {
+    return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 1),
+    child: GestureDetector(
+    key: ValueKey<String>(
+    'move-${move.runtimeType}-${move.rollSequence}',
+    ),
+    behavior: HitTestBehavior.opaque,
+    onTap: () => onMoveTap(move),
+    child: MatchDieFace(
+    value: rollValueForMove(move),
+    size: cell * .58,
+    ),
+    ),
+    );
+    }).toList(growable: false),
+    ),
+    ),
+    ),
+    ),
+    );
+    }
+
+    return result;
+    }
+    // ============================================================
 
     final result = <Widget>[];
     final cell = innerSide / LudoBoardGeometry.gridSize;
