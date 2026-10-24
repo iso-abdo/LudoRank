@@ -16,6 +16,7 @@ import '../../domain/entities/match_status.dart';
 import '../../domain/services/match_game_service.dart';
 import '../../domain/services/match_game_session.dart';
 import 'package:ludo_rank/features/ludo_game/domain/entities/ludo_token.dart';
+import 'package:ludo_rank/features/ludo_game/domain/entities/position.dart';
 
 class MatchGameProvider extends ChangeNotifier {
   final MatchGameService service;
@@ -83,6 +84,66 @@ class MatchGameProvider extends ChangeNotifier {
 
   List<MoveOption> get availableMoves {
     return _session?.engine.getValidMoves() ?? const <MoveOption>[];
+  }
+  // ===========================
+  /// Legal destinations for the currently selected token.
+  /// Each destination keeps the original MoveOption objects.
+  /// =============================
+  Map<Position, List<MoveOption>> get selectedMoveDestinations {
+    final session = _session;
+    final tokenId = _selectedTokenId;
+
+    if (session == null || tokenId == null) {
+      return const <Position, List<MoveOption>>{};
+    }
+
+    final result = <Position, List<MoveOption>>{};
+
+    for (final move in availableMoves) {
+      final moveTokenId = switch (move) {
+        MoveToken(:final tokenId) => tokenId,
+        ExitToken(:final tokenId) => tokenId,
+      };
+
+      if (moveTokenId != tokenId) continue;
+
+      final destination = session.engine.getMoveDestination(move);
+      if (destination == null) continue;
+
+      result.putIfAbsent(destination, () => <MoveOption>[]).add(move);
+    }
+
+    return Map.unmodifiable({
+      for (final entry in result.entries)
+        entry.key: List<MoveOption>.unmodifiable(entry.value),
+    });
+  }
+
+  /// Gets the visible dice value for a legal move without exposing its sequence.
+  int? rollValueForMove(MoveOption move) {
+    return availableRolls.getBySequence(move.rollSequence)?.value;
+  }
+
+  /// Executes the exact legal option selected on the board.
+  Future<void> handleBoardMoveTap(MoveOption move) async {
+    if (!availableMoves.any((candidate) {
+      if (candidate is MoveToken && move is MoveToken) {
+        return candidate.tokenId == move.tokenId &&
+            candidate.steps == move.steps &&
+            candidate.rollSequence == move.rollSequence;
+      }
+
+      if (candidate is ExitToken && move is ExitToken) {
+        return candidate.tokenId == move.tokenId &&
+            candidate.rollSequence == move.rollSequence;
+      }
+
+      return false;
+    })) {
+      return;
+    }
+
+    await executeMove(move);
   }
 
   // ============================================================

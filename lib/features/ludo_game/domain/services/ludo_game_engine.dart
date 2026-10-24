@@ -12,6 +12,7 @@ import '../models/ludo_game_state.dart';
 import '../models/move_option.dart';
 import '../models/turn_state.dart';
 
+
 /// نتيجة حساب Destination داخل المسار.
 ///
 /// نحتاج الاثنين معًا لأن Step 51 له تفسيرين:
@@ -344,6 +345,52 @@ class LudoGameEngine {
     }
 
     return List.unmodifiable(moves);
+  }
+
+
+  // ============================================================
+  // GET MOVE DESTINATION
+  // ============================================================
+  Position? getMoveDestination(MoveOption move) {
+    final isLegal = getValidMoves().any(
+          (candidate) => _sameMove(candidate, move),
+    );
+    if (!isLegal) return null;
+
+    final tokenId = switch (move) {
+      MoveToken(:final tokenId) => tokenId,
+      ExitToken(:final tokenId) => tokenId,
+    };
+
+    final player = _state.currentPlayer;
+    final tokenIndex = player.tokens.indexWhere(
+          (token) => token.id == tokenId,
+    );
+    if (tokenIndex == -1) return null;
+
+    final token = player.tokens[tokenIndex];
+    final path = _pathFor(player.color);
+
+    if (move is ExitToken) {
+      return token.isInitial ? path.startingPosition : null;
+    }
+
+    if (move is MoveToken) {
+      final destination = _calculateDestinationStep(
+        path: path,
+        player: player,
+        token: token,
+        steps: move.steps,
+      );
+      if (destination == null) return null;
+
+      return path.positionAt(
+        step: destination.step,
+        useHomeLane: destination.useHomeLane,
+      );
+    }
+
+    return null;
   }
 
   // ============================================================
@@ -1015,6 +1062,7 @@ class LudoGameEngine {
       // position = (0, 0)
       //
       // It does NOT use defenderPath.startingPosition.
+
       final resetToken = defenderToken.copyWith(
         position: const Position(row: 0, column: 0),
         positionInPath: -1,
