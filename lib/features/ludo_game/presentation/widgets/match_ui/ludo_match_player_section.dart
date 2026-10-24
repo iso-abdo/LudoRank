@@ -163,13 +163,9 @@ class LudoMatchPlayerSection extends StatelessWidget {
                           borderRadius: BorderRadius.circular(7),
                           border: Border.all(color: color.withValues(alpha: .72)),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            MatchDieFace(value: roll.value, size: 16),
-                            const SizedBox(width: 4),
-                            Text('#${roll.sequence}', style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w700)),
-                          ],
+                        child: MatchDieFace(
+                          value: roll.value,
+                          size: 18,
                         ),
                       );
                     },
