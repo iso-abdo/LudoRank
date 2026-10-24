@@ -12,7 +12,6 @@ import '../models/ludo_game_state.dart';
 import '../models/move_option.dart';
 import '../models/turn_state.dart';
 
-
 /// نتيجة حساب Destination داخل المسار.
 ///
 /// نحتاج الاثنين معًا لأن Step 51 له تفسيرين:
@@ -347,13 +346,12 @@ class LudoGameEngine {
     return List.unmodifiable(moves);
   }
 
-
   // ============================================================
   // GET MOVE DESTINATION
   // ============================================================
   Position? getMoveDestination(MoveOption move) {
     final isLegal = getValidMoves().any(
-          (candidate) => _sameMove(candidate, move),
+      (candidate) => _sameMove(candidate, move),
     );
     if (!isLegal) return null;
 
@@ -363,9 +361,7 @@ class LudoGameEngine {
     };
 
     final player = _state.currentPlayer;
-    final tokenIndex = player.tokens.indexWhere(
-          (token) => token.id == tokenId,
-    );
+    final tokenIndex = player.tokens.indexWhere((token) => token.id == tokenId);
     if (tokenIndex == -1) return null;
 
     final token = player.tokens[tokenIndex];

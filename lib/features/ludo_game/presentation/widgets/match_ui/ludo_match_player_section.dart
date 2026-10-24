@@ -39,7 +39,11 @@ class LudoMatchPlayerSection extends StatelessWidget {
           borderRadius: BorderRadius.circular(15),
           border: Border.all(color: color.withValues(alpha: .40), width: 1),
           boxShadow: const <BoxShadow>[
-            BoxShadow(color: Color(0x44000000), blurRadius: 5, offset: Offset(0, 2)),
+            BoxShadow(
+              color: Color(0x44000000),
+              blurRadius: 5,
+              offset: Offset(0, 2),
+            ),
           ],
         ),
         child: Text(
@@ -105,10 +109,17 @@ class LudoMatchPlayerSection extends StatelessWidget {
               const SizedBox(width: 4),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 child: Text(
                   'دورك',
-                  style: TextStyle(color: foreground, fontWeight: FontWeight.w900, fontSize: 9),
+                  style: TextStyle(
+                    color: foreground,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 9,
+                  ),
                 ),
               ),
             ],
@@ -127,18 +138,29 @@ class LudoMatchPlayerSection extends StatelessWidget {
                       backgroundColor: color,
                       disabledBackgroundColor: color.withValues(alpha: .35),
                       foregroundColor: foreground,
-                      disabledForegroundColor: foreground.withValues(alpha: .72),
+                      disabledForegroundColor: foreground.withValues(
+                        alpha: .72,
+                      ),
                       padding: const EdgeInsets.symmetric(horizontal: 6),
                       minimumSize: const Size(0, 34),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     icon: const Icon(Icons.casino_rounded, size: 16),
                     label: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        canRoll ? 'رمي النرد' : (turnState?.isPlaying == true ? 'اختر حجرًا' : 'انتظر دورك'),
+                        canRoll
+                            ? 'رمي النرد'
+                            : (turnState?.isPlaying == true
+                                  ? 'اختر حجرًا'
+                                  : 'انتظر دورك'),
                         maxLines: 1,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ),
@@ -161,20 +183,24 @@ class LudoMatchPlayerSection extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: const Color(0xFF181321),
                           borderRadius: BorderRadius.circular(7),
-                          border: Border.all(color: color.withValues(alpha: .72)),
+                          border: Border.all(
+                            color: color.withValues(alpha: .72),
+                          ),
                         ),
-                        child: MatchDieFace(
-                          value: roll.value,
-                          size: 18,
-                        ),
+                        child: MatchDieFace(value: roll.value, size: 18),
                       );
                     },
                   )
                 : Align(
                     alignment: Alignment.centerRight,
                     child: Text(
-                      turnState?.isRolling == true ? 'اضغط لرمي النرد' : 'لا توجد رميات متبقية',
-                      style: const TextStyle(color: Colors.white60, fontSize: 9),
+                      turnState?.isRolling == true
+                          ? 'اضغط لرمي النرد'
+                          : 'لا توجد رميات متبقية',
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 9,
+                      ),
                     ),
                   ),
           ),

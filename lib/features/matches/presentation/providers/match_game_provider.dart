@@ -49,8 +49,6 @@ class MatchGameProvider extends ChangeNotifier {
   /// استخدم [matchStatus] لمعرفة الـ lifecycle الحالي.
   Match? get match => _session?.match;
 
-
-
   // ============================================================
   // GAME STATE
   // ============================================================
@@ -85,6 +83,7 @@ class MatchGameProvider extends ChangeNotifier {
   List<MoveOption> get availableMoves {
     return _session?.engine.getValidMoves() ?? const <MoveOption>[];
   }
+
   // ===========================
   /// Legal destinations for the currently selected token.
   /// Each destination keeps the original MoveOption objects.
@@ -180,7 +179,6 @@ class MatchGameProvider extends ChangeNotifier {
   String? get selectedTokenId => _selectedTokenId;
   int? get selectedRollSequence => _selectedRollSequence;
 
-
   bool get isLoading => _isLoading;
 
   String? get error => _error;
@@ -223,24 +221,25 @@ class MatchGameProvider extends ChangeNotifier {
         turnState?.isPlaying == true &&
         availableMoves.isNotEmpty;
   }
+
   // ============================================================
   // ROLL DICE HELPERS
   // ============================================================
   AvailableRolls get selectableRolls {
     final legalSequences = availableMoves
         .where((move) {
-      if (_selectedTokenId == null) return true;
+          if (_selectedTokenId == null) return true;
 
-      if (move is MoveToken) {
-        return move.tokenId == _selectedTokenId;
-      }
+          if (move is MoveToken) {
+            return move.tokenId == _selectedTokenId;
+          }
 
-      if (move is ExitToken) {
-        return move.tokenId == _selectedTokenId;
-      }
+          if (move is ExitToken) {
+            return move.tokenId == _selectedTokenId;
+          }
 
-      return false;
-    })
+          return false;
+        })
         .map((move) => move.rollSequence)
         .toSet();
 
@@ -270,7 +269,6 @@ class MatchGameProvider extends ChangeNotifier {
 
     _selectedTokenId = null;
     _selectedRollSequence = null;
-
 
     _completedPlayers.clear();
 
@@ -348,11 +346,13 @@ class MatchGameProvider extends ChangeNotifier {
       return;
     }
 
-    final tokenMoves = availableMoves.where((move) {
-      if (move is MoveToken) return move.tokenId == token.id;
-      if (move is ExitToken) return move.tokenId == token.id;
-      return false;
-    }).toList(growable: false);
+    final tokenMoves = availableMoves
+        .where((move) {
+          if (move is MoveToken) return move.tokenId == token.id;
+          if (move is ExitToken) return move.tokenId == token.id;
+          return false;
+        })
+        .toList(growable: false);
 
     if (tokenMoves.isEmpty) return;
 
@@ -390,7 +390,9 @@ class MatchGameProvider extends ChangeNotifier {
     // تعدد الحركات: نحدد التوكن ليختار اللاعب النرد المناسب.
     _selectedTokenId = token.id;
     notifyListeners();
-  }  /// UI-only token selection.
+  }
+
+  /// UI-only token selection.
   ///
   /// This method NEVER moves a token
   /// and NEVER changes the LudoGameEngine.
@@ -404,7 +406,6 @@ class MatchGameProvider extends ChangeNotifier {
 
     notifyListeners();
   }
-
 
   void clearSelection() {
     if (_selectedTokenId == null && _selectedRollSequence == null) {
@@ -442,7 +443,6 @@ class MatchGameProvider extends ChangeNotifier {
       _selectedTokenId = null;
       _selectedRollSequence = null;
 
-
       // Immediately update the game UI.
       notifyListeners();
 
@@ -471,21 +471,23 @@ class MatchGameProvider extends ChangeNotifier {
       return;
     }
 
-    final options = availableMoves.where((move) {
-      if (move.rollSequence != sequence) return false;
+    final options = availableMoves
+        .where((move) {
+          if (move.rollSequence != sequence) return false;
 
-      if (_selectedTokenId == null) return true;
+          if (_selectedTokenId == null) return true;
 
-      if (move is MoveToken) {
-        return move.tokenId == _selectedTokenId;
-      }
+          if (move is MoveToken) {
+            return move.tokenId == _selectedTokenId;
+          }
 
-      if (move is ExitToken) {
-        return move.tokenId == _selectedTokenId;
-      }
+          if (move is ExitToken) {
+            return move.tokenId == _selectedTokenId;
+          }
 
-      return false;
-    }).toList(growable: false);
+          return false;
+        })
+        .toList(growable: false);
 
     if (options.isEmpty) return;
 
