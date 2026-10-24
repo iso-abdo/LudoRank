@@ -30,11 +30,22 @@ class MatchGameProvider extends ChangeNotifier {
   String? _selectedTokenId;
   int? _selectedRollSequence;
 
+  // الحركة الوحيدة المنتظرة للتنفيذ التلقائي.
+  MoveOption? _pendingAutoMove;
+
+  // حماية من استدعاء التنفيذ التلقائي أكثر من مرة.
+  bool _isAutoMoveExecuting = false;
   bool _isLoading = false;
 
   String? _error;
 
   MatchGameProvider({required this.service});
+  // ============================================================
+  // CONSTRUCTOR AND DESTRUCTOR isAutoMove
+  // ======================================
+  MoveOption? get pendingAutoMove => _pendingAutoMove;
+
+  bool get isAutoMoveExecuting => _isAutoMoveExecuting;
 
   // ============================================================
   // SESSION
@@ -304,8 +315,10 @@ class MatchGameProvider extends ChangeNotifier {
   void rollDice() {
     final currentSession = _session;
 
-    if (currentSession == null) {
-      _setError('لا توجد جلسة مباراة نشطة.');
+    if (currentSession == null ||
+        isLoading ||
+        isGameFinished ||
+        turnState?.isRolling != true) {
       return;
     }
 
@@ -314,13 +327,78 @@ class MatchGameProvider extends ChangeNotifier {
 
       _selectedTokenId = null;
       _selectedRollSequence = null;
+      _pendingAutoMove = null;
+      _isAutoMoveExecuting = false;
+      //
 
+      // المحرك وحده مسؤول عن قواعد رمي النرد.
       currentSession.engine.rollDice();
+
+      // اكتشاف الحركة الوحيدة من قائمة الحركات القانونية.
+      final legalMoves = availableMoves;
+
+      if (turnState?.isPlaying == true && legalMoves.length == 1) {
+        _pendingAutoMove = legalMoves.single;
+      }
 
       notifyListeners();
     } catch (e) {
       _error = e.toString();
+      _pendingAutoMove = null;
 
+      notifyListeners();
+    }
+  }
+
+  // ===========================================================
+  //  executePendingAutoMove
+  //============================================================
+  Future<void> executePendingAutoMove() async {
+    if (_isAutoMoveExecuting || isLoading || isGameFinished) {
+      return;
+    }
+
+    final move = _pendingAutoMove;
+    final currentSession = _session;
+
+    if (move == null ||
+        currentSession == null ||
+        turnState?.isPlaying != true) {
+      return;
+    }
+
+    // نتحقق أن الحركة ما زالت قانونية قبل تنفيذها.
+    final isStillLegal = availableMoves.any((candidate) {
+      if (candidate is MoveToken && move is MoveToken) {
+        return candidate.tokenId == move.tokenId &&
+            candidate.steps == move.steps &&
+            candidate.rollSequence == move.rollSequence;
+      }
+
+      if (candidate is ExitToken && move is ExitToken) {
+        return candidate.tokenId == move.tokenId &&
+            candidate.rollSequence == move.rollSequence;
+      }
+
+      return false;
+    });
+
+    if (!isStillLegal) {
+      _pendingAutoMove = null;
+      notifyListeners();
+      return;
+    }
+
+    // قفل التنفيذ قبل أي عملية غير متزامنة.
+    _isAutoMoveExecuting = true;
+    _pendingAutoMove = null;
+
+    notifyListeners();
+
+    try {
+      await executeMove(move);
+    } finally {
+      _isAutoMoveExecuting = false;
       notifyListeners();
     }
   }
@@ -392,7 +470,8 @@ class MatchGameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// UI-only token selection.
+  //
+  /// UI-only token selection
   ///
   /// This method NEVER moves a token
   /// and NEVER changes the LudoGameEngine.
@@ -430,6 +509,12 @@ class MatchGameProvider extends ChangeNotifier {
   Future<void> executeMove(MoveOption move) async {
     final currentSession = _session;
 
+    if (_isAutoMoveExecuting &&
+        _pendingAutoMove != null &&
+        move != _pendingAutoMove) {
+      return;
+    }
+
     if (currentSession == null) {
       _setError('لا توجد جلسة مباراة نشطة.');
       return;
@@ -440,6 +525,9 @@ class MatchGameProvider extends ChangeNotifier {
 
       currentSession.engine.executeMove(move);
 
+      _selectedTokenId = null;
+      _selectedRollSequence = null;
+      _pendingAutoMove = null;
       _selectedTokenId = null;
       _selectedRollSequence = null;
 
@@ -593,6 +681,8 @@ class MatchGameProvider extends ChangeNotifier {
     _error = null;
 
     _isLoading = false;
+    _pendingAutoMove = null;
+    _isAutoMoveExecuting = false;
 
     notifyListeners();
   }

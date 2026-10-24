@@ -202,12 +202,6 @@ class _LiveMatchLayout extends StatelessWidget {
     final red = playersByColor[LudoPlayerColor.red];
     final blue = playersByColor[LudoPlayerColor.blue];
 
-    final topHasCurrent =
-        _isCurrent(green, currentPlayer) || _isCurrent(yellow, currentPlayer);
-
-    final bottomHasCurrent =
-        _isCurrent(red, currentPlayer) || _isCurrent(blue, currentPlayer);
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final shortScreen = constraints.maxHeight < 630;
@@ -290,10 +284,6 @@ class _LiveMatchLayout extends StatelessWidget {
         );
       },
     );
-  }
-
-  bool _isCurrent(LudoPlayer? player, LudoPlayer currentPlayer) {
-    return player?.playerId == currentPlayer.playerId;
   }
 
   /// The two slots follow the physical homes and never reorder the colors.
