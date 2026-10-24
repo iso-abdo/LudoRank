@@ -262,6 +262,10 @@ class _LiveMatchLayout extends StatelessWidget {
                               availableMoves: provider.availableMoves,
                               selectedTokenId: provider.selectedTokenId,
                               onTokenTap: onTokenTap,
+                              legalMoveDestinations:
+                                  provider.selectedMoveDestinations,
+                              rollValueForMove: provider.rollValueForMove,
+                              onMoveTap: onMove,
                             ),
                           );
                         },
