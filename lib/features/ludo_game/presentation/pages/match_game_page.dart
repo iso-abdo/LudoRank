@@ -10,6 +10,7 @@ import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/ludo_
 import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/ludo_match_footer.dart';
 import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/ludo_match_player_section.dart';
 import 'package:ludo_rank/features/matches/presentation/providers/match_game_provider.dart';
+import 'package:ludo_rank/features/match_players/domain/entities/match_player.dart';
 
 class MatchGamePage extends StatefulWidget {
   /// Database match ID.
@@ -156,6 +157,10 @@ class _MatchGamePageState extends State<MatchGamePage> {
                           onClose: gameProvider.isFinished
                               ? () => Navigator.pop(context, true)
                               : null,
+                          gameResult: gameProvider.result,
+                          matchPlayers:
+                              gameProvider.session?.matchPlayers ??
+                              const <MatchPlayer>[],
                         ),
                       ),
                     ),
@@ -186,9 +191,7 @@ class _LiveMatchLayout extends StatelessWidget {
     final currentPlayer = provider.currentPlayer;
 
     if (players.isEmpty || currentPlayer == null) {
-      return const Center(
-        child: CircularProgressIndicator(strokeWidth: 2.5),
-      );
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2.5));
     }
 
     final playersByColor = <LudoPlayerColor, LudoPlayer>{
@@ -199,10 +202,10 @@ class _LiveMatchLayout extends StatelessWidget {
     final red = playersByColor[LudoPlayerColor.red];
     final blue = playersByColor[LudoPlayerColor.blue];
 
-    final topHasCurrent = _isCurrent(green, currentPlayer) ||
-        _isCurrent(yellow, currentPlayer);
-    final bottomHasCurrent = _isCurrent(red, currentPlayer) ||
-        _isCurrent(blue, currentPlayer);
+    final topHasCurrent =
+        _isCurrent(green, currentPlayer) || _isCurrent(yellow, currentPlayer);
+    final bottomHasCurrent =
+        _isCurrent(red, currentPlayer) || _isCurrent(blue, currentPlayer);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -246,7 +249,9 @@ class _LiveMatchLayout extends StatelessWidget {
                     child: Center(
                       child: LayoutBuilder(
                         builder: (context, boardConstraints) {
-                          final side = boardConstraints.maxWidth < boardConstraints.maxHeight
+                          final side =
+                              boardConstraints.maxWidth <
+                                  boardConstraints.maxHeight
                               ? boardConstraints.maxWidth
                               : boardConstraints.maxHeight;
                           return SizedBox.square(
@@ -353,7 +358,9 @@ class _LiveMatchLayout extends StatelessWidget {
             player: player,
             isCurrent: isCurrent,
             turnState: provider.turnState,
-            availableRolls: isCurrent ? provider.availableRolls : provider.availableRolls.clear(),
+            availableRolls: isCurrent
+                ? provider.availableRolls
+                : provider.availableRolls.clear(),
             canRoll: isCurrent && provider.canRollDice,
             onRoll: provider.rollDice,
             height: isCurrent ? activeCardHeight : inactiveCardHeight,

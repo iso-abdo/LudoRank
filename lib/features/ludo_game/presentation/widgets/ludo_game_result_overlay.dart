@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:ludo_rank/features/match_players/domain/entities/match_player.dart';
 
+import 'package:ludo_rank/features/ludo_game/domain/models/game_result.dart';
+
 class LudoGameResultOverlay extends StatelessWidget {
   final List<MatchPlayer> players;
   final Map<String, String> playerNames;
@@ -11,6 +13,9 @@ class LudoGameResultOverlay extends StatelessWidget {
   final VoidCallback onRetry;
   final VoidCallback? onClose;
 
+  final GameResult? gameResult;
+  final List<MatchPlayer> matchPlayers;
+
   const LudoGameResultOverlay({
     super.key,
     required this.players,
@@ -19,6 +24,8 @@ class LudoGameResultOverlay extends StatelessWidget {
     required this.isLoading,
     required this.onRetry,
     required this.onClose,
+    this.gameResult,
+    this.matchPlayers = const <MatchPlayer>[],
   });
 
   @override
@@ -71,8 +78,13 @@ class LudoGameResultOverlay extends StatelessWidget {
                     _ResultsList(
                       players: sortedPlayers,
                       playerNames: playerNames,
+                    )
+                  else if (gameResult != null)
+                    _EngineResultsList(
+                      gameResult: gameResult!,
+                      matchPlayers: matchPlayers,
+                      playerNames: playerNames,
                     ),
-
                   const SizedBox(height: 18),
 
                   if (!isSaved)
@@ -123,10 +135,7 @@ class _ResultsList extends StatelessWidget {
   final List<MatchPlayer> players;
   final Map<String, String> playerNames;
 
-  const _ResultsList({
-    required this.players,
-    required this.playerNames,
-  });
+  const _ResultsList({required this.players, required this.playerNames});
 
   @override
   Widget build(BuildContext context) {
@@ -137,8 +146,8 @@ class _ResultsList extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: _ResultRow(
               player: player,
-              displayName: playerNames[player.playerId]
-                  ?? 'اللاعب ${player.seat}',
+              displayName:
+                  playerNames[player.playerId] ?? 'اللاعب ${player.seat}',
             ),
           ),
       ],
@@ -150,18 +159,12 @@ class _ResultRow extends StatelessWidget {
   final MatchPlayer player;
   final String displayName;
 
-  const _ResultRow({
-    required this.player,
-    required this.displayName,
-  });
+  const _ResultRow({required this.player, required this.displayName});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 10,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -185,12 +188,76 @@ class _ResultRow extends StatelessWidget {
           ),
           Text(
             '${player.points} نقطة',
-            style: Theme.of(context)
-                .textTheme.labelLarge
-                ?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
         ],
       ),
     );
+  }
+}
+
+class _EngineResultsList extends StatelessWidget {
+  final GameResult gameResult;
+  final List<MatchPlayer> matchPlayers;
+  final Map<String, String> playerNames;
+
+  const _EngineResultsList({
+    required this.gameResult,
+    required this.matchPlayers,
+    required this.playerNames,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final results = [...gameResult.players]
+      ..sort((a, b) => a.rank.compareTo(b.rank));
+
+    return Column(
+      children: [
+        for (final result in results)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 17,
+                    child: Text(
+                      '${result.rank}',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      playerNames[result.playerId] ??
+                          _fallbackName(result.playerId),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _fallbackName(String playerId) {
+    for (final player in matchPlayers) {
+      if (player.playerId == playerId) {
+        return 'اللاعب ${player.seat}';
+      }
+    }
+
+    return 'لاعب';
   }
 }
