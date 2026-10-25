@@ -8,6 +8,7 @@ import 'package:ludo_rank/features/ludo_game/domain/entities/position.dart';
 import 'package:ludo_rank/features/ludo_game/domain/models/move_option.dart';
 
 import '../geometry/ludo_board_geometry.dart';
+import 'match_ui/ludo_match_board_art.dart';
 
 class LudoBoard extends StatelessWidget {
   final List<LudoPlayer> players;
@@ -25,6 +26,8 @@ class LudoBoard extends StatelessWidget {
   });
 
   @override
+
+  @override
   Widget build(BuildContext context) {
     return AspectRatio(
       aspectRatio: 1,
@@ -40,12 +43,10 @@ class LudoBoard extends StatelessWidget {
             height: boardSize,
             child: Stack(
               clipBehavior: Clip.none,
-              children: [
+              children: <Widget>[
                 Positioned.fill(
-                  child: CustomPaint(
-                    painter: _LudoBoardPainter(
-                      geometry: LudoBoardGeometry.instance,
-                    ),
+                  child: LudoMatchBoardArt(
+                    players: players,
                   ),
                 ),
                 ..._buildTokens(boardSize),
@@ -56,6 +57,7 @@ class LudoBoard extends StatelessWidget {
       ),
     );
   }
+
 
   // ============================================================
   // TOKENS

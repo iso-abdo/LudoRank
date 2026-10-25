@@ -9,16 +9,19 @@ import 'package:ludo_rank/features/ludo_game/presentation/geometry/ludo_board_ge
 import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/ludo_match_board_art.dart';
 import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/match_die_face.dart';
 import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/match_ui_colors.dart';
+import 'package:ludo_rank/features/ludo_game/domain/constants/ludo_paths.dart';
 
 /// Live interactive wrapper around the visual board.
 ///
 /// The board handles presentation and input only.
 /// Legal moves and move execution remain controlled by the game logic.
-class LudoMatchBoard extends StatelessWidget {
+class LudoMatchBoard extends StatefulWidget {
   final List<LudoPlayer> players;
   final String? currentPlayerId;
   final List<MoveOption> availableMoves;
   final String? selectedTokenId;
+  final int? selectedRollSequence;
+  final MoveOption? pendingAutoMove;
   final ValueChanged<LudoToken> onTokenTap;
 
   /// Legal destinations for the currently selected token.
@@ -40,246 +43,298 @@ class LudoMatchBoard extends StatelessWidget {
     required this.legalMoveDestinations,
     required this.rollValueForMove,
     required this.onMoveTap,
+    this.selectedRollSequence,
+    this.pendingAutoMove,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final side = math.min(constraints.maxWidth, constraints.maxHeight);
+  State<LudoMatchBoard> createState() => _LudoMatchBoardState();
+}
 
-        if (!side.isFinite || side <= 0) {
-          return const SizedBox.shrink();
-        }
+class _LudoMatchBoardState extends State<LudoMatchBoard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
 
-        final frame = (side * .031).clamp(7.0, 11.0).toDouble();
-        final innerSide = side - frame * 2;
+  MoveOption? _animatingMove;
+  List<Position> _animationPath = <Position>[];
+  String? _animatingTokenId;
+  bool _startingAutoMove = false;
 
-        return Center(
-          child: SizedBox.square(
-            dimension: side,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: <Widget>[
-                Positioned.fill(child: LudoMatchBoardArt(players: players)),
+  @override
+  void initState() {
+    super.initState();
 
-                // Interactive token targets.
-                ..._buildTokenTargets(frame: frame, innerSide: innerSide),
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    )..addStatusListener(_onAnimationStatus);
 
-                // Legal destinations and their corresponding dice values.
-                ..._buildDestinationTargets(frame: frame, innerSide: innerSide),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _tryStartAutomaticMove();
+    });
   }
 
-  List<Widget> _buildTokenTargets({
-    required double frame,
-    required double innerSide,
-  }) {
-    final groups = <Position, List<_BoardToken>>{};
-    final geometry = LudoBoardGeometry.instance;
+  @override
+  void didUpdateWidget(covariant LudoMatchBoard oldWidget) {
+    super.didUpdateWidget(oldWidget);
 
-    for (final player in players) {
-      for (final token in player.tokens) {
-        final position = token.isInitial
-            ? geometry.tokenHomePosition(
-                color: player.color,
-                tokenIndex: token.tokenIndex,
-              )
-            : token.position;
-
-        groups
-            .putIfAbsent(position, () => <_BoardToken>[])
-            .add(_BoardToken(player: player, token: token, position: position));
-      }
+    if (widget.pendingAutoMove == null) {
+      _startingAutoMove = false;
     }
 
-    final result = <Widget>[];
-    final cell = innerSide / LudoBoardGeometry.gridSize;
-    final targetSide = cell * .88;
-
-    for (final group in groups.values) {
-      for (var index = 0; index < group.length; index++) {
-        final item = group[index];
-
-        if (item.player.playerId != currentPlayerId) {
-          continue;
-        }
-
-        final isMovable = _isTokenMovable(item.token.id);
-        final isSelected = item.token.id == selectedTokenId;
-
-        if (!isMovable && !isSelected) {
-          continue;
-        }
-
-        final center =
-            geometry.cellCenter(item.position, innerSide) +
-            _stackOffset(index, group.length, cell);
-
-        final tone = matchUiColorFor(item.player.color);
-
-        result.add(
-          Positioned(
-            key: ValueKey<String>('tap-${item.token.id}'),
-            left: frame + center.dx - targetSide / 2,
-            top: frame + center.dy - targetSide / 2,
-            width: targetSide,
-            height: targetSide,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => onTokenTap(item.token),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected
-                        ? const Color(0xFFFFF4C2)
-                        : Colors.white.withValues(alpha: .96),
-                    width: isSelected ? 3 : 2.2,
-                  ),
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(
-                      color: (isSelected ? const Color(0xFFFFD66B) : tone)
-                          .withValues(alpha: isSelected ? .82 : .65),
-                      blurRadius: isSelected ? 11 : 7,
-                      spreadRadius: isSelected ? 1.5 : .4,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      }
+    if (widget.pendingAutoMove != oldWidget.pendingAutoMove ||
+        widget.selectedTokenId != oldWidget.selectedTokenId ||
+        widget.selectedRollSequence != oldWidget.selectedRollSequence ||
+        widget.availableMoves != oldWidget.availableMoves) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _tryStartAutomaticMove();
+      });
     }
-
-    return result;
   }
 
-  List<Widget> _buildDestinationTargets({
-    required double frame,
-    required double innerSide,
-  }) {
-    if (legalMoveDestinations.isEmpty) {
-      return const <Widget>[];
-    }
-
-    final geometry = LudoBoardGeometry.instance;
-    final cell = innerSide / LudoBoardGeometry.gridSize;
-    final result = <Widget>[];
-
-    for (final entry in legalMoveDestinations.entries) {
-      final moves = entry.value;
-
-      if (moves.isEmpty) {
-        continue;
-      }
-
-      final center = geometry.cellCenter(entry.key, innerSide);
-
-      final markerWidth = math.min(cell * 2.8, innerSide * .48);
-
-      final markerHeight = cell * .82;
-
-      result.add(
-        Positioned(
-          key: ValueKey<String>(
-            'destination-${entry.key.row}-${entry.key.column}',
-          ),
-          left: frame + center.dx - markerWidth / 2,
-          top: frame + center.dy - markerHeight / 2,
-          width: markerWidth,
-          height: markerHeight,
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: const Color(0xEE241B30),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFFFD66B), width: 1.5),
-                boxShadow: const <BoxShadow>[
-                  BoxShadow(color: Color(0x77000000), blurRadius: 6),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: moves
-                    .map((move) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 1),
-                        child: GestureDetector(
-                          key: ValueKey<String>(
-                            'move-${move.runtimeType}-${move.rollSequence}',
-                          ),
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => onMoveTap(move),
-                          child: MatchDieFace(
-                            value: rollValueForMove(move),
-                            size: cell * .58,
-                          ),
-                        ),
-                      );
-                    })
-                    .toList(growable: false),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return result;
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
-  bool _isTokenMovable(String tokenId) {
-    for (final move in availableMoves) {
-      if (move is MoveToken && move.tokenId == tokenId) {
-        return true;
-      }
+  void _tryStartAutomaticMove() {
+    if (_animatingMove != null || !mounted) return;
 
-      if (move is ExitToken && move.tokenId == tokenId) {
-        return true;
-      }
+    // الحركة الوحيدة التي اكتشفها الـ Provider بعد رمي النرد.
+    final pending = widget.pendingAutoMove;
+
+    if (pending != null && !_startingAutoMove) {
+      _startingAutoMove = true;
+      _startMoveAnimation(pending);
+      return;
+    }
+
+    // لو اختار اللاعب قطعة ورمية نرد، وكانت هناك حركة قانونية واحدة
+    // تطابق الاختيار، شغّل الأنيميشن بدل التنفيذ المباشر.
+    final tokenId = widget.selectedTokenId;
+    if (tokenId == null) return;
+
+    final candidates = widget.availableMoves.where((move) {
+      final moveTokenId = switch (move) {
+        MoveToken(:final tokenId) => tokenId,
+        ExitToken(:final tokenId) => tokenId,
+      };
+
+      return moveTokenId == tokenId &&
+          (widget.selectedRollSequence == null ||
+              move.rollSequence == widget.selectedRollSequence);
+    }).toList(growable: false);
+
+    if (candidates.length == 1) {
+      _startMoveAnimation(candidates.single);
+    }
+  }
+
+  bool _sameMove(MoveOption a, MoveOption b) {
+    if (a is MoveToken && b is MoveToken) {
+      return a.tokenId == b.tokenId &&
+          a.steps == b.steps &&
+          a.rollSequence == b.rollSequence;
+    }
+
+    if (a is ExitToken && b is ExitToken) {
+      return a.tokenId == b.tokenId &&
+          a.rollSequence == b.rollSequence;
     }
 
     return false;
   }
 
-  Offset _stackOffset(int index, int count, double cell) {
-    const two = <Offset>[Offset(-.16, -.16), Offset(.16, .16)];
+  void _startMoveAnimation(MoveOption move) {
+    if (_animatingMove != null) return;
 
-    const three = <Offset>[
-      Offset(-.15, -.13),
-      Offset(.15, -.13),
-      Offset(0, .16),
-    ];
-
-    const four = <Offset>[
-      Offset(-.16, -.16),
-      Offset(.16, -.16),
-      Offset(-.16, .16),
-      Offset(.16, .16),
-    ];
-
-    if (count <= 1) {
-      return Offset.zero;
+    // لا نحرّك أي قطعة بناءً على اختيار قديم لم يعد قانونيًا.
+    if (!widget.availableMoves.any((candidate) => _sameMove(candidate, move))) {
+      return;
     }
 
-    final offsets = count == 2
-        ? two
-        : count == 3
-        ? three
-        : four;
+    final tokenId = switch (move) {
+      MoveToken(:final tokenId) => tokenId,
+      ExitToken(:final tokenId) => tokenId,
+    };
 
-    return offsets[index.clamp(0, offsets.length - 1).toInt()] * cell;
+    final player = widget.players.cast<LudoPlayer?>().firstWhere(
+          (p) => p?.tokens.any((token) => token.id == tokenId) ?? false,
+      orElse: () => null,
+    );
+
+    if (player == null) return;
+
+    final token = player.tokens.firstWhere((t) => t.id == tokenId);
+    final path = _pathFor(player.color);
+    final positions = <Position>[token.position];
+
+    if (move is ExitToken) {
+      // الخروج من قاعدة اللاعب إلى نقطة البداية.
+      positions.add(path.startingPosition);
+    } else if (move is MoveToken) {
+      var step = token.positionInPath;
+      var homeEntryPending = token.homeEntryPending;
+      var destinationUsesHomeLane = false;
+
+      for (var i = 0; i < move.steps; i++) {
+        if (step == LudoPath.finishStep) return;
+
+        // نفس تفسير المحرك للخطوة 51 والحارة المنزلية.
+        final useHomeLane = player.hasCaptured &&
+            !(homeEntryPending && step == LudoPath.lastMainLoopStep);
+
+        final nextStep = path.nextStep(
+          currentStep: step,
+          useHomeLane: useHomeLane,
+        );
+
+        destinationUsesHomeLane =
+            useHomeLane && nextStep >= LudoPath.homeLaneStartStep;
+
+        if (destinationUsesHomeLane &&
+            nextStep == LudoPath.homeLaneStartStep) {
+          homeEntryPending = false;
+        }
+
+        step = nextStep;
+
+        positions.add(
+          path.positionAt(
+            step: step,
+            useHomeLane: destinationUsesHomeLane,
+          ),
+        );
+      }
+    }
+
+    if (positions.length < 2) return;
+
+    setState(() {
+      _animatingMove = move;
+      _animatingTokenId = tokenId;
+      _animationPath = positions;
+    });
+
+    // وقت قصير لكل خانة، مع حد أدنى للحركة.
+    _controller.duration = Duration(
+      milliseconds: math.max(220, (positions.length - 1) * 115),
+    );
+
+    _controller.forward(from: 0);
+  }
+
+  void _onAnimationStatus(AnimationStatus status) {
+    if (status != AnimationStatus.completed || !mounted) return;
+
+    final move = _animatingMove;
+    if (move == null) return;
+
+    // بعد اكتمال الأنيميشن فقط، اطلب من الـ Provider تنفيذ الحركة
+    // عن طريق LudoGameEngine.
+    widget.onMoveTap(move);
+
+    setState(() {
+      _animatingMove = null;
+      _animatingTokenId = null;
+      _animationPath = <Position>[];
+    });
+
+    _controller.reset();
+  }
+
+  LudoPath _pathFor(LudoPlayerColor color) {
+    return switch (color) {
+      LudoPlayerColor.red => LudoPaths.red,
+      LudoPlayerColor.green => LudoPaths.green,
+      LudoPlayerColor.yellow => LudoPaths.yellow,
+      LudoPlayerColor.blue => LudoPaths.blue,
+    };
+  }
+
+  Offset _animatedCenter(double innerSide) {
+    final count = _animationPath.length;
+    final geometry = LudoBoardGeometry.instance;
+    final scaled = _controller.value * (count - 1);
+    final index = scaled.floor().clamp(0, count - 2);
+    final fraction = (scaled - index).clamp(0.0, 1.0);
+
+    final from = geometry.cellCenter(_animationPath[index], innerSide);
+    final to = geometry.cellCenter(_animationPath[index + 1], innerSide);
+
+    return Offset.lerp(from, to, fraction)!;
+  }
+
+  Widget _buildAnimatedToken({
+    required double frame,
+    required double innerSide,
+  }) {
+    if (_animatingMove == null || _animationPath.length < 2) {
+      return const SizedBox.shrink();
+    }
+
+    final tokenId = _animatingTokenId;
+    LudoPlayer? owner;
+
+    for (final player in widget.players) {
+      if (player.tokens.any((token) => token.id == tokenId)) {
+        owner = player;
+        break;
+      }
+    }
+
+    if (owner == null) return const SizedBox.shrink();
+
+    final tone = matchUiColorFor(owner.color);
+    final cell = innerSide / LudoBoardGeometry.gridSize;
+    final diameter = cell * .71;
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final center = _animatedCenter(innerSide);
+
+        return Positioned(
+          left: frame + center.dx - diameter / 2,
+          top: frame + center.dy - diameter / 2,
+          width: diameter,
+          height: diameter,
+          child: child!,
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            center: const Alignment(-.35, -.4),
+            colors: <Color>[
+              Color.lerp(tone, Colors.white, .45)!,
+              tone,
+              Color.lerp(tone, Colors.black, .30)!,
+            ],
+          ),
+          border: Border.all(
+            color: const Color(0xFFFFF4D8),
+            width: 2,
+          ),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x99000000),
+              blurRadius: 5,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.person,
+          color: Color(0xFFFFF9EB),
+          size: 20,
+        ),
+      ),
+    );
   }
 }
-
 class _BoardToken {
   final LudoPlayer player;
   final LudoToken token;
