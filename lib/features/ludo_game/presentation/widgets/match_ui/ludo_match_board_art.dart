@@ -15,13 +15,24 @@ import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/match
 class LudoMatchBoardArt extends StatelessWidget {
   final List<LudoPlayer> players;
 
-  const LudoMatchBoardArt({super.key, required this.players});
+  /// إخفاء القطعة الأصلية مؤقتًا أثناء الأنيميشن.
+  final String? hiddenTokenId;
+
+  const LudoMatchBoardArt({
+    super.key,
+    required this.players,
+    this.hiddenTokenId,
+  });
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final side = math.min(constraints.maxWidth, constraints.maxHeight);
+        final side = math.min(
+          constraints.maxWidth,
+          constraints.maxHeight,
+        );
+
         final frame = (side * .031).clamp(7.0, 11.0).toDouble();
         final innerSide = side - frame * 2;
 
@@ -30,6 +41,7 @@ class LudoMatchBoardArt extends StatelessWidget {
             dimension: side,
             child: DecoratedBox(
               decoration: BoxDecoration(
+                // احتفظ بتصميم الإطار الحالي كما هو.
                 borderRadius: BorderRadius.circular(side * .045),
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
@@ -66,7 +78,10 @@ class LudoMatchBoardArt extends StatelessWidget {
                   borderRadius: BorderRadius.circular(frame * .20),
                   child: CustomPaint(
                     size: Size.square(innerSide),
-                    painter: _MatchBoardPainter(players: players),
+                    painter: _MatchBoardPainter(
+                      players: players,
+                      hiddenTokenId: hiddenTokenId,
+                    ),
                   ),
                 ),
               ),
@@ -77,12 +92,17 @@ class LudoMatchBoardArt extends StatelessWidget {
     );
   }
 }
-
 class _MatchBoardPainter extends CustomPainter {
   final List<LudoPlayer> players;
   final LudoBoardGeometry geometry = LudoBoardGeometry.instance;
+  final String? hiddenTokenId;
 
-  _MatchBoardPainter({required this.players});
+  _MatchBoardPainter({
+    required this.players,
+    this.hiddenTokenId,
+  });
+
+
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -416,7 +436,7 @@ class _MatchBoardPainter extends CustomPainter {
               )
             : token.position;
         groups.putIfAbsent(position, () => <_TokenVisual>[]).add(
-              _TokenVisual(color: player.color, position: position),
+              _TokenVisual(color: player.color, position: position, tokenId: token.id),
             );
       }
     }
@@ -425,6 +445,9 @@ class _MatchBoardPainter extends CustomPainter {
     for (final group in groups.values) {
       for (var i = 0; i < group.length; i++) {
         final item = group[i];
+        if (item.tokenId == hiddenTokenId) {
+          continue;
+        }
         final center = geometry.cellCenter(item.position, side) +
             _stackOffset(i, group.length, cell);
         final tone = matchUiColorFor(item.color);
@@ -636,17 +659,22 @@ class _MatchBoardPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _MatchBoardPainter oldDelegate) {
-    return oldDelegate.players != players;
+    return oldDelegate.players != players ||
+        oldDelegate.hiddenTokenId != hiddenTokenId;
   }
 }
 
 class _TokenVisual {
+  final String tokenId;
   final LudoPlayerColor color;
   final Position position;
 
-  const _TokenVisual({required this.color, required this.position});
+  const _TokenVisual({
+    required this.tokenId,
+    required this.color,
+    required this.position,
+  });
 }
-
 class _TriangleSlice {
   final Color color;
   final Offset a;
