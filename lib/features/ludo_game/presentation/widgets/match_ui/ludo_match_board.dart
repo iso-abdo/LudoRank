@@ -11,6 +11,9 @@ import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/match
 import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/match_ui_colors.dart';
 import 'package:ludo_rank/features/ludo_game/domain/constants/ludo_paths.dart';
 
+import 'dart:async';
+import 'package:audioplayers/audioplayers.dart';
+
 /// Live interactive wrapper around the visual board.
 ///
 /// The board handles presentation and input only.
@@ -60,6 +63,9 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
   String? _animatingTokenId;
   bool _startingAutoMove = false;
 
+  late final AudioPlayer _stepPlayer;
+  int _lastSoundStep = 0;
+
   @override
   void initState() {
     super.initState();
@@ -68,6 +74,11 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
       vsync: this,
       duration: const Duration(milliseconds: 650),
     )..addStatusListener(_onAnimationStatus);
+
+    _stepPlayer = AudioPlayer();
+    _stepPlayer.setReleaseMode(ReleaseMode.stop);
+
+    _controller.addListener(_onAnimationTick);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _tryStartAutomaticMove();
@@ -93,9 +104,69 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
   }
 
   @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final side = math.min(
+          constraints.maxWidth,
+          constraints.maxHeight,
+        );
+
+        if (!side.isFinite || side <= 0) {
+          return const SizedBox.shrink();
+        }
+
+        final frame = (side * .031).clamp(7.0, 11.0).toDouble();
+        final innerSide = side - frame * 2;
+
+        return Center(
+          child: SizedBox.square(
+            dimension: side,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: <Widget>[
+                Positioned.fill(
+                  child: LudoMatchBoardArt(
+                    players: widget.players,
+                    hiddenTokenId: _animatingTokenId,
+                  ),
+                ),
+
+                IgnorePointer(
+                  ignoring: _animatingMove != null,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: <Widget>[
+                      ..._buildTokenTargets(
+                        frame: frame,
+                        innerSide: innerSide,
+                      ),
+                      ..._buildDestinationTargets(
+                        frame: frame,
+                        innerSide: innerSide,
+                      ),
+                    ],
+                  ),
+                ),
+
+                if (_animatingMove != null)
+                  _buildAnimatedToken(
+                    frame: frame,
+                    innerSide: innerSide,
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  @override
   void dispose() {
     _controller.dispose();
+    unawaited(_stepPlayer.dispose());
     super.dispose();
+
   }
 
   void _tryStartAutomaticMove() {
@@ -212,6 +283,7 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
     if (positions.length < 2) return;
 
     setState(() {
+      _lastSoundStep = 0;
       _animatingMove = move;
       _animatingTokenId = tokenId;
       _animationPath = positions;
@@ -222,7 +294,6 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
       milliseconds: math.max(220, (positions.length - 1) * 115),
     );
 
-    _controller.forward(from: 0);
   }
 
   void _onAnimationStatus(AnimationStatus status) {
@@ -242,6 +313,34 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
     });
 
     _controller.reset();
+  }
+
+  void _onAnimationTick() {
+    if (_animatingMove == null || _animationPath.length < 2) {
+      return;
+    }
+
+    final totalSteps = _animationPath.length - 1;
+    final currentStep = (_controller.value * totalSteps)
+        .floor()
+        .clamp(0, totalSteps);
+
+    if (currentStep <= _lastSoundStep) return;
+
+    _lastSoundStep = currentStep;
+
+    unawaited(_playStepSound());
+  }
+
+  Future<void> _playStepSound() async {
+    try {
+      await _stepPlayer.stop();
+      await _stepPlayer.play(
+        AssetSource('audio/ludorank_token_step.wav'),
+      );
+    } catch (error) {
+      debugPrint('Token movement sound failed: $error');
+    }
   }
 
   LudoPath _pathFor(LudoPlayerColor color) {
@@ -264,6 +363,142 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
     final to = geometry.cellCenter(_animationPath[index + 1], innerSide);
 
     return Offset.lerp(from, to, fraction)!;
+  }
+
+
+  List<Widget> _buildTokenTargets({
+    required double frame,
+    required double innerSide,
+  }) {
+    final geometry = LudoBoardGeometry.instance;
+    final cell = innerSide / LudoBoardGeometry.gridSize;
+    final diameter = cell * 1.15;
+    final widgets = <Widget>[];
+
+    for (final player in widget.players) {
+      for (final token in player.tokens) {
+        // لا نسمح باختيار قطعة لاعب آخر.
+        if (player.playerId != widget.currentPlayerId) continue;
+
+        // القطع التي ليس لها حركة قانونية لا تحتاج منطقة ضغط.
+        final hasLegalMove = widget.availableMoves.any((move) {
+          return switch (move) {
+            MoveToken(:final tokenId) => tokenId == token.id,
+            ExitToken(:final tokenId) => tokenId == token.id,
+          };
+        });
+
+        if (!hasLegalMove) continue;
+
+        final position = token.isInitial
+            ? geometry.tokenHomePosition(
+          color: player.color,
+          tokenIndex: token.tokenIndex,
+        )
+            : token.position;
+
+        final center = geometry.cellCenter(position, innerSide);
+        final isSelected = widget.selectedTokenId == token.id;
+
+        widgets.add(
+          Positioned(
+            left: frame + center.dx - diameter / 2,
+            top: frame + center.dy - diameter / 2,
+            width: diameter,
+            height: diameter,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => widget.onTokenTap(token),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected
+                        ? Colors.white
+                        : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    return widgets;
+  }
+
+  List<Widget> _buildDestinationTargets({
+    required double frame,
+    required double innerSide,
+  }) {
+    final selectedTokenId = widget.selectedTokenId;
+
+    if (selectedTokenId == null || _animatingMove != null) {
+      return const <Widget>[];
+    }
+
+    final geometry = LudoBoardGeometry.instance;
+    final cell = innerSide / LudoBoardGeometry.gridSize;
+    final size = cell * .76;
+    final widgets = <Widget>[];
+
+    for (final entry in widget.legalMoveDestinations.entries) {
+      final candidates = entry.value.where((move) {
+        final matchesToken = switch (move) {
+          MoveToken(:final tokenId) => tokenId == selectedTokenId,
+          ExitToken(:final tokenId) => tokenId == selectedTokenId,
+        };
+
+        return matchesToken &&
+            (widget.selectedRollSequence == null ||
+                move.rollSequence == widget.selectedRollSequence);
+      }).toList(growable: false);
+
+      if (candidates.isEmpty) continue;
+
+      final center = geometry.cellCenter(entry.key, innerSide);
+      final diceValue = widget.rollValueForMove(candidates.first);
+
+      widgets.add(
+        Positioned(
+          left: frame + center.dx - size / 2,
+          top: frame + center.dy - size / 2,
+          width: size,
+          height: size,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              if (_animatingMove != null) return;
+
+              // لا نخمن الحركة إذا بقي أكثر من اختيار صالح.
+              if (candidates.length != 1) return;
+
+              _startMoveAnimation(candidates.single);
+            },
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0xDDFFFFFF),
+                borderRadius: BorderRadius.circular(size * .22),
+                border: Border.all(
+                  color: const Color(0xFFFFD166),
+                  width: 2,
+                ),
+              ),
+              child: Center(
+                child: MatchDieFace(
+                  value: diceValue,
+                  size: size * .85,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return widgets;
   }
 
   Widget _buildAnimatedToken({
@@ -334,8 +569,10 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
       ),
     );
   }
+
+
 }
-class _BoardToken {
+/*class _BoardToken {
   final LudoPlayer player;
   final LudoToken token;
   final Position position;
@@ -346,3 +583,4 @@ class _BoardToken {
     required this.position,
   });
 }
+*/
