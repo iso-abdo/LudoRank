@@ -1,0 +1,145 @@
+diff --git a/lib/features/ludo_game/presentation/widgets/match_ui/ludo_match_board.dart b/lib/features/ludo_game/presentation/widgets/match_ui/ludo_match_board.dart
+index c4d60b7..WORKTREE 100644
+--- a/lib/features/ludo_game/presentation/widgets/match_ui/ludo_match_board.dart
++++ b/lib/features/ludo_game/presentation/widgets/match_ui/ludo_match_board.dart
+@@ -62,6 +62,7 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
+   List<Position> _animationPath = <Position>[];
+   String? _animatingTokenId;
+   bool _startingAutoMove = false;
++  bool _committingMove = false;
+ 
+   late final AudioPlayer _stepPlayer;
+   int _lastSoundStep = 0;
+@@ -181,7 +182,7 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
+   }
+ 
+   void _startMoveAnimation(MoveOption move) {
+-    if (_animatingMove != null) return;
++    if (_animatingMove != null || _committingMove) return;
+ 
+     // لا نحرّك أي قطعة بناءً على اختيار قديم لم يعد قانونيًا.
+     if (!widget.availableMoves.any((candidate) => _sameMove(candidate, move))) {
+@@ -290,24 +291,32 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
+     _controller.duration = Duration(
+       milliseconds: math.max(220, (positions.length - 1) * 115),
+     );
+-
++    // The status listener commits the move only after the animation finishes.
++    _controller.forward(from: 0);
+   }
+ 
+   void _onAnimationStatus(AnimationStatus status) {
+-    if (status != AnimationStatus.completed || !mounted) return;
++    if (status != AnimationStatus.completed || !mounted || _committingMove) {
++      return;
++    }
+ 
+     final move = _animatingMove;
+     if (move == null) return;
+ 
+-    // بعد اكتمال الأنيميشن فقط، اطلب من الـ Provider تنفيذ الحركة
+-    // عن طريق LudoGameEngine.
+-    widget.onMoveTap(move);
+-
+-    setState(() {
+-      _animatingMove = null;
+-      _animatingTokenId = null;
+-      _animationPath = <Position>[];
+-    });
+-
+-    _controller.reset();
++    // Guard against committing the same animated move more than once.
++    _committingMove = true;
++    try {
++      // The Provider/engine is the single source of truth for the move.
++      widget.onMoveTap(move);
++    } finally {
++      if (mounted) {
++        setState(() {
++          _animatingMove = null;
++          _animatingTokenId = null;
++          _animationPath = <Position>[];
++        });
++        _controller.reset();
++      }
++      _committingMove = false;
++    }
+   }
+@@ -330,8 +339,8 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
+       await _stepPlayer.stop();
+       await _stepPlayer.play(
+-        AssetSource('audio/ludorank_token_step.wav'),
++        AssetSource('audio/ludorank_token_step.mp3'),
+       );
+     } catch (error) {
+       debugPrint('Token movement sound failed: $error');
+     }
+   }
+diff --git a/lib/features/matches/presentation/providers/match_game_provider.dart b/lib/features/matches/presentation/providers/match_game_provider.dart
+index f400946..WORKTREE 100644
+--- a/lib/features/matches/presentation/providers/match_game_provider.dart
++++ b/lib/features/matches/presentation/providers/match_game_provider.dart
+@@ -428,8 +428,9 @@ class MatchGameProvider extends ChangeNotifier {
+       final matchingMoves = tokenMoves
+           .where((move) => move.rollSequence == _selectedRollSequence)
+           .toList(growable: false);
+ 
+       if (matchingMoves.length == 1) {
+-        await executeMove(matchingMoves.single);
++        _selectedTokenId = token.id;
++        notifyListeners();
+         return;
+       }
+@@ -468,12 +469,7 @@ class MatchGameProvider extends ChangeNotifier {
+     }
+ 
+-    // لمسة واحدة تكفي عندما توجد حركة قانونية واحدة فقط.
+-    if (tokenMoves.length == 1) {
+-      await executeMove(tokenMoves.single);
+-      return;
+-    }
+-
+-    // تعدد الحركات: نحدد التوكن ليختار اللاعب النرد المناسب.
++    // اختيار التوكن لا ينفذ الحركة مباشرة. اللوحة هي التي تشغّل
++    // الأنيميشن، ثم تعتمد الحركة عبر handleBoardMoveTap بعد اكتماله.
+     _selectedTokenId = token.id;
+     notifyListeners();
+   }
+@@ -578,13 +578,8 @@ class MatchGameProvider extends ChangeNotifier {
+ 
+     if (options.isEmpty) return;
+ 
+-    // عند تحديد توكن، اختيار النرد ينفذ الحركة القانونية المرتبطة به.
+-    if (_selectedTokenId != null && options.length == 1) {
+-      await executeMove(options.single);
+-      return;
+-    }
+-
+-    // قبل تحديد التوكن، نحتفظ باختيار النرد حتى يختار اللاعب حجرًا.
++    // اختيار النرد يحدد الحركة المطلوبة فقط؛ التنفيذ يحدث بعد الأنيميشن.
+     _selectedRollSequence = sequence;
+     notifyListeners();
+   }
++
+diff --git a/lib/features/ludo_game/presentation/pages/match_game_page.dart b/lib/features/ludo_game/presentation/pages/match_game_page.dart
+index 0e53838..WORKTREE 100644
+--- a/lib/features/ludo_game/presentation/pages/match_game_page.dart
++++ b/lib/features/ludo_game/presentation/pages/match_game_page.dart
+@@ -50,3 +50,3 @@ class _MatchGamePageState extends State<MatchGamePage> {
+   Future<void> _executeMove(MoveOption move) async {
+-    await provider.executeMove(move);
++    await provider.handleBoardMoveTap(move);
+   }
+@@ -251,9 +251,12 @@ class _LiveMatchLayout extends StatelessWidget {
+                               currentPlayerId: currentPlayer.playerId,
+                               availableMoves: provider.availableMoves,
+                               selectedTokenId: provider.selectedTokenId,
++                              selectedRollSequence:
++                                  provider.selectedRollSequence,
++                              pendingAutoMove: provider.pendingAutoMove,
+                               onTokenTap: onTokenTap,
+                               legalMoveDestinations:
+                                   provider.selectedMoveDestinations,
+                               rollValueForMove: provider.rollValueForMove,
+                               onMoveTap: onMove,
+                             ),

@@ -441,7 +441,8 @@ class MatchGameProvider extends ChangeNotifier {
           .toList(growable: false);
 
       if (matchingMoves.length == 1) {
-        await executeMove(matchingMoves.single);
+        _pendingAutoMove = matchingMoves.single;
+        notifyListeners();
         return;
       }
 
@@ -461,7 +462,8 @@ class MatchGameProvider extends ChangeNotifier {
 
     // لمسة واحدة تكفي عندما توجد حركة قانونية واحدة فقط.
     if (tokenMoves.length == 1) {
-      await executeMove(tokenMoves.single);
+      _pendingAutoMove = tokenMoves.single;
+      notifyListeners();
       return;
     }
 
@@ -581,7 +583,8 @@ class MatchGameProvider extends ChangeNotifier {
 
     // عند تحديد توكن، اختيار النرد ينفذ الحركة القانونية المرتبطة به.
     if (_selectedTokenId != null && options.length == 1) {
-      await executeMove(options.single);
+      _pendingAutoMove = options.single;
+      notifyListeners();
       return;
     }
 
