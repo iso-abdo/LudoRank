@@ -26,6 +26,7 @@ class LudoMatchBoard extends StatefulWidget {
   final int? selectedRollSequence;
   final MoveOption? pendingAutoMove;
   final ValueChanged<LudoToken> onTokenTap;
+  final Future<void> Function(MoveOption) onMoveTap;
 
   /// Legal destinations for the currently selected token.
   final Map<Position, List<MoveOption>> legalMoveDestinations;
@@ -34,7 +35,7 @@ class LudoMatchBoard extends StatefulWidget {
   final int? Function(MoveOption) rollValueForMove;
 
   /// Called when a specific legal move is selected.
-  final ValueChanged<MoveOption> onMoveTap;
+  //final ValueChanged<MoveOption> onMoveTap;
 
   const LudoMatchBoard({
     super.key,
@@ -62,7 +63,7 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
   List<Position> _animationPath = <Position>[];
   String? _animatingTokenId;
   bool _startingAutoMove = false;
-
+  bool _completingMove = false;
   late final AudioPlayer _stepPlayer;
   int _lastSoundStep = 0;
 
@@ -288,22 +289,42 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
   }
 
   void _onAnimationStatus(AnimationStatus status) {
-    if (status != AnimationStatus.completed || !mounted) return;
+    if (status != AnimationStatus.completed || !mounted || _completingMove) {
+      return;
+    }
 
+    if (_animatingMove == null) return;
+
+    _completingMove = true;
+    unawaited(_completeAnimatedMove());
+  }
+
+  Future<void> _completeAnimatedMove() async {
     final move = _animatingMove;
-    if (move == null) return;
+    if (move == null) {
+      _completingMove = false;
+      return;
+    }
 
-    // بعد اكتمال الأنيميشن فقط، اطلب من الـ Provider تنفيذ الحركة
-    // عن طريق LudoGameEngine.
-    widget.onMoveTap(move);
+    try {
+      // انتظر اعتماد الحركة داخل الـ Provider ومحرك اللعبة.
+      await widget.onMoveTap(move);
+    } catch (error, stackTrace) {
+      debugPrint('Failed to complete animated move: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _animatingMove = null;
+          _animatingTokenId = null;
+          _animationPath = <Position>[];
+        });
 
-    setState(() {
-      _animatingMove = null;
-      _animatingTokenId = null;
-      _animationPath = <Position>[];
-    });
+        _controller.reset();
+      }
 
-    _controller.reset();
+      _completingMove = false;
+    }
   }
 
   void _onAnimationTick() {

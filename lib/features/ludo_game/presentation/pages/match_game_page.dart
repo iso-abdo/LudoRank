@@ -176,8 +176,7 @@ class _MatchGamePageState extends State<MatchGamePage> {
 class _LiveMatchLayout extends StatelessWidget {
   final MatchGameProvider provider;
   final ValueChanged<LudoToken> onTokenTap;
-  final ValueChanged<MoveOption> onMove;
-
+  final Future<void> Function(MoveOption) onMove;
   const _LiveMatchLayout({
     required this.provider,
     required this.onTokenTap,
