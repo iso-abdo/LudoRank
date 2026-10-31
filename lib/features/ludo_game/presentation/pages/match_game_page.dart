@@ -247,17 +247,22 @@ class _LiveMatchLayout extends StatelessWidget {
 
                           return SizedBox.square(
                             dimension: side,
-                            child: LudoMatchBoard(
+                            child:
+                            LudoMatchBoard(
                               players: players,
                               currentPlayerId: currentPlayer.playerId,
                               availableMoves: provider.availableMoves,
                               selectedTokenId: provider.selectedTokenId,
+
+                              // ربط حالة اختيار رمية النرد والحركة التلقائية
+                              selectedRollSequence: provider.selectedRollSequence,
+                              pendingAutoMove: provider.pendingAutoMove,
+
                               onTokenTap: onTokenTap,
-                              legalMoveDestinations:
-                                  provider.selectedMoveDestinations,
+                              legalMoveDestinations: provider.selectedMoveDestinations,
                               rollValueForMove: provider.rollValueForMove,
                               onMoveTap: onMove,
-                            ),
+                            )
                           );
                         },
                       ),
@@ -348,6 +353,8 @@ class _LiveMatchLayout extends StatelessWidget {
             canRoll: isCurrent && provider.canRollDice,
             onRoll: provider.rollDice,
             height: isCurrent ? activeCardHeight : inactiveCardHeight,
+            onAvailableRollTap: provider.handleAvailableRollTap,
+            selectedRollSequence: provider.selectedRollSequence,
           ),
         ),
       ),

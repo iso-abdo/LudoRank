@@ -232,10 +232,21 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
 
     final token = player.tokens.firstWhere((t) => t.id == tokenId);
     final path = _pathFor(player.color);
-    final positions = <Position>[token.position];
+    final geometry = LudoBoardGeometry.instance;
+
+// القطعة الموجودة في البيت ليس لها Position صالح على مسار اللعب.
+// نستخدم مكانها المرئي الحقيقي داخل Home Zone كبداية للأنيميشن.
+    final startPosition = move is ExitToken
+        ? geometry.tokenHomePosition(
+      color: player.color,
+      tokenIndex: token.tokenIndex,
+    )
+        : token.position;
+
+    final positions = <Position>[startPosition];
 
     if (move is ExitToken) {
-      // الخروج من قاعدة اللاعب إلى نقطة البداية.
+      // الخروج من مكان القطعة داخل البيت إلى نقطة البداية.
       positions.add(path.startingPosition);
     } else if (move is MoveToken) {
       var step = token.positionInPath;
