@@ -42,6 +42,10 @@ import 'package:ludo_rank/features/matches/data/repositories/match_repository_im
 import 'package:ludo_rank/features/matches/domain/repositories/match_repository.dart';
 import 'package:ludo_rank/features/matches/presentation/providers/match_provider.dart';
 import 'package:ludo_rank/features/matches/domain/Use-cases/create_match.dart';
+// Standings
+import 'package:ludo_rank/features/tournaments/domain/services/tournament_standings_calculator.dart';
+import 'package:ludo_rank/features/tournaments/domain/services/tournament_standings_service.dart';
+import 'package:ludo_rank/features/tournaments/presentation/providers/tournament_standings_provider.dart';
 
 final sl = GetIt.instance;
 
@@ -145,4 +149,22 @@ Future<void> initDependencies() async {
 
   // Validator
   sl.registerLazySingleton<TournamentValidator>(() => TournamentValidator());
+
+  //standings_service
+
+  sl.registerLazySingleton<TournamentStandingsCalculator>(
+    () => const TournamentStandingsCalculator(),
+  );
+
+  sl.registerLazySingleton<TournamentStandingsService>(
+    () => TournamentStandingsService(
+      matchRepository: sl<MatchRepository>(),
+      matchPlayerRepository: sl<MatchPlayerRepository>(),
+      calculator: sl<TournamentStandingsCalculator>(),
+    ),
+  );
+
+  sl.registerFactory<TournamentStandingsProvider>(
+    () => TournamentStandingsProvider(sl<TournamentStandingsService>()),
+  );
 }

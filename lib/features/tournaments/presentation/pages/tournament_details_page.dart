@@ -12,6 +12,9 @@ import 'package:ludo_rank/features/players/presentation/providers/player_provide
 
 import 'package:uuid/uuid.dart';
 
+import 'package:ludo_rank/features/tournaments/domain/services/tournament_standings_calculator.dart';
+import 'package:ludo_rank/features/tournaments/presentation/providers/tournament_standings_provider.dart';
+
 class TournamentDetailsPage extends StatefulWidget {
   final String tournamentId;
 
@@ -26,15 +29,34 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
       sl<TournamentPlayerProvider>();
   final TournamentProvider tournamentProvider = sl<TournamentProvider>();
   final PlayerProvider playerProvider = sl<PlayerProvider>();
+  final TournamentStandingsProvider standingsProvider =
+      sl<TournamentStandingsProvider>();
 
   final uuid = const Uuid();
 
   @override
   void initState() {
     super.initState();
-    tournamentPlayerProvider.loadPlayers(widget.tournamentId);
-    playerProvider.loadPlayers();
-    tournamentProvider.loadTournament(widget.tournamentId);
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    await Future.wait([
+      tournamentPlayerProvider.loadPlayers(widget.tournamentId),
+      playerProvider.loadPlayers(),
+      tournamentProvider.loadTournament(widget.tournamentId),
+    ]);
+
+    if (!mounted) return;
+
+    await _loadStandings();
+  }
+
+  Future<void> _loadStandings() async {
+    await standingsProvider.load(
+      tournamentId: widget.tournamentId,
+      participants: List.of(tournamentPlayerProvider.players),
+    );
   }
 
   Future<void> _addPlayers() async {
@@ -61,8 +83,102 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
     }
 
     if (mounted) {
+      await _loadStandings();
       setState(() {});
     }
+  }
+
+  Widget _buildStandingsSection() {
+    return ListenableBuilder(
+      listenable: standingsProvider,
+      builder: (context, _) {
+        final snapshot = standingsProvider.snapshot;
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'ترتيب البطولة',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 12),
+
+                if (standingsProvider.isLoading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (standingsProvider.error != null)
+                  Column(
+                    children: [
+                      const Text('تعذر تحميل ترتيب البطولة'),
+                      const SizedBox(height: 8),
+                      Text(
+                        standingsProvider.error!,
+                        textAlign: TextAlign.center,
+                      ),
+                      TextButton.icon(
+                        onPressed: _loadStandings,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('إعادة المحاولة'),
+                      ),
+                    ],
+                  )
+                else if (snapshot == null)
+                  const Text('لا توجد بيانات متاحة للترتيب')
+                else ...[
+                  Text(
+                    'المباريات: ${snapshot.matches.length} '
+                    '• المكتملة: ${snapshot.completedMatches}',
+                  ),
+                  const Divider(height: 24),
+
+                  if (snapshot.completedMatches == 0)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        'لسه مفيش مباريات مكتملة. الترتيب هيظهر بعد تسجيل أول نتيجة.',
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  else if (snapshot.standings.isEmpty)
+                    const Text('لا يوجد مشاركون في البطولة')
+                  else
+                    ...snapshot.standings.map((standing) {
+                      final playerName = playerProvider.getPlayerName(
+                        standing.playerId,
+                      );
+
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          child: Text('${standing.position}'),
+                        ),
+                        title: Text(playerName),
+                        subtitle: Text(
+                          'المباريات: ${standing.matchesPlayed}'
+                          ' • الفوز: ${standing.wins}'
+                          ' • أفضل مركز: '
+                          '${standing.bestRank?.toString() ?? "—"}',
+                        ),
+                        trailing: Text(
+                          '${standing.points} نقطة',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      );
+                    }),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -79,6 +195,8 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
+                    const SizedBox(height: 20),
+                    _buildStandingsSection(),
                     const Icon(Icons.emoji_events, size: 60),
                     const SizedBox(height: 16),
                     Text(
