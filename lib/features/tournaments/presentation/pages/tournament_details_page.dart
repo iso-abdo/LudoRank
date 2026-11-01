@@ -12,7 +12,6 @@ import 'package:ludo_rank/features/players/presentation/providers/player_provide
 
 import 'package:uuid/uuid.dart';
 
-import 'package:ludo_rank/features/tournaments/domain/services/tournament_standings_calculator.dart';
 import 'package:ludo_rank/features/tournaments/presentation/providers/tournament_standings_provider.dart';
 
 class TournamentDetailsPage extends StatefulWidget {
