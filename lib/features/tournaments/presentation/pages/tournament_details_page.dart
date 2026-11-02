@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
@@ -16,28 +15,22 @@ import 'package:ludo_rank/shared/widgets/app_scaffold.dart';
 class TournamentDetailsPage extends StatefulWidget {
   final String tournamentId;
 
-  const TournamentDetailsPage({
-    super.key,
-    required this.tournamentId,
-  });
+  const TournamentDetailsPage({super.key, required this.tournamentId});
 
   @override
-  State<TournamentDetailsPage> createState() =>
-      _TournamentDetailsPageState();
+  State<TournamentDetailsPage> createState() => _TournamentDetailsPageState();
 }
 
 class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
   final TournamentPlayerProvider tournamentPlayerProvider =
-  sl<TournamentPlayerProvider>();
+      sl<TournamentPlayerProvider>();
 
-  final TournamentProvider tournamentProvider =
-  sl<TournamentProvider>();
+  final TournamentProvider tournamentProvider = sl<TournamentProvider>();
 
-  final PlayerProvider playerProvider =
-  sl<PlayerProvider>();
+  final PlayerProvider playerProvider = sl<PlayerProvider>();
 
   final TournamentStandingsProvider standingsProvider =
-  sl<TournamentStandingsProvider>();
+      sl<TournamentStandingsProvider>();
 
   final uuid = const Uuid();
 
@@ -72,9 +65,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
     final result = await Navigator.push<List<String>>(
       context,
       MaterialPageRoute(
-        builder: (_) => SelectPlayersPage(
-          tournamentId: widget.tournamentId,
-        ),
+        builder: (_) => SelectPlayersPage(tournamentId: widget.tournamentId),
       ),
     );
 
@@ -115,10 +106,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
     }
   }
 
-  Color _statusColor(
-      TournamentStatus status,
-      ColorScheme colors,
-      ) {
+  Color _statusColor(TournamentStatus status, ColorScheme colors) {
     switch (status) {
       case TournamentStatus.draft:
         return colors.outline;
@@ -147,16 +135,10 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
           child: Container(
             decoration: BoxDecoration(
               border: Border(
-                right: BorderSide(
-                  color: Colors.amber.shade700,
-                  width: 4,
-                ),
+                right: BorderSide(color: Colors.amber.shade700, width: 4),
               ),
             ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
                 Container(
@@ -181,12 +163,8 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                         tournament?.name ?? 'تفاصيل البطولة',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 5),
                       Text(
@@ -204,8 +182,10 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: _statusColor(status, colors)
-                          .withValues(alpha: 0.12),
+                      color: _statusColor(
+                        status,
+                        colors,
+                      ).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -221,9 +201,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                   const SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                    ),
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
               ],
             ),
@@ -243,10 +221,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
       child: Card(
         margin: EdgeInsets.zero,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 12,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
           child: Column(
             children: [
               Icon(icon, color: accent, size: 22),
@@ -255,9 +230,9 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Text(
@@ -282,8 +257,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
           builder: (context, _) {
             final snapshot = standingsProvider.snapshot;
 
-            final participantCount =
-                tournamentPlayerProvider.players.length;
+            final participantCount = tournamentPlayerProvider.players.length;
 
             final totalMatches = snapshot?.matches.length;
             final completedMatches = snapshot?.completedMatches;
@@ -332,10 +306,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
               overflow: TextOverflow.ellipsis,
             ),
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 13,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 13),
             ),
           ),
         ),
@@ -346,9 +317,8 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => TournamentMatchesPage(
-                    tournamentId: widget.tournamentId,
-                  ),
+                  builder: (_) =>
+                      TournamentMatchesPage(tournamentId: widget.tournamentId),
                 ),
               );
             },
@@ -359,10 +329,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
               overflow: TextOverflow.ellipsis,
             ),
             style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 13,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 13),
             ),
           ),
         ),
@@ -393,12 +360,8 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                     Expanded(
                       child: Text(
                         'ترتيب البطولة',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                     ),
                     if (snapshot != null)
@@ -415,19 +378,14 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                 if (standingsProvider.isLoading)
                   const Padding(
                     padding: EdgeInsets.all(24),
-                    child: Center(
-                      child: CircularProgressIndicator(),
-                    ),
+                    child: Center(child: CircularProgressIndicator()),
                   )
                 else if (standingsProvider.error != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Column(
                       children: [
-                        const Icon(
-                          Icons.cloud_off_rounded,
-                          size: 34,
-                        ),
+                        const Icon(Icons.cloud_off_rounded, size: 34),
                         const SizedBox(height: 8),
                         const Text('تعذر تحميل ترتيب البطولة'),
                         const SizedBox(height: 4),
@@ -446,124 +404,118 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                     ),
                   )
                 else if (snapshot == null)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Text(
-                        'لا توجد بيانات متاحة للترتيب حاليًا.',
-                        textAlign: TextAlign.center,
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      'لا توجد بيانات متاحة للترتيب حاليًا.',
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                else if (snapshot.completedMatches == 0)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Column(
+                      children: [
+                        Icon(Icons.emoji_events_outlined, size: 38),
+                        SizedBox(height: 8),
+                        Text(
+                          'لسه مفيش مباريات مكتملة',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'الترتيب هيظهر بعد تسجيل أول نتيجة.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  )
+                else if (snapshot.standings.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      'لا يوجد مشاركون في البطولة.',
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                else
+                  ...snapshot.standings.map((standing) {
+                    final playerName = playerProvider.getPlayerName(
+                      standing.playerId,
+                    );
+
+                    final isFirst = standing.position == 1;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      decoration: BoxDecoration(
+                        color: isFirst
+                            ? Colors.amber.withValues(alpha: 0.10)
+                            : null,
+                        borderRadius: BorderRadius.circular(12),
+                        border: isFirst
+                            ? Border.all(
+                                color: Colors.amber.withValues(alpha: 0.35),
+                              )
+                            : null,
                       ),
-                    )
-                  else if (snapshot.completedMatches == 0)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 20),
-                        child: Column(
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 2,
+                        ),
+                        leading: CircleAvatar(
+                          backgroundColor: isFirst
+                              ? Colors.amber.shade700
+                              : colors.surfaceContainerHighest,
+                          foregroundColor: isFirst
+                              ? Colors.black
+                              : colors.onSurface,
+                          child: isFirst
+                              ? const Icon(Icons.emoji_events_rounded)
+                              : Text('${standing.position}'),
+                        ),
+                        title: Text(
+                          playerName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: isFirst
+                                ? FontWeight.bold
+                                : FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'المباريات: ${standing.matchesPlayed}'
+                            ' • الفوز: ${standing.wins}'
+                            ' • أفضل مركز: '
+                            '${standing.bestRank?.toString() ?? "—"}',
+                          ),
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.emoji_events_outlined,
-                              size: 38,
-                            ),
-                            SizedBox(height: 8),
                             Text(
-                              'لسه مفيش مباريات مكتملة',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              '${standing.points}',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: isFirst
+                                        ? Colors.amber.shade700
+                                        : null,
+                                  ),
                             ),
-                            SizedBox(height: 4),
                             Text(
-                              'الترتيب هيظهر بعد تسجيل أول نتيجة.',
-                              textAlign: TextAlign.center,
+                              'نقطة',
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
                         ),
-                      )
-                    else if (snapshot.standings.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Text(
-                            'لا يوجد مشاركون في البطولة.',
-                            textAlign: TextAlign.center,
-                          ),
-                        )
-                      else
-                        ...snapshot.standings.map((standing) {
-                          final playerName = playerProvider.getPlayerName(
-                            standing.playerId,
-                          );
-
-                          final isFirst = standing.position == 1;
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 6),
-                            decoration: BoxDecoration(
-                              color: isFirst
-                                  ? Colors.amber.withValues(alpha: 0.10)
-                                  : null,
-                              borderRadius: BorderRadius.circular(12),
-                              border: isFirst
-                                  ? Border.all(
-                                color: Colors.amber.withValues(alpha: 0.35),
-                              )
-                                  : null,
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 2,
-                              ),
-                              leading: CircleAvatar(
-                                backgroundColor: isFirst
-                                    ? Colors.amber.shade700
-                                    : colors.surfaceContainerHighest,
-                                foregroundColor: isFirst
-                                    ? Colors.black
-                                    : colors.onSurface,
-                                child: isFirst
-                                    ? const Icon(Icons.emoji_events_rounded)
-                                    : Text('${standing.position}'),
-                              ),
-                              title: Text(
-                                playerName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontWeight:
-                                  isFirst ? FontWeight.bold : FontWeight.w500,
-                                ),
-                              ),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  'المباريات: ${standing.matchesPlayed}'
-                                      ' • الفوز: ${standing.wins}'
-                                      ' • أفضل مركز: '
-                                      '${standing.bestRank?.toString() ?? "—"}',
-                                ),
-                              ),
-                              trailing: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    '${standing.points}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: isFirst
-                                          ? Colors.amber.shade700
-                                          : null,
-                                    ),
-                                  ),
-                                  Text(
-                                    'نقطة',
-                                    style: Theme.of(context).textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
+                      ),
+                    );
+                  }),
               ],
             ),
           ),
@@ -595,17 +547,10 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                 leading: const Icon(Icons.groups_rounded),
                 title: Text(
                   'المشاركون (${players.length})',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 subtitle: const Text('اضغط لعرض أسماء اللاعبين'),
-                childrenPadding: const EdgeInsets.fromLTRB(
-                  12,
-                  0,
-                  12,
-                  12,
-                ),
+                childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                 children: [
                   if (tournamentPlayerProvider.isLoading)
                     const Padding(
@@ -655,7 +600,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(12),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
             const SizedBox(height: 12),
