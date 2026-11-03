@@ -263,7 +263,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
             final completedMatches = snapshot?.completedMatches;
 
             return Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildStatCard(
                   icon: Icons.people_alt_rounded,
@@ -600,7 +600,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(12),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildHeader(),
             const SizedBox(height: 12),

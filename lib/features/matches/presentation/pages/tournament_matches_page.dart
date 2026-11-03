@@ -31,7 +31,9 @@ class _TournamentMatchesPageState extends State<TournamentMatchesPage> {
 
   late final MatchPlayerRepository matchPlayerRepository;
   late final PlayerRepository playerRepository;
-  @override
+  String? _expandedMatchId;
+  final Map<String, List<_FinishedPlayerResult>> _finishedResults = {};
+  final Set<String> _loadingResults = {};
   @override
   void initState() {
     super.initState();
@@ -66,6 +68,92 @@ class _TournamentMatchesPageState extends State<TournamentMatchesPage> {
 
   Future<void> _refreshMatches() async {
     await _loadMatches();
+  }
+
+  Future<void> _toggleFinishedMatch(Match match) async {
+    if (_expandedMatchId == match.id) {
+      setState(() => _expandedMatchId = null);
+      return;
+    }
+
+    setState(() => _expandedMatchId = match.id);
+
+    if (_finishedResults.containsKey(match.id) ||
+        _loadingResults.contains(match.id)) {
+      return;
+    }
+
+    setState(() => _loadingResults.add(match.id));
+
+    try {
+      final matchPlayers = await matchPlayerRepository.getMatchPlayers(
+        match.id,
+      );
+
+      final results = await Future.wait(
+        matchPlayers.map((matchPlayer) async {
+          final player = await playerRepository.getPlayerById(
+            matchPlayer.playerId,
+          );
+
+          return _FinishedPlayerResult(
+            name: player?.name ?? 'لاعب غير معروف',
+            seat: matchPlayer.seat,
+            rank: matchPlayer.rank,
+            points: matchPlayer.points,
+            color: _colorForSeat(
+              seat: matchPlayer.seat,
+              playersCount: match.playersCount,
+            ),
+          );
+        }),
+      );
+
+      results.sort((a, b) {
+        final rankA = a.rank ?? 999;
+        final rankB = b.rank ?? 999;
+        return rankA.compareTo(rankB);
+      });
+
+      if (!mounted) return;
+
+      setState(() {
+        _finishedResults[match.id] = results;
+        _loadingResults.remove(match.id);
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => _loadingResults.remove(match.id));
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text('تعذر تحميل نتيجة المباراة: $e')),
+        );
+    }
+  }
+
+  Color _colorForSeat({required int seat, required int playersCount}) {
+    // نفس توزيع الألوان المستخدم في المباراة:
+    // لاعبان: أخضر، أزرق.
+    // 3 أو 4 لاعبين: أخضر، أصفر، أزرق، أحمر.
+    if (playersCount == 2) {
+      return seat == 1 ? Colors.green : Colors.blue;
+    }
+
+    switch (seat) {
+      case 1:
+        return Colors.green;
+      case 2:
+        return Colors.yellow.shade700;
+      case 3:
+        return Colors.blue;
+      case 4:
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 
   Future<void> _openMatch(Match match) async {
@@ -221,8 +309,19 @@ class _TournamentMatchesPageState extends State<TournamentMatchesPage> {
                 const SizedBox(height: 16),
 
                 ...matches.map(
-                  (match) =>
-                      _MatchCard(match: match, onTap: () => _openMatch(match)),
+                  (match) => _MatchCard(
+                    match: match,
+                    expanded: _expandedMatchId == match.id,
+                    loadingResult: _loadingResults.contains(match.id),
+                    results: _finishedResults[match.id] ?? const [],
+                    onTap: () {
+                      if (match.status == MatchStatus.finished) {
+                        _toggleFinishedMatch(match);
+                      } else {
+                        _openMatch(match);
+                      }
+                    },
+                  ),
                 ),
 
                 if (matchProvider.error != null) ...[
@@ -303,79 +402,208 @@ class _MatchesHeader extends StatelessWidget {
 class _MatchCard extends StatelessWidget {
   final Match match;
   final VoidCallback onTap;
+  final bool expanded;
+  final bool loadingResult;
+  final List<_FinishedPlayerResult> results;
 
-  const _MatchCard({required this.match, required this.onTap});
+  const _MatchCard({
+    required this.match,
+    required this.onTap,
+    required this.expanded,
+    required this.loadingResult,
+    required this.results,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isFinished = match.status == MatchStatus.finished;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  CircleAvatar(
-                    child: Text(
-                      '#',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'مباراة ${match.id.substring(0, 8)}',
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        child: Text(
+                          '#',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-
-                        const SizedBox(height: 4),
-
-                        Text('عدد اللاعبين: ${match.playersCount}'),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'مباراة ${match.id.substring(0, 8)}',
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text('عدد اللاعبين: ${match.playersCount}'),
+                          ],
+                        ),
+                      ),
+                      _MatchStatusChip(status: match.status),
+                    ],
                   ),
-
-                  _MatchStatusChip(status: match.status),
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        isFinished ? Icons.emoji_events_outlined : Icons.people,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          isFinished
+                              ? (expanded
+                                    ? 'إخفاء نتيجة المباراة'
+                                    : 'عرض نتيجة المباراة')
+                              : '${match.playersCount} لاعبين',
+                        ),
+                      ),
+                      Icon(
+                        isFinished
+                            ? (expanded
+                                  ? Icons.keyboard_arrow_up
+                                  : Icons.keyboard_arrow_down)
+                            : Icons.arrow_forward_ios,
+                        size: 18,
+                      ),
+                    ],
+                  ),
                 ],
               ),
-
-              const SizedBox(height: 16),
-
-              const Divider(),
-
-              const SizedBox(height: 8),
-
-              Row(
-                children: [
-                  const Icon(Icons.people, size: 20),
-
-                  const SizedBox(width: 8),
-
-                  Text('${match.playersCount} لاعبين'),
-
-                  const Spacer(),
-
-                  const Icon(Icons.arrow_forward_ios, size: 16),
-                ],
-              ),
-            ],
+            ),
           ),
-        ),
+
+          if (expanded) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: _buildResultContent(context),
+            ),
+          ],
+        ],
       ),
     );
+  }
+
+  Widget _buildResultContent(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (loadingResult) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (results.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Text(
+          'لا توجد تفاصيل نتيجة مسجلة لهذه المباراة.',
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'نتيجة المباراة',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        for (final result in results)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.45,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: result.color.withValues(alpha: 0.55)),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 17,
+                  backgroundColor: result.color,
+                  child: Icon(
+                    Icons.person,
+                    color: result.color.computeLuminance() > 0.5
+                        ? Colors.black87
+                        : Colors.white,
+                    size: 19,
+                  ),
+                ),
+                const SizedBox(width: 10),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        result.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'اللون: ${_colorName(result.color)}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      result.rank == null
+                          ? 'بدون ترتيب'
+                          : 'المركز ${result.rank}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text('${result.points} نقطة'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _colorName(Color color) {
+    if (color == Colors.green) return 'أخضر';
+    if (color == Colors.blue) return 'أزرق';
+    if (color == Colors.red) return 'أحمر';
+    if (color == Colors.yellow.shade700) return 'أصفر';
+    return 'غير محدد';
   }
 }
 
@@ -446,4 +674,20 @@ class _ErrorView extends StatelessWidget {
       ),
     );
   }
+}
+
+class _FinishedPlayerResult {
+  final String name;
+  final int seat;
+  final int? rank;
+  final int points;
+  final Color color;
+
+  const _FinishedPlayerResult({
+    required this.name,
+    required this.seat,
+    required this.rank,
+    required this.points,
+    required this.color,
+  });
 }
