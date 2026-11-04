@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ludo_rank/app/app_routes.dart';
 import 'package:ludo_rank/features/players/presentation/widgets/app_loading.dart';
+import 'package:ludo_rank/features/tournaments/presentation/widgets/create_tournament_dialog.dart';
 import 'package:provider/provider.dart';
 
 import 'package:ludo_rank/shared/widgets/app_scaffold.dart';
@@ -42,7 +43,12 @@ class _HomePageState extends State<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       ElevatedButton.icon(
-                        onPressed: () {},
+                      onPressed: () async {
+          await showDialog(
+          context: context,
+          builder: (_) => const CreateTournamentDialog(),
+          );
+          },
                         icon: const Icon(Icons.emoji_events),
                         label: const Text('إنشاء بطولة جديدة'),
                       ),

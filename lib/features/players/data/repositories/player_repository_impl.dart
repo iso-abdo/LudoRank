@@ -1,6 +1,7 @@
 import 'package:ludo_rank/features/players/data/data_sources/local/player_dao.dart';
 import 'package:ludo_rank/features/players/data/models/player_model.dart';
 import 'package:ludo_rank/features/players/domain/entities/player.dart';
+import 'package:ludo_rank/features/players/domain/exceptions/duplicate_player_name_exception.dart';
 import 'package:ludo_rank/features/players/domain/repositories/player_repository.dart';
 
 class PlayerRepositoryImpl implements PlayerRepository {
@@ -25,7 +26,15 @@ class PlayerRepositoryImpl implements PlayerRepository {
 
   @override
   Future<void> addPlayer(Player player) async {
-    final model = PlayerModel.fromEntity(player);
+    final name = player.name.trim();
+
+    if (await dao.playerNameExists(name)) {
+      throw const DuplicatePlayerNameException();
+    }
+
+    final model = PlayerModel.fromEntity(
+      player.copyWith(name: name),
+    );
 
     await dao.insertPlayer(model.toCompanion());
   }

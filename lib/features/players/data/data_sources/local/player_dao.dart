@@ -23,6 +23,14 @@ class PlayerDao extends DatabaseAccessor<AppDatabase> with _$PlayerDaoMixin {
     return into(players).insert(player);
   }
 
+  Future<bool> playerNameExists(String name) async {
+    final player = await (select(players)
+      ..where((tbl) => tbl.name.equals(name.trim())))
+        .getSingleOrNull();
+
+    return player != null;
+  }
+
   Future<bool> updatePlayer(PlayersCompanion player) {
     return update(players).replace(player);
   }

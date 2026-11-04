@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ludo_rank/features/players/domain/exceptions/duplicate_player_name_exception.dart';
 
 import '../../domain/entities/player.dart';
 import '../../domain/repositories/player_repository.dart';
@@ -80,9 +81,11 @@ class PlayerProvider extends ChangeNotifier {
 
       await loadPlayers();
     } catch (e) {
-      _error = e.toString();
-
       _isLoading = false;
+
+      if (e is! DuplicatePlayerNameException) {
+        _error = 'تعذر إضافة اللاعب، حاول مرة أخرى';
+      }
 
       notifyListeners();
 

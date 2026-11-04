@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ludo_rank/features/players/domain/exceptions/duplicate_player_name_exception.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -49,11 +50,31 @@ class _AddPlayerDialogState extends State<AddPlayerDialog> {
       updatedAt: DateTime.now(),
     );
 
-    await provider.addPlayer(player);
+    try {
+      await provider.addPlayer(player);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    Navigator.pop(context);
+      Navigator.pop(context);
+    } on DuplicatePlayerNameException {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'اسم اللاعب مسجل بالفعل، اختر اسمًا آخر',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذر إضافة اللاعب، حاول مرة أخرى'),
+        ),
+      );
+    }
   }
 
   @override
