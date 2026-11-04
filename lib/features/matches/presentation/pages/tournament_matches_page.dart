@@ -252,8 +252,7 @@ class _TournamentMatchesPageState extends State<TournamentMatchesPage> {
             );
           }
 
-          final matches = matchProvider.matches;
-
+          final matches = matchProvider.matches.reversed.toList();
           if (matches.isEmpty) {
             return RefreshIndicator(
               onRefresh: _refreshMatches,
