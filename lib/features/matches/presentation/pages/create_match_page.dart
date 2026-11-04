@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
@@ -52,6 +51,25 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
       // نمسح الاختيارات القديمة حتى لا تصبح غير صالحة.
       _selectedPlayerIds.clear();
     });
+  }
+
+  Color _getSeatColor(int seat, int playersCount) {
+    if (playersCount == 2) {
+      return seat == 1 ? Colors.green : Colors.blue;
+    }
+
+    switch (seat) {
+      case 1:
+        return Colors.green;
+      case 2:
+        return Colors.yellow.shade700;
+      case 3:
+        return Colors.blue;
+      case 4:
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 
   void _togglePlayer(String playerId) {
@@ -136,22 +154,17 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
 
       await Navigator.of(context).pushReplacement<bool, bool>(
         MaterialPageRoute<bool>(
-          builder: (_) => MatchGamePage(
-            matchId: match.id,
-            playerNames: playerNames,
-          ),
+          builder: (_) =>
+              MatchGamePage(matchId: match.id, playerNames: playerNames),
         ),
         result: true,
       );
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('فشل إنشاء المباراة: $e'),
-        ),
-      );
-
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('فشل إنشاء المباراة: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -256,7 +269,29 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
                         !selected &&
                         _selectedPlayerIds.length >= _playersCount!;
 
+                    final seat = selected ? _getSeat(playerId) : 0;
+
+                    final seatColor = selected
+                        ? _getSeatColor(seat, _playersCount!)
+                        : Theme.of(context).colorScheme.surfaceContainerHighest;
+
+                    final backgroundColor = selected
+                        ? seatColor.withValues(alpha: 0.16)
+                        : Theme.of(context).colorScheme.surface;
+
                     return Card(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      color: backgroundColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: selected
+                              ? seatColor
+                              : Theme.of(context).colorScheme.outlineVariant,
+                          width: selected ? 1.5 : 0.7,
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
                       child: CheckboxListTile(
                         value: selected,
                         onChanged: disabled
@@ -264,9 +299,39 @@ class _CreateMatchPageState extends State<CreateMatchPage> {
                             : (_) {
                                 _togglePlayer(playerId);
                               },
-                        title: Text(playerProvider.getPlayerName(playerId)),
+                        activeColor: selected ? seatColor : null,
+                        secondary: selected
+                            ? CircleAvatar(
+                                backgroundColor: seatColor,
+                                child: Text(
+                                  '$seat',
+                                  style: TextStyle(
+                                    color: seatColor.computeLuminance() > 0.5
+                                        ? Colors.black87
+                                        : Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              )
+                            : const CircleAvatar(
+                                child: Icon(Icons.person_outline),
+                              ),
+                        title: Text(
+                          playerProvider.getPlayerName(playerId),
+                          style: TextStyle(
+                            fontWeight: selected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
                         subtitle: Text(
-                          'المقعد: ${selected ? _getSeat(playerId) : '-'}',
+                          selected ? 'المقعد: $seat' : 'لم يتم اختيار المقعد',
+                          style: TextStyle(
+                            color: selected ? seatColor : null,
+                            fontWeight: selected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
                         ),
                       ),
                     );

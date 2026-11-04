@@ -73,17 +73,16 @@ class _TournamentsPageState extends State<TournamentsPage> {
       );
     }
 
+    final tournaments = provider.tournaments.reversed.toList();
+
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-
-      itemCount: provider.tournaments.length,
-
+      itemCount: tournaments.length,
       separatorBuilder: (context, index) {
         return const SizedBox(height: 12);
       },
-
       itemBuilder: (_, index) {
-        final tournament = provider.tournaments[index];
+        final tournament = tournaments[index];
 
         return TournamentCard(
           tournament: tournament,
