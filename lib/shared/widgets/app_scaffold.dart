@@ -1,4 +1,8 @@
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'package:ludo_rank/app/theme_controller.dart';
 
 class AppScaffold extends StatelessWidget {
   final String title;
@@ -21,7 +25,33 @@ class AppScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title), centerTitle: true, actions: actions),
+      appBar: AppBar(
+        title: Text(title),
+        centerTitle: true,
+        actions: [
+          ...?actions,
+
+          Consumer<ThemeController>(
+            builder: (context, themeController, child) {
+              //final isDark = themeController.themeMode == ThemeMode.dark;
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+
+              return IconButton(
+                tooltip: isDark ? 'الوضع الفاتح' : 'الوضع الداكن',
+                icon: Icon(
+                  isDark ? Icons.light_mode : Icons.dark_mode,
+                ),
+                //onPressed: themeController.toggleTheme,
+                onPressed: () async {
+                  await themeController.setThemeMode(
+                    isDark ? ThemeMode.light : ThemeMode.dark,
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      ),
       drawer: drawer,
       body: SafeArea(child: body),
       floatingActionButton: floatingActionButton,
