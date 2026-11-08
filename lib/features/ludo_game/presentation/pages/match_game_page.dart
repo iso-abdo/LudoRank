@@ -160,6 +160,7 @@ class _MatchGamePageState extends State<MatchGamePage> {
                           matchPlayers:
                               gameProvider.session?.matchPlayers ??
                               const <MatchPlayer>[],
+                          gamePlayers: gameProvider.players,
                         ),
                       ),
                     ),
