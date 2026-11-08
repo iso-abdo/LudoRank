@@ -28,9 +28,14 @@ class Matches extends Table {
   /// Number of players
   IntColumn get playersCount => integer().withDefault(const Constant(0))();
 
+  /// Serialized LudoGameState JSON.
+  ///
+  /// Null for matches that do not have a saved game state yet.
+  TextColumn get gameStateJson => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
-  // داخل كلاس Matches
+
   List<Index> get indexes => [
     Index(
       'idx_matches_tournament',

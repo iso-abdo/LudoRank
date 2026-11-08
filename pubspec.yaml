@@ -65,6 +65,8 @@ dev_dependencies:
   drift_dev: ^2.29.0
   flutter_launcher_icons: ^0.14.4
 
+  sqlite3: ^3.5.2
+
 flutter_launcher_icons:
   android: true
   ios: true
