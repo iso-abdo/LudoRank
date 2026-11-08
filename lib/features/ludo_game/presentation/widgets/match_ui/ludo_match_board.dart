@@ -14,6 +14,8 @@ import 'package:ludo_rank/features/ludo_game/domain/constants/ludo_paths.dart';
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 
+import 'package:ludo_rank/features/ludo_game/domain/models/available_rolls.dart';
+
 /// Live interactive wrapper around the visual board.
 ///
 /// The board handles presentation and input only.
@@ -34,6 +36,9 @@ class LudoMatchBoard extends StatefulWidget {
   /// Returns the dice value associated with a move.
   final int? Function(MoveOption) rollValueForMove;
 
+
+  final AvailableRolls selectableRolls;
+  final ValueChanged<int> onAvailableRollTap;
   /// Called when a specific legal move is selected.
   //final ValueChanged<MoveOption> onMoveTap;
 
@@ -49,6 +54,8 @@ class LudoMatchBoard extends StatefulWidget {
     required this.onMoveTap,
     this.selectedRollSequence,
     this.pendingAutoMove,
+    required this.selectableRolls,
+    required this.onAvailableRollTap,
   });
 
   @override
@@ -146,7 +153,14 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
 
                 if (_animatingMove != null)
                   _buildAnimatedToken(frame: frame, innerSide: innerSide),
+                if (widget.selectableRolls.isNotEmpty &&
+                    widget.selectedTokenId != null)
+                  _buildSelectedTokenDice(
+                    frame: frame,
+                    innerSide: innerSide,
+                  ),
               ],
+
             ),
           ),
         );
@@ -574,6 +588,129 @@ class _LudoMatchBoardState extends State<LudoMatchBoard>
           ],
         ),
         child: const Icon(Icons.person, color: Color(0xFFFFF9EB), size: 20),
+      ),
+    );
+  }
+  Widget _buildSelectedTokenDice({
+    required double frame,
+    required double innerSide,
+  }) {
+    final tokenId = widget.selectedTokenId;
+
+    if (tokenId == null || widget.selectableRolls.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    LudoPlayer? owner;
+    LudoToken? token;
+
+    for (final player in widget.players) {
+      for (final playerToken in player.tokens) {
+        if (playerToken.id == tokenId) {
+          owner = player;
+          token = playerToken;
+          break;
+        }
+      }
+
+      if (owner != null) break;
+    }
+
+    if (owner == null || token == null) {
+      return const SizedBox.shrink();
+    }
+
+    final color = matchUiColorFor(owner.color);
+    const dieSize = 25.0;
+    const spacing = 4.0;
+
+    final rolls = widget.selectableRolls.rolls;
+    final totalWidth = rolls.length * dieSize +
+        (rolls.length - 1) * spacing;
+
+    final geometry = LudoBoardGeometry.instance;
+
+    Offset tokenCenter() {
+      if (_animatingTokenId == tokenId &&
+          _animatingMove != null &&
+          _animationPath.length > 1) {
+        return _animatedCenter(innerSide);
+      }
+
+      final position = token!.isInitial
+          ? geometry.tokenHomePosition(
+        color: owner!.color,
+        tokenIndex: token.tokenIndex,
+      )
+          : token.position;
+
+      return geometry.cellCenter(position, innerSide);
+    }
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final center = tokenCenter();
+
+        return Positioned(
+          left: frame + center.dx - totalWidth / 2,
+          top: frame + center.dy - dieSize * 1.65,
+          width: totalWidth,
+          height: dieSize,
+          child: child!,
+        );
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (var index = 0; index < rolls.length; index++) ...[
+            if (index > 0)
+              const SizedBox(width: spacing),
+
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(7),
+                onTap: _animatingMove != null
+                    ? null
+                    : () => widget.onAvailableRollTap(
+                  rolls[index].sequence,
+                ),
+                child: Container(
+                  width: dieSize,
+                  height: dieSize,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF181321),
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(
+                      color: widget.selectedRollSequence ==
+                          rolls[index].sequence
+                          ? const Color(0xFFFFD166)
+                          : color,
+                      width: widget.selectedRollSequence ==
+                          rolls[index].sequence
+                          ? 2
+                          : 1.3,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: .35),
+                        blurRadius: 5,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: MatchDieFace(
+                    value: rolls[index].value,
+                    size: 19,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
