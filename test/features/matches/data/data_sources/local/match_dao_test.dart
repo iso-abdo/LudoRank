@@ -1,7 +1,8 @@
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludo_rank/core/database/database.dart';
+import 'package:ludo_rank/features/matches/data/data_sources/local/match_dao.dart';
 
 void main() {
   late AppDatabase database;
