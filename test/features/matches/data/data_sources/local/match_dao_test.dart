@@ -108,5 +108,41 @@ void main() {
 
       expect(updatedRows, 0);
     });
+
+    test(
+      'preserves game state JSON when updating match status',
+          () async {
+        const snapshot = '{"formatVersion":1,"state":{"turn":2}}';
+
+        // نحفظ Snapshot للمباراة.
+        await dao.saveGameStateJson(
+          matchId: 'match-1',
+          gameStateJson: snapshot,
+        );
+
+        // نغيّر الحالة إلى pending لمحاكاة بداية المباراة.
+        await dao.updateMatch(
+          const MatchesCompanion(
+            id: Value('match-1'),
+            status: Value('pending'),
+          ),
+        );
+
+        // نحدّث الحالة من pending إلى playing.
+        final updated = await dao.updateMatch(
+          const MatchesCompanion(
+            id: Value('match-1'),
+            status: Value('playing'),
+          ),
+        );
+
+        final match = await dao.getMatchById('match-1');
+
+        expect(updated, isTrue);
+        expect(match, isNotNull);
+        expect(match!.status, 'playing');
+        expect(match.gameStateJson, snapshot);
+      },
+    );
   });
 }

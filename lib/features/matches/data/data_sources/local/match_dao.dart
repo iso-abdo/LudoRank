@@ -26,10 +26,19 @@ class MatchDao extends DatabaseAccessor<AppDatabase> with _$MatchDaoMixin {
     });
   }
 
-  Future<bool> updateMatch(MatchesCompanion match) {
-    return update(matches).replace(match);
-  }
+  Future<bool> updateMatch(MatchesCompanion match) async {
+    if (!match.id.present) {
+      throw ArgumentError(
+        'Match ID is required to update a match.',
+      );
+    }
 
+    final updatedRows = await (update(matches)
+      ..where((tbl) => tbl.id.equals(match.id.value)))
+        .write(match);
+
+    return updatedRows > 0;
+  }
   Future<int> deleteMatch(String id) {
     return (delete(matches)..where((tbl) => tbl.id.equals(id))).go();
   }
