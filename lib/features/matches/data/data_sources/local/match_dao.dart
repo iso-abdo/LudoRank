@@ -43,4 +43,41 @@ class MatchDao extends DatabaseAccessor<AppDatabase> with _$MatchDaoMixin {
   Future<List<db.MatchData>> getAllMatches() {
     return select(matches).get();
   }
+  /// حفظ JSON الخاص بحالة اللعبة دون تعديل بيانات المباراة الأخرى.
+  ///
+  /// يرجع عدد الصفوف التي تم تحديثها:
+  /// 1 إذا كانت المباراة موجودة، و0 إذا لم تكن موجودة.
+  Future<int> saveGameStateJson({
+    required String matchId,
+    required String gameStateJson,
+  }) {
+    return (update(matches)
+      ..where((tbl) => tbl.id.equals(matchId)))
+        .write(
+      MatchesCompanion(
+        gameStateJson: Value(gameStateJson),
+      ),
+    );
+  }
+
+  /// قراءة JSON الخاص بحالة اللعبة.
+  ///
+  /// يرجع null إذا لم توجد حالة محفوظة أو لم توجد المباراة.
+  Future<String?> getGameStateJson(String matchId) async {
+    final match = await getMatchById(matchId);
+    return match?.gameStateJson;
+  }
+
+  /// مسح الحالة المحفوظة فقط، مع الاحتفاظ بسجل المباراة.
+  ///
+  /// يرجع عدد الصفوف التي تم تحديثها.
+  Future<int> clearGameStateJson(String matchId) {
+    return (update(matches)
+      ..where((tbl) => tbl.id.equals(matchId)))
+        .write(
+      const MatchesCompanion(
+        gameStateJson: Value(null),
+      ),
+    );
+  }
 }
