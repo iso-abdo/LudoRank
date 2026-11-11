@@ -299,6 +299,54 @@ class MatchGameProvider extends ChangeNotifier {
       _setLoading(false);
     }
   }
+  // ============================================================
+  //
+  // ============================================================
+
+
+  // ============================================================
+  // RESUME MATCH
+  // ============================================================
+
+  /// Restores an existing Playing Match from its saved snapshot.
+  ///
+  /// This method does NOT start a new match and does NOT reset
+  /// the restored LudoGameEngine state.
+  Future<void> resumeMatch({
+    required String matchId,
+  }) async {
+    // منع الاحتفاظ بأي اختيارات أو حركة معلقة من جلسة سابقة.
+    _session = null;
+    _matchStatus = null;
+
+    _selectedTokenId = null;
+    _selectedRollSequence = null;
+
+    _pendingAutoMove = null;
+    _isAutoMoveExecuting = false;
+
+    _completedPlayers.clear();
+
+    _error = null;
+
+    _setLoading(true);
+
+    try {
+      // الاستعادة تتم من الخدمة مباشرة، وليس من startMatch.
+      final restoredSession = await service.resumeMatch(
+        matchId: matchId,
+      );
+
+      _session = restoredSession;
+      _matchStatus = restoredSession.match.status;
+    } catch (e) {
+      _session = null;
+      _matchStatus = null;
+      _error = e.toString();
+    } finally {
+      _setLoading(false);
+    }
+  }
 
   // ============================================================
   // ROLL DICE

@@ -762,6 +762,9 @@ class FakeMatchGameService extends MatchGameService {
     required super.matchPlayerRepository,
     required super.gameStateRepository,
   });
+  MatchGameSession? resumeSession;
+  StateError? resumeMatchError;
+  int resumeMatchCallCount = 0;
 
   MatchGameSession? startSession;
 
@@ -793,6 +796,27 @@ class FakeMatchGameService extends MatchGameService {
 
     return session;
   }
+
+  @override
+  Future<MatchGameSession> resumeMatch({
+    required String matchId,
+  }) async {
+    resumeMatchCallCount++;
+
+    if (resumeMatchError != null) {
+      throw resumeMatchError!;
+    }
+
+    final session = resumeSession;
+
+    if (session == null) {
+      throw StateError('Fake resumeSession was not configured.');
+    }
+
+    return session;
+  }
+
+
 
   @override
   Future<List<MatchPlayer>> completeMatch(MatchGameSession session) async {

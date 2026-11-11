@@ -574,6 +574,7 @@ void main() {
 class FakeMatchRepository implements MatchRepository {
   final Map<String, Match> _matches = {};
 
+
   void seed(Match match) {
     _matches[match.id] = match;
   }
