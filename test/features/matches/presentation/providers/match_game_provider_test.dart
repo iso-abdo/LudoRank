@@ -156,6 +156,144 @@ void main() {
       expect(notifications, greaterThan(0));
     });
 
+
+// ==========================================================
+// RESUME MATCH SUCCESS
+// ==========================================================
+
+    test('resumeMatch restores the saved session and game state', () async {
+      const roll = DiceRoll(value: 6, sequence: 1);
+
+      final savedState = createStartedState().copyWith(
+        turnState: const TurnState(
+          playerId: 'player-1',
+          rolls: [roll],
+          availableRolls: AvailableRolls(rolls: [roll]),
+          phase: TurnPhase.playing,
+          sixRollCount: 1,
+        ),
+      );
+
+      final engine = LudoGameEngine(initialState: savedState);
+
+      final restoredSession = MatchGameSession(
+        match: match.copyWith(status: MatchStatus.playing),
+        matchPlayers: matchPlayers,
+        engine: engine,
+      );
+
+      service.resumeSession = restoredSession;
+
+      // إنشاء جلسة قديمة لاختبار تنظيف الحالة السابقة.
+      final oldSession = createSession(
+        match: match.copyWith(status: MatchStatus.playing),
+      );
+
+      service.startSession = oldSession;
+
+      await provider.startMatch(
+        matchId: match.id,
+        playerNames: playerNames,
+      );
+
+      provider.selectToken('player-1-token-0');
+
+      expect(provider.selectedTokenId, isNotNull);
+
+      final loadingStates = <bool>[];
+
+      provider.addListener(() {
+        loadingStates.add(provider.isLoading);
+      });
+
+      await provider.resumeMatch(matchId: match.id);
+
+      // الجلسة والمحرك المستعادان هما نفس الكائنات.
+      expect(provider.session, same(restoredSession));
+      expect(provider.session!.engine, same(engine));
+
+      // حالة المباراة.
+      expect(provider.matchStatus, MatchStatus.playing);
+      expect(provider.isStarted, isTrue);
+      expect(provider.isPlaying, isTrue);
+      expect(provider.isFinished, isFalse);
+
+      // حالة الدور المستعاد.
+      expect(provider.currentPlayerId, 'player-1');
+      expect(provider.turnState!.playerId, 'player-1');
+      expect(provider.turnState!.isPlaying, isTrue);
+
+      // حالة النرد والرميات.
+      expect(provider.state!.turnState.rolls, [roll]);
+      expect(provider.availableRolls.rolls, [roll]);
+      expect(provider.availableRolls.rolls.single.value, 6);
+      expect(provider.turnState!.sixRollCount, 1);
+
+      // تنظيف اختيارات الواجهة القديمة.
+      expect(provider.selectedTokenId, isNull);
+      expect(provider.selectedRollSequence, isNull);
+      expect(provider.pendingAutoMove, isNull);
+      expect(provider.isAutoMoveExecuting, isFalse);
+
+      // التأكد من استدعاء resumeMatch فقط دون بدء مباراة جديدة.
+      expect(service.resumeMatchCallCount, 1);
+      expect(service.startMatchCallCount, 1);
+
+      // حالة التحميل والأخطاء.
+      expect(provider.error, isNull);
+      expect(provider.isLoading, isFalse);
+      expect(loadingStates, contains(true));
+      expect(loadingStates.last, isFalse);
+    });
+// ==========================================================
+// RESUME MATCH ERROR
+// ==========================================================
+
+    test('resumeMatch stores error and clears stale session on failure',
+            () async {
+          final oldSession = createSession(
+            match: match.copyWith(status: MatchStatus.playing),
+          );
+
+          service.startSession = oldSession;
+
+          await provider.startMatch(
+            matchId: match.id,
+            playerNames: playerNames,
+          );
+
+          provider.selectToken('player-1-token-0');
+
+          expect(provider.session, same(oldSession));
+          expect(provider.selectedTokenId, isNotNull);
+
+          service.resumeMatchError = StateError('cannot resume');
+
+          await provider.resumeMatch(matchId: match.id);
+
+          // لا نحتفظ بالجلسة القديمة بعد فشل الاستعادة.
+          expect(provider.session, isNull);
+          expect(provider.matchStatus, isNull);
+
+          expect(provider.isStarted, isFalse);
+          expect(provider.isPlaying, isFalse);
+
+          // الخطأ محفوظ والتحميل انتهى.
+          expect(provider.error, contains('cannot resume'));
+          expect(provider.isLoading, isFalse);
+
+          // الاختيارات والحركات المؤقتة تم تنظيفها.
+          expect(provider.selectedTokenId, isNull);
+          expect(provider.selectedRollSequence, isNull);
+          expect(provider.pendingAutoMove, isNull);
+          expect(provider.isAutoMoveExecuting, isFalse);
+
+          // لم يتم استدعاء startMatch مرة أخرى.
+          expect(service.resumeMatchCallCount, 1);
+          expect(service.startMatchCallCount, 1);
+        });
+
+
     // ==========================================================
     // SELECT TOKEN
     // ==========================================================
@@ -798,9 +936,7 @@ class FakeMatchGameService extends MatchGameService {
   }
 
   @override
-  Future<MatchGameSession> resumeMatch({
-    required String matchId,
-  }) async {
+  Future<MatchGameSession> resumeMatch({required String matchId}) async {
     resumeMatchCallCount++;
 
     if (resumeMatchError != null) {
@@ -815,8 +951,6 @@ class FakeMatchGameService extends MatchGameService {
 
     return session;
   }
-
-
 
   @override
   Future<List<MatchPlayer>> completeMatch(MatchGameSession session) async {
