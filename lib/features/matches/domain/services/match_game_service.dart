@@ -16,6 +16,8 @@ import '../repositories/match_repository.dart';
 import 'match_game_session.dart';
 import 'match_points_calculator.dart';
 
+import 'match_game_state_validator.dart';
+
 /// Connects a persisted Match with the runtime LudoGameEngine.
 ///
 /// Responsibilities:
@@ -103,6 +105,66 @@ class MatchGameService {
 
     return MatchGameSession(
       match: playingMatch,
+      matchPlayers: matchPlayers,
+      engine: engine,
+    );
+  }
+
+  /// Restores an active match from its persisted game snapshot.
+  ///
+  /// The saved state is validated before creating the runtime session.
+  /// The engine is initialized directly from the saved state.
+  ///
+  /// IMPORTANT:
+  /// Do not call engine.startGame() here.
+  /// Doing so would reset the restored game state.
+  Future<MatchGameSession> resumeMatch({
+    required String matchId,
+  }) async {
+    // 1. Load the persisted match.
+    final match = await matchRepository.getById(matchId);
+
+    if (match == null) {
+      throw StateError('المباراة $matchId غير موجودة.');
+    }
+
+    // 2. Only an active match can be resumed.
+    if (match.status != MatchStatus.playing) {
+      throw StateError(
+        'لا يمكن استعادة المباراة إلا إذا كانت حالتها Playing.',
+      );
+    }
+
+    // 3. Load persisted match players.
+    final matchPlayers = await matchPlayerRepository.getMatchPlayers(
+      matchId,
+    );
+
+    // 4. Load the saved engine state.
+    final savedState = await gameStateRepository.loadGameState(matchId);
+
+    if (savedState == null) {
+      throw StateError(
+        'لا توجد Snapshot محفوظة للمباراة $matchId.',
+      );
+    }
+
+    // 5. Validate consistency between Match, MatchPlayers and Snapshot.
+    const MatchGameStateValidator().validate(
+      match: match,
+      matchPlayers: matchPlayers,
+      state: savedState,
+    );
+
+    // 6. Restore the engine directly from the saved state.
+    // Do NOT call startGame().
+    final engine = LudoGameEngine(
+      initialState: savedState,
+    );
+
+    // 7. Return the restored runtime session.
+    return MatchGameSession(
+      match: match,
       matchPlayers: matchPlayers,
       engine: engine,
     );
