@@ -10,6 +10,7 @@ import 'package:ludo_rank/features/match_players/domain/entities/match_player.da
 import 'package:ludo_rank/features/match_players/domain/repositories/match_player_repository.dart';
 import 'package:ludo_rank/features/matches/domain/repositories/match_game_state_repository.dart';
 import 'package:ludo_rank/features/ludo_game/domain/models/ludo_game_state.dart';
+import 'package:ludo_rank/features/ludo_game/domain/services/ludo_game_engine.dart';
 
 void main() {
   group('MatchGameService - 4 Players Integration', () {
@@ -112,8 +113,248 @@ void main() {
 
       return snapshot;
     }
+    Future<MatchGameSession> createStartedSession() {
+      return service.startMatch(
+        matchId: 'match-1',
+        playerNames: const {
+          'player-1': 'Player 1',
+          'player-2': 'Player 2',
+          'player-3': 'Player 3',
+          'player-4': 'Player 4',
+        },
+      );
+    }
+
+    group('saveSnapshot', () {
+      test('saves the initial state of a started playing match', () async {
+        final session = await createStartedSession();
+
+        final stateBeforeSave = session.state;
+
+        await service.saveSnapshot(session: session);
+
+        expect(gameStateRepository.saveCallCount, 1);
+        expect(
+          gameStateRepository.snapshots.containsKey('match-1'),
+          isTrue,
+        );
+        expect(
+          gameStateRepository.snapshots['match-1'],
+          stateBeforeSave,
+        );
+      });
+
+      test('saves the state after registering a dice roll', () async {
+        final session = await createStartedSession();
+
+        session.engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
+        );
+
+        final stateAfterRoll = session.state;
+
+        await service.saveSnapshot(session: session);
+
+        final savedState = gameStateRepository.snapshots['match-1'];
+
+        expect(savedState, isNotNull);
+        expect(savedState, stateAfterRoll);
+        expect(savedState!.turnState.rolls.length, 1);
+        expect(savedState.turnState.rolls.first.value, 6);
+        expect(savedState.turnState.rolls.first.sequence, 1);
+        expect(savedState.turnState.sixRollCount, 1);
+      });
+
+      test('saves the state after executing a legal token move', () async {
+        final session = await createStartedSession();
+
+        session.engine.registerDiceRoll(
+          value: 1,
+          sequence: 1,
+        );
+
+        final validMoves = session.engine.getValidMoves();
+
+        expect(validMoves, isNotEmpty);
+
+        session.engine.executeMove(validMoves.first);
+
+        final stateAfterMove = session.state;
+
+        await service.saveSnapshot(session: session);
+
+        expect(
+          gameStateRepository.snapshots['match-1'],
+          stateAfterMove,
+        );
+      });
+
+      test('uses the match id from the session when saving', () async {
+        final session = await createStartedSession();
+
+        await service.saveSnapshot(session: session);
+
+        expect(
+          gameStateRepository.snapshots.keys,
+          contains(session.match.id),
+        );
+        expect(
+          gameStateRepository.snapshots.keys,
+          isNot(contains('another-match')),
+        );
+      });
+
+      test('does not modify engine state while saving', () async {
+        final session = await createStartedSession();
+
+        session.engine.registerDiceRoll(
+          value: 6,
+          sequence: 1,
+        );
+
+        final stateBeforeSave = session.state;
+
+        await service.saveSnapshot(session: session);
+
+        expect(session.state, stateBeforeSave);
+      });
+
+      test('rejects a session whose match is not playing', () async {
+        final session = await createStartedSession();
+
+        final pendingSession = MatchGameSession(
+          match: session.match.copyWith(
+            status: MatchStatus.pending,
+          ),
+          matchPlayers: session.matchPlayers,
+          engine: session.engine,
+        );
+
+        await expectLater(
+          service.saveSnapshot(session: pendingSession),
+          throwsA(isA<StateError>()),
+        );
+
+        expect(gameStateRepository.saveCallCount, 0);
+        expect(gameStateRepository.snapshots, isEmpty);
+      });
+
+      test('rejects an engine that has not started', () async {
+        final session = await createStartedSession();
+
+        final notStartedEngine = LudoGameEngine(
+          initialState: session.state.copyWith(
+            isStarted: false,
+          ),
+        );
+
+        final notStartedSession = MatchGameSession(
+          match: session.match,
+          matchPlayers: session.matchPlayers,
+          engine: notStartedEngine,
+        );
+
+        await expectLater(
+          service.saveSnapshot(session: notStartedSession),
+          throwsA(isA<StateError>()),
+        );
+
+        expect(gameStateRepository.saveCallCount, 0);
+        expect(gameStateRepository.snapshots, isEmpty);
+      });
+
+      test('rejects an invalid game state', () async {
+        final session = await createStartedSession();
+
+        final invalidEngine = LudoGameEngine(
+          initialState: session.state.copyWith(
+            currentPlayerIndex: 99,
+          ),
+        );
+
+        final invalidSession = MatchGameSession(
+          match: session.match,
+          matchPlayers: session.matchPlayers,
+          engine: invalidEngine,
+        );
+
+        await expectLater(
+          service.saveSnapshot(session: invalidSession),
+          throwsA(isA<StateError>()),
+        );
+
+        expect(gameStateRepository.saveCallCount, 0);
+        expect(gameStateRepository.snapshots, isEmpty);
+      });
+
+      test('rejects a finished game state', () async {
+        final session = await createStartedSession();
+
+        final finishedEngine = LudoGameEngine(
+          initialState: session.state.copyWith(
+            isFinished: true,
+          ),
+        );
+
+        final finishedSession = MatchGameSession(
+          match: session.match,
+          matchPlayers: session.matchPlayers,
+          engine: finishedEngine,
+        );
+
+        await expectLater(
+          service.saveSnapshot(session: finishedSession),
+          throwsA(isA<StateError>()),
+        );
+
+        expect(gameStateRepository.saveCallCount, 0);
+        expect(gameStateRepository.snapshots, isEmpty);
+      });
+
+      test('propagates repository errors when saving fails', () async {
+        final session = await createStartedSession();
+
+        gameStateRepository.throwExceptionOnSave = true;
+
+        await expectLater(
+          service.saveSnapshot(session: session),
+          throwsA(isA<StateError>()),
+        );
+
+        expect(gameStateRepository.saveCallCount, 1);
+        expect(gameStateRepository.snapshots, isEmpty);
+      });
+
+      test('does not modify engine state or match status when saving fails',
+              () async {
+            final session = await createStartedSession();
+
+            session.engine.registerDiceRoll(
+              value: 6,
+              sequence: 1,
+            );
+
+            final stateBeforeSave = session.state;
+            final statusBeforeSave = session.match.status;
+
+            gameStateRepository.throwExceptionOnSave = true;
+
+            await expectLater(
+              service.saveSnapshot(session: session),
+              throwsA(isA<StateError>()),
+            );
+
+            expect(session.state, stateBeforeSave);
+            expect(session.match.status, statusBeforeSave);
+            expect(gameStateRepository.snapshots, isEmpty);
+          });
+    });
+
 
     group('resumeMatch', () {
+
+
       test('restores a valid saved match snapshot', () async {
         final savedState = await createSavedSnapshot();
 
@@ -683,12 +924,21 @@ class FakeMatchGameStateRepository implements MatchGameStateRepository {
   final Map<String, LudoGameState> snapshots = {};
 
   bool throwFormatExceptionOnLoad = false;
+  bool throwExceptionOnSave = false;
+
+  int saveCallCount = 0;
 
   @override
   Future<void> saveGameState({
     required String matchId,
     required LudoGameState state,
   }) async {
+    saveCallCount++;
+
+    if (throwExceptionOnSave) {
+      throw StateError('Snapshot save failed');
+    }
+
     snapshots[matchId] = state;
   }
 
