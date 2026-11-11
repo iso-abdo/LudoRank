@@ -11,6 +11,7 @@ import 'package:ludo_rank/features/match_players/domain/repositories/match_playe
 
 import '../entities/match.dart';
 import '../entities/match_status.dart';
+import '../repositories/match_game_state_repository.dart';
 import '../repositories/match_repository.dart';
 import 'match_game_session.dart';
 import 'match_points_calculator.dart';
@@ -40,11 +41,14 @@ class MatchGameService {
   final MatchRepository matchRepository;
   final MatchPlayerRepository matchPlayerRepository;
   final MatchPointsCalculator pointsCalculator;
+  final MatchGameStateRepository gameStateRepository;
 
   const MatchGameService({
     required this.matchRepository,
     required this.matchPlayerRepository,
     this.pointsCalculator = const MatchPointsCalculator(),
+    required this.gameStateRepository,
+
   });
 
   /// Starts a match and returns its runtime session.
