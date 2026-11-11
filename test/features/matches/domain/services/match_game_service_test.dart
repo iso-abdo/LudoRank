@@ -16,19 +16,20 @@ void main() {
     late FakeMatchRepository matchRepository;
     late FakeMatchPlayerRepository matchPlayerRepository;
     late MatchGameService service;
+    late FakeMatchGameStateRepository gameStateRepository;
 
     late Match match;
     late List<MatchPlayer> players;
 
     setUp(() {
       matchRepository = FakeMatchRepository();
-
       matchPlayerRepository = FakeMatchPlayerRepository();
+      gameStateRepository = FakeMatchGameStateRepository();
 
       service = MatchGameService(
         matchRepository: matchRepository,
         matchPlayerRepository: matchPlayerRepository,
-        gameStateRepository: FakeMatchGameStateRepository(),
+        gameStateRepository: gameStateRepository,
       );
 
       final now = DateTime(2026, 1, 1);
@@ -84,6 +85,182 @@ void main() {
       matchRepository.seed(match);
       matchPlayerRepository.seed(players);
     });
+    Future<LudoGameState> createSavedSnapshot() async {
+      final session = await service.startMatch(
+        matchId: 'match-1',
+        playerNames: const {
+          'player-1': 'Player 1',
+          'player-2': 'Player 2',
+          'player-3': 'Player 3',
+          'player-4': 'Player 4',
+        },
+      );
+
+      // نسجل رمية حقيقية من خلال الـ Engine.
+      // ده بيضمن إن Snapshot ناتجة من حالة لعب فعلية.
+      session.engine.registerDiceRoll(
+        value: 6,
+        sequence: 1,
+      );
+
+      final snapshot = session.state;
+
+      await gameStateRepository.saveGameState(
+        matchId: 'match-1',
+        state: snapshot,
+      );
+
+      return snapshot;
+    }
+
+    group('resumeMatch', () {
+      test('restores a valid saved match snapshot', () async {
+        final savedState = await createSavedSnapshot();
+
+        final session = await service.resumeMatch(
+          matchId: 'match-1',
+        );
+
+        // Match and session
+        expect(session, isA<MatchGameSession>());
+        expect(session.match.id, 'match-1');
+        expect(session.match.status, MatchStatus.playing);
+
+        // Engine status
+        expect(session.isStarted, isTrue);
+        expect(session.isFinished, isFalse);
+
+        // Current player and turn
+        expect(session.currentPlayerId, 'player-1');
+        expect(
+          session.state.currentPlayerIndex,
+          savedState.currentPlayerIndex,
+        );
+        expect(
+          session.state.turnState.playerId,
+          savedState.turnState.playerId,
+        );
+
+        // Dice history
+        expect(session.state.turnState.rolls, savedState.turnState.rolls);
+        expect(session.state.turnState.rolls.length, 1);
+        expect(session.state.turnState.rolls.first.value, 6);
+        expect(session.state.turnState.rolls.first.sequence, 1);
+
+        // Available rolls
+        expect(
+          session.state.turnState.availableRolls.rolls,
+          savedState.turnState.availableRolls.rolls,
+        );
+        expect(
+          session.state.turnState.availableRolls.rolls.length,
+          1,
+        );
+        expect(
+          session.state.turnState.availableRolls.rolls.first.value,
+          6,
+        );
+
+        expect(session.state.turnState.sixRollCount, 1);
+
+        // All players and their tokens must be restored.
+        expect(session.state.players.length, 4);
+
+        for (var index = 0; index < 4; index++) {
+          final restoredPlayer = session.state.players[index];
+          final savedPlayer = savedState.players[index];
+
+          expect(restoredPlayer.playerId, savedPlayer.playerId);
+          expect(restoredPlayer.seat, savedPlayer.seat);
+          expect(restoredPlayer.name, savedPlayer.name);
+          expect(restoredPlayer.tokens, savedPlayer.tokens);
+        }
+
+        // Persisted MatchPlayers
+        expect(
+          session.matchPlayers.map((player) => player.playerId).toList(),
+          ['player-1', 'player-2', 'player-3', 'player-4'],
+        );
+      });
+
+      test('rejects a match that does not exist', () async {
+        await expectLater(
+          service.resumeMatch(matchId: 'missing-match'),
+          throwsA(isA<StateError>()),
+        );
+      });
+
+      test('rejects a match that is not playing', () async {
+        expect(match.status, MatchStatus.pending);
+
+        await expectLater(
+          service.resumeMatch(matchId: 'match-1'),
+          throwsA(isA<StateError>()),
+        );
+      });
+
+      test('rejects a match without a saved snapshot', () async {
+        // Start the match so its status becomes Playing.
+        // startMatch does not save a game snapshot.
+        await service.startMatch(
+          matchId: 'match-1',
+          playerNames: const {
+            'player-1': 'Player 1',
+            'player-2': 'Player 2',
+            'player-3': 'Player 3',
+            'player-4': 'Player 4',
+          },
+        );
+
+        expect(
+          gameStateRepository.snapshots.containsKey('match-1'),
+          isFalse,
+        );
+
+        await expectLater(
+          service.resumeMatch(matchId: 'match-1'),
+          throwsA(isA<StateError>()),
+        );
+      });
+
+      test('propagates FormatException when snapshot loading fails', () async {
+        await service.startMatch(
+          matchId: 'match-1',
+          playerNames: const {
+            'player-1': 'Player 1',
+            'player-2': 'Player 2',
+            'player-3': 'Player 3',
+            'player-4': 'Player 4',
+          },
+        );
+
+        gameStateRepository.throwFormatExceptionOnLoad = true;
+
+        await expectLater(
+          service.resumeMatch(matchId: 'match-1'),
+          throwsA(isA<FormatException>()),
+        );
+      });
+
+      test('rejects a snapshot incompatible with the match', () async {
+        final validSnapshot = await createSavedSnapshot();
+
+        final invalidSnapshot = validSnapshot.copyWith(
+          currentPlayerIndex: 99,
+        );
+
+        await gameStateRepository.saveGameState(
+          matchId: 'match-1',
+          state: invalidSnapshot,
+        );
+
+        await expectLater(
+          service.resumeMatch(matchId: 'match-1'),
+          throwsA(isA<StateError>()),
+        );
+      });
+    });
+
 
     test('starts a 4-player match and builds Ludo session', () async {
       final session = await service.startMatch(
