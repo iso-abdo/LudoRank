@@ -502,17 +502,29 @@ class FakeMatchPlayerRepository implements MatchPlayerRepository {
 }
 
 class FakeMatchGameStateRepository implements MatchGameStateRepository {
+  final Map<String, LudoGameState> snapshots = {};
+
+  bool throwFormatExceptionOnLoad = false;
+
   @override
   Future<void> saveGameState({
     required String matchId,
     required LudoGameState state,
-  }) async {}
-
-  @override
-  Future<LudoGameState?> loadGameState(String matchId) async {
-    return null;
+  }) async {
+    snapshots[matchId] = state;
   }
 
   @override
-  Future<void> clearGameState(String matchId) async {}
+  Future<LudoGameState?> loadGameState(String matchId) async {
+    if (throwFormatExceptionOnLoad) {
+      throw const FormatException('Invalid snapshot JSON');
+    }
+
+    return snapshots[matchId];
+  }
+
+  @override
+  Future<void> clearGameState(String matchId) async {
+    snapshots.remove(matchId);
+  }
 }
