@@ -11,6 +11,8 @@ import 'package:ludo_rank/features/match_players/data/data_sources/local/match_p
 import 'package:ludo_rank/features/match_players/data/repositories/match_player_repository_impl.dart';
 import 'package:ludo_rank/features/match_players/domain/repositories/match_player_repository.dart';
 import 'package:ludo_rank/features/match_players/presentation/providers/match_player_provider.dart';
+import 'package:ludo_rank/features/matches/data/repositories/match_game_state_repository_impl.dart';
+import 'package:ludo_rank/features/matches/domain/repositories/match_game_state_repository.dart';
 import 'package:ludo_rank/features/matches/domain/services/match_game_service.dart';
 import 'package:ludo_rank/features/matches/presentation/providers/match_game_provider.dart';
 
@@ -72,6 +74,9 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton<HomeDao>(() => HomeDao(sl<AppDatabase>()));
   sl.registerLazySingleton<MatchDao>(() => MatchDao(sl<AppDatabase>()));
+  sl.registerLazySingleton<MatchGameStateRepository>(
+    () => MatchGameStateRepositoryImpl(sl<MatchDao>()),
+  );
   sl.registerLazySingleton<MatchPlayerDao>(
     () => MatchPlayerDao(sl<AppDatabase>()),
   );
@@ -101,6 +106,7 @@ Future<void> initDependencies() async {
     () => MatchGameService(
       matchRepository: sl<MatchRepository>(),
       matchPlayerRepository: sl<MatchPlayerRepository>(),
+      gameStateRepository: sl<MatchGameStateRepository>(),
     ),
   );
 

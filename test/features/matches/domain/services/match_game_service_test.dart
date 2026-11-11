@@ -8,6 +8,9 @@ import 'package:ludo_rank/features/matches/domain/services/match_game_service.da
 import 'package:ludo_rank/features/matches/domain/services/match_game_session.dart';
 import 'package:ludo_rank/features/match_players/domain/entities/match_player.dart';
 import 'package:ludo_rank/features/match_players/domain/repositories/match_player_repository.dart';
+import 'package:ludo_rank/features/matches/domain/repositories/match_game_state_repository.dart';
+import 'package:ludo_rank/features/ludo_game/domain/models/ludo_game_state.dart';
+
 void main() {
   group('MatchGameService - 4 Players Integration', () {
     late FakeMatchRepository matchRepository;
@@ -25,6 +28,7 @@ void main() {
       service = MatchGameService(
         matchRepository: matchRepository,
         matchPlayerRepository: matchPlayerRepository,
+        gameStateRepository: FakeMatchGameStateRepository(),
       );
 
       final now = DateTime(2026, 1, 1);
@@ -495,4 +499,20 @@ class FakeMatchPlayerRepository implements MatchPlayerRepository {
       _players.remove(id);
     }
   }
+}
+
+class FakeMatchGameStateRepository implements MatchGameStateRepository {
+  @override
+  Future<void> saveGameState({
+    required String matchId,
+    required LudoGameState state,
+  }) async {}
+
+  @override
+  Future<LudoGameState?> loadGameState(String matchId) async {
+    return null;
+  }
+
+  @override
+  Future<void> clearGameState(String matchId) async {}
 }

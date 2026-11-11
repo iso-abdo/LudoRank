@@ -25,6 +25,8 @@ import 'package:ludo_rank/features/ludo_game/domain/models/available_rolls.dart'
 import 'package:ludo_rank/features/ludo_game/domain/models/dice_roll.dart';
 import 'package:ludo_rank/features/ludo_game/domain/models/turn_state.dart';
 
+import '../../domain/services/match_game_service_test.dart';
+
 void main() {
   group('MatchGameProvider', () {
     late FakeMatchRepository matchRepository;
@@ -44,6 +46,7 @@ void main() {
       service = FakeMatchGameService(
         matchRepository: matchRepository,
         matchPlayerRepository: matchPlayerRepository,
+        gameStateRepository: FakeMatchGameStateRepository(),
       );
 
       provider = MatchGameProvider(service: service);
@@ -757,6 +760,7 @@ class FakeMatchGameService extends MatchGameService {
   FakeMatchGameService({
     required super.matchRepository,
     required super.matchPlayerRepository,
+    required super.gameStateRepository,
   });
 
   MatchGameSession? startSession;
