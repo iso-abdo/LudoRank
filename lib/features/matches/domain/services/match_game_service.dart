@@ -106,13 +106,14 @@ class MatchGameService {
       engine: engine,
     );
 
-// نحفظ الحالة الابتدائية قبل اعتماد المباراة كـ Playing.
+    // نحفظ الحالة الابتدائية قبل اعتماد المباراة كـ Playing.
     await saveSnapshot(session: session);
 
-// لا نغيّر حالة المباراة إلى Playing إلا بعد نجاح الحفظ.
+    // لا نغيّر حالة المباراة إلى Playing إلا بعد نجاح الحفظ.
     await matchRepository.update(playingMatch);
 
-    return session;  }
+    return session;
+  }
 
   /// Restores an active match from its persisted game snapshot.
   ///
