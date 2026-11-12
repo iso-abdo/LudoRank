@@ -256,7 +256,9 @@ class _LiveMatchLayout extends StatelessWidget {
                               selectedTokenId: provider.selectedTokenId,
                               selectedRollSequence:
                                   provider.selectedRollSequence,
-                              pendingAutoMove: provider.pendingAutoMove,
+                              pendingAutoMove: provider.isSnapshotSaveBlocked
+                                  ? null
+                                  : provider.pendingAutoMove,
                               onTokenTap: onTokenTap,
                               legalMoveDestinations:
                                   provider.selectedMoveDestinations,
