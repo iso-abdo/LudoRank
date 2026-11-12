@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:ludo_rank/features/ludo_game/domain/entities/ludo_player.dart';
@@ -289,6 +291,52 @@ void main() {
         expect(service.startMatchCallCount, 1);
       },
     );
+    // ========================================================
+    //  rollDice blocks another roll while snapshot is saving
+    // ======================================================
+
+    test('rollDice blocks another roll while snapshot is saving', () async {
+      final engine = FakeLudoGameEngine(
+        initialState: createStartedState(),
+      );
+
+      service.startSession = MatchGameSession(
+        match: match.copyWith(status: MatchStatus.playing),
+        matchPlayers: matchPlayers,
+        engine: engine,
+      );
+
+      await provider.startMatch(
+        matchId: match.id,
+        playerNames: playerNames,
+      );
+
+      final saveCompleter = Completer<void>();
+      gameStateRepository.saveCompleter = saveCompleter;
+
+      // ابدأ الرمية الأولى بدون انتظار انتهاء الحفظ.
+      final firstRoll = provider.rollDice();
+
+      expect(provider.isSavingSnapshot, isTrue);
+      expect(engine.rollDiceCallCount, 1);
+      expect(gameStateRepository.saveCallCount, 1);
+
+      // محاولة رمية ثانية أثناء الحفظ.
+      await provider.rollDice();
+
+      // يجب ألا ينفذ المحرك رمية ثانية.
+      expect(engine.rollDiceCallCount, 1);
+      expect(gameStateRepository.saveCallCount, 1);
+
+      // اسمح للحفظ الأول بالانتهاء.
+      saveCompleter.complete();
+
+      await firstRoll;
+
+      expect(provider.isSavingSnapshot, isFalse);
+      expect(provider.hasSnapshotSaveError, isFalse);
+      expect(provider.error, isNull);
+    });
 
     // ==========================================================
     // SELECT TOKEN

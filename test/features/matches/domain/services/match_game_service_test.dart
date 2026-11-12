@@ -11,6 +11,7 @@ import 'package:ludo_rank/features/match_players/domain/repositories/match_playe
 import 'package:ludo_rank/features/matches/domain/repositories/match_game_state_repository.dart';
 import 'package:ludo_rank/features/ludo_game/domain/models/ludo_game_state.dart';
 import 'package:ludo_rank/features/ludo_game/domain/services/ludo_game_engine.dart';
+import 'dart:async';
 
 void main() {
   group('MatchGameService - 4 Players Integration', () {
@@ -906,6 +907,7 @@ class FakeMatchGameStateRepository implements MatchGameStateRepository {
   bool throwExceptionOnSave = false;
 
   int saveCallCount = 0;
+  Completer<void>? saveCompleter;
 
   @override
   Future<void> saveGameState({
@@ -913,6 +915,8 @@ class FakeMatchGameStateRepository implements MatchGameStateRepository {
     required LudoGameState state,
   }) async {
     saveCallCount++;
+
+    await saveCompleter?.future;
 
     if (throwExceptionOnSave) {
       throw StateError('Snapshot save failed');
