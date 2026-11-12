@@ -100,14 +100,19 @@ class MatchGameService {
       updatedAt: DateTime.now(),
     );
 
-    await matchRepository.update(playingMatch);
-
-    return MatchGameSession(
+    final session = MatchGameSession(
       match: playingMatch,
       matchPlayers: matchPlayers,
       engine: engine,
     );
-  }
+
+// نحفظ الحالة الابتدائية قبل اعتماد المباراة كـ Playing.
+    await saveSnapshot(session: session);
+
+// لا نغيّر حالة المباراة إلى Playing إلا بعد نجاح الحفظ.
+    await matchRepository.update(playingMatch);
+
+    return session;  }
 
   /// Restores an active match from its persisted game snapshot.
   ///

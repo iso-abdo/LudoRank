@@ -114,8 +114,8 @@ void main() {
 
       return snapshot;
     }
-    Future<MatchGameSession> createStartedSession() {
-      return service.startMatch(
+    Future<MatchGameSession> createStartedSession() async {
+      final session = await service.startMatch(
         matchId: 'match-1',
         playerNames: const {
           'player-1': 'Player 1',
@@ -124,6 +124,11 @@ void main() {
           'player-4': 'Player 4',
         },
       );
+
+      await gameStateRepository.clearGameState('match-1');
+      gameStateRepository.saveCallCount = 0;
+
+      return session;
     }
 
 
@@ -454,6 +459,7 @@ void main() {
             'player-4': 'Player 4',
           },
         );
+        await gameStateRepository.clearGameState('match-1');
 
         expect(
           gameStateRepository.snapshots.containsKey('match-1'),
@@ -543,6 +549,12 @@ void main() {
       expect(session.state.players[2].tokens.length, 4);
 
       expect(session.state.players[3].tokens.length, 4);
+      expect(gameStateRepository.saveCallCount, 1);
+
+      expect(
+        gameStateRepository.snapshots['match-1'],
+        session.state,
+      );
 
       final storedMatch = await matchRepository.getById('match-1');
 
@@ -810,6 +822,29 @@ void main() {
         ),
         throwsStateError,
       );
+    });
+    test('does not start match when initial snapshot saving fails', () async {
+      gameStateRepository.throwExceptionOnSave = true;
+
+      await expectLater(
+        service.startMatch(
+          matchId: 'match-1',
+          playerNames: const {
+            'player-1': 'Player 1',
+            'player-2': 'Player 2',
+            'player-3': 'Player 3',
+            'player-4': 'Player 4',
+          },
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(gameStateRepository.saveCallCount, 1);
+      expect(gameStateRepository.snapshots, isEmpty);
+
+      final storedMatch = await matchRepository.getById('match-1');
+
+      expect(storedMatch?.status, MatchStatus.pending);
     });
   });
 }
