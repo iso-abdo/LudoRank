@@ -38,6 +38,8 @@ class MatchGameProvider extends ChangeNotifier {
   bool _isLoading = false;
 
   String? _error;
+  bool _isSavingSnapshot = false;
+  bool _snapshotSaveFailed = false;
 
   MatchGameProvider({required this.service});
   // ============================================================
@@ -156,6 +158,15 @@ class MatchGameProvider extends ChangeNotifier {
     await executeMove(move);
   }
 
+  // ===========================================================
+  // وأضف Getters في قسم UI STATE:
+  // ===========================================================
+  bool get isSavingSnapshot => _isSavingSnapshot;
+
+  bool get hasSnapshotSaveError => _snapshotSaveFailed;
+
+  bool get isSnapshotSaveBlocked => _isSavingSnapshot || _snapshotSaveFailed;
+
   // ============================================================
   // RESULT
   // ============================================================
@@ -221,6 +232,7 @@ class MatchGameProvider extends ChangeNotifier {
   bool get canRollDice {
     return isStarted &&
         !isLoading &&
+        !isSnapshotSaveBlocked &&
         !isGameFinished &&
         turnState?.isRolling == true;
   }
@@ -228,6 +240,7 @@ class MatchGameProvider extends ChangeNotifier {
   bool get canExecuteMove {
     return isStarted &&
         !isLoading &&
+        !isSnapshotSaveBlocked &&
         !isGameFinished &&
         turnState?.isPlaying == true &&
         availableMoves.isNotEmpty;
@@ -280,6 +293,8 @@ class MatchGameProvider extends ChangeNotifier {
 
     _selectedTokenId = null;
     _selectedRollSequence = null;
+    _isSavingSnapshot = false;
+    _snapshotSaveFailed = false;
 
     _completedPlayers.clear();
 
@@ -303,7 +318,6 @@ class MatchGameProvider extends ChangeNotifier {
   //
   // ============================================================
 
-
   // ============================================================
   // RESUME MATCH
   // ============================================================
@@ -312,9 +326,7 @@ class MatchGameProvider extends ChangeNotifier {
   ///
   /// This method does NOT start a new match and does NOT reset
   /// the restored LudoGameEngine state.
-  Future<void> resumeMatch({
-    required String matchId,
-  }) async {
+  Future<void> resumeMatch({required String matchId}) async {
     // منع الاحتفاظ بأي اختيارات أو حركة معلقة من جلسة سابقة.
     _session = null;
     _matchStatus = null;
@@ -325,6 +337,9 @@ class MatchGameProvider extends ChangeNotifier {
     _pendingAutoMove = null;
     _isAutoMoveExecuting = false;
 
+    _isSavingSnapshot = false;
+    _snapshotSaveFailed = false;
+
     _completedPlayers.clear();
 
     _error = null;
@@ -333,9 +348,7 @@ class MatchGameProvider extends ChangeNotifier {
 
     try {
       // الاستعادة تتم من الخدمة مباشرة، وليس من startMatch.
-      final restoredSession = await service.resumeMatch(
-        matchId: matchId,
-      );
+      final restoredSession = await service.resumeMatch(matchId: matchId);
 
       _session = restoredSession;
       _matchStatus = restoredSession.match.status;
@@ -360,11 +373,12 @@ class MatchGameProvider extends ChangeNotifier {
   /// - multiple sixes
   /// - third-six cancellation
   /// - no-legal-move handling
-  void rollDice() {
+  Future<void> rollDice() async {
     final currentSession = _session;
 
     if (currentSession == null ||
         isLoading ||
+        isSnapshotSaveBlocked ||
         isGameFinished ||
         turnState?.isRolling != true) {
       return;
@@ -377,19 +391,38 @@ class MatchGameProvider extends ChangeNotifier {
       _selectedRollSequence = null;
       _pendingAutoMove = null;
       _isAutoMoveExecuting = false;
-      //
 
       // المحرك وحده مسؤول عن قواعد رمي النرد.
       currentSession.engine.rollDice();
 
-      // اكتشاف الحركة الوحيدة من قائمة الحركات القانونية.
+      // الحفاظ على منطق اكتشاف الحركة الوحيدة كما هو.
       final legalMoves = availableMoves;
 
       if (turnState?.isPlaying == true && legalMoves.length == 1) {
         _pendingAutoMove = legalMoves.single;
       }
 
+      // قفل اللعب قبل بدء الحفظ.
+      _isSavingSnapshot = true;
+      _snapshotSaveFailed = false;
+
       notifyListeners();
+
+      try {
+        await service.saveSnapshot(session: currentSession);
+
+        _isSavingSnapshot = false;
+        _snapshotSaveFailed = false;
+
+        notifyListeners();
+      } catch (e) {
+        _isSavingSnapshot = false;
+        _snapshotSaveFailed = true;
+
+        _error = 'تعذر حفظ حالة الرمية: $e';
+
+        notifyListeners();
+      }
     } catch (e) {
       _error = e.toString();
       _pendingAutoMove = null;
@@ -398,11 +431,39 @@ class MatchGameProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> retrySnapshotSave() async {
+    final currentSession = _session;
+
+    if (currentSession == null || _isSavingSnapshot || !_snapshotSaveFailed) {
+      return;
+    }
+
+    _isSavingSnapshot = true;
+
+    notifyListeners();
+
+    try {
+      await service.saveSnapshot(session: currentSession);
+
+      _snapshotSaveFailed = false;
+      _error = null;
+    } catch (e) {
+      _snapshotSaveFailed = true;
+      _error = 'فشلت إعادة حفظ حالة الرمية: $e';
+    } finally {
+      _isSavingSnapshot = false;
+      notifyListeners();
+    }
+  }
+
   // ===========================================================
   //  executePendingAutoMove
   //============================================================
   Future<void> executePendingAutoMove() async {
-    if (_isAutoMoveExecuting || isLoading || isGameFinished) {
+    if (_isAutoMoveExecuting ||
+        isLoading ||
+        isSnapshotSaveBlocked ||
+        isGameFinished) {
       return;
     }
 
@@ -460,6 +521,9 @@ class MatchGameProvider extends ChangeNotifier {
   /// Multiple moves  -> select the token and show its move options.
   /// No legal moves  -> do not move the token.
   Future<void> handleTokenTap(LudoToken token) async {
+    if (isSnapshotSaveBlocked) {
+      return;
+    }
     final currentSession = _session;
     final activePlayer = currentPlayer;
 
@@ -557,6 +621,10 @@ class MatchGameProvider extends ChangeNotifier {
   /// If the move finishes the complete Ludo game,
   /// the provider automatically persists the Match.
   Future<void> executeMove(MoveOption move) async {
+    if (isSnapshotSaveBlocked || isLoading || isGameFinished) {
+      return;
+    }
+
     final currentSession = _session;
 
     if (_isAutoMoveExecuting &&
@@ -604,6 +672,7 @@ class MatchGameProvider extends ChangeNotifier {
   Future<void> handleAvailableRollTap(int sequence) async {
     if (turnState?.isPlaying != true ||
         isLoading ||
+        isSnapshotSaveBlocked ||
         isGameFinished ||
         !availableRolls.containsSequence(sequence)) {
       return;
@@ -734,6 +803,9 @@ class MatchGameProvider extends ChangeNotifier {
     _isLoading = false;
     _pendingAutoMove = null;
     _isAutoMoveExecuting = false;
+
+    _isSavingSnapshot = false;
+    _snapshotSaveFailed = false;
 
     notifyListeners();
   }

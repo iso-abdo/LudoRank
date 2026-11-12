@@ -10,6 +10,7 @@ import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/ludo_
 import 'package:ludo_rank/features/ludo_game/presentation/widgets/match_ui/ludo_match_player_section.dart';
 import 'package:ludo_rank/features/matches/presentation/providers/match_game_provider.dart';
 import 'package:ludo_rank/features/match_players/domain/entities/match_player.dart';
+import 'dart:async';
 
 class MatchGamePage extends StatefulWidget {
   /// Database match ID.
@@ -355,7 +356,9 @@ class _LiveMatchLayout extends StatelessWidget {
                 ? provider.availableRolls
                 : provider.availableRolls.clear(),
             canRoll: isCurrent && provider.canRollDice,
-            onRoll: provider.rollDice,
+            onRoll: () {
+              unawaited(provider.rollDice());
+            },
             height: isCurrent ? activeCardHeight : inactiveCardHeight,
             onAvailableRollTap: provider.handleAvailableRollTap,
             selectedRollSequence: provider.selectedRollSequence,
