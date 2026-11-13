@@ -296,9 +296,7 @@ void main() {
     // ======================================================
 
     test('rollDice blocks another roll while snapshot is saving', () async {
-      final engine = FakeLudoGameEngine(
-        initialState: createStartedState(),
-      );
+      final engine = FakeLudoGameEngine(initialState: createStartedState());
 
       service.startSession = MatchGameSession(
         match: match.copyWith(status: MatchStatus.playing),
@@ -306,10 +304,7 @@ void main() {
         engine: engine,
       );
 
-      await provider.startMatch(
-        matchId: match.id,
-        playerNames: playerNames,
-      );
+      await provider.startMatch(matchId: match.id, playerNames: playerNames);
 
       final saveCompleter = Completer<void>();
       gameStateRepository.saveCompleter = saveCompleter;
@@ -506,6 +501,167 @@ void main() {
       expect(provider.selectedTokenId, isNull);
       expect(provider.selectedRollSequence, isNull);
 
+      expect(provider.error, isNull);
+    });
+
+    // ==========================================================
+    // executeMove saves snapshot after engine move
+    // ==========================================================
+
+    test('executeMove saves snapshot after engine move', () async {
+      final engine = LudoGameEngine(initialState: createStartedState());
+
+      final session = MatchGameSession(
+        match: match.copyWith(status: MatchStatus.playing),
+        matchPlayers: matchPlayers,
+        engine: engine,
+      );
+
+      service.startSession = session;
+
+      await provider.startMatch(matchId: match.id, playerNames: playerNames);
+
+      // نجهز رمية قانونية من خلال المحرك الحقيقي.
+      engine.registerDiceRoll(value: 6, sequence: 1);
+
+      final legalMoves = engine.getValidMoves();
+
+      expect(legalMoves, isNotEmpty);
+
+      final move = legalMoves.first;
+
+      await provider.executeMove(move);
+
+      // الحركة نُفذت في المحرك.
+      expect(engine.state, isNotNull);
+
+      // تم حفظ Snapshot واحدة بعد الحركة.
+      expect(gameStateRepository.saveCallCount, 1);
+
+      // الحالة المحفوظة تطابق الحالة الحالية للمحرك.
+      expect(gameStateRepository.snapshots[match.id], equals(engine.state));
+
+      expect(provider.isSavingSnapshot, isFalse);
+      expect(provider.hasSnapshotSaveError, isFalse);
+      expect(provider.error, isNull);
+    });
+    // ===========================================================
+    // failed snapshot save blocks next move and retry does not execute move again
+    // ===========================================================
+
+    test(
+      'failed snapshot save blocks next move and retry does not execute move again',
+      () async {
+        final engine = FakeLudoGameEngine(initialState: createStartedState());
+
+        service.startSession = MatchGameSession(
+          match: match.copyWith(status: MatchStatus.playing),
+          matchPlayers: matchPlayers,
+          engine: engine,
+        );
+
+        await provider.startMatch(matchId: match.id, playerNames: playerNames);
+
+        final move = MoveToken(
+          tokenId: 'player-1-token-0',
+          steps: 1,
+          rollSequence: 1,
+        );
+
+        gameStateRepository.throwExceptionOnSave = true;
+
+        expect(provider.session, isNotNull);
+        expect(provider.isLoading, isFalse);
+        expect(provider.isGameFinished, isFalse);
+        expect(provider.isSnapshotSaveBlocked, isFalse);
+        expect(engine.isFinished, isFalse);
+
+        // تنفيذ الحركة الأولى.
+        await provider.executeMove(move);
+
+        expect(engine.executeMoveCallCount, 1);
+        expect(gameStateRepository.saveCallCount, 1);
+
+        // الحفظ فشل، وبالتالي يجب منع أي إدخال جديد.
+        expect(provider.hasSnapshotSaveError, isTrue);
+        expect(provider.isSnapshotSaveBlocked, isTrue);
+
+        // محاولة تنفيذ نفس الحركة مرة أخرى.
+        await provider.executeMove(move);
+
+        // الحركة لم تتكرر.
+        expect(engine.executeMoveCallCount, 1);
+        expect(gameStateRepository.saveCallCount, 1);
+
+        // نصلح سبب فشل الحفظ.
+        gameStateRepository.throwExceptionOnSave = false;
+
+        // إعادة الحفظ فقط.
+        await provider.retrySnapshotSave();
+
+        expect(gameStateRepository.saveCallCount, 2);
+
+        // تأكيد أن الحركة لم تُنفذ مرة ثانية.
+        expect(engine.executeMoveCallCount, 1);
+
+        expect(provider.hasSnapshotSaveError, isFalse);
+        expect(provider.isSnapshotSaveBlocked, isFalse);
+        expect(provider.isSavingSnapshot, isFalse);
+        expect(provider.error, isNull);
+      },
+    );
+    // ==========================================================
+    // executeMove blocks another move while snapshot is saving
+    // ==========================================================
+
+    test('executeMove blocks another move while snapshot is saving', () async {
+      final engine = FakeLudoGameEngine(initialState: createStartedState());
+
+      service.startSession = MatchGameSession(
+        match: match.copyWith(status: MatchStatus.playing),
+        matchPlayers: matchPlayers,
+        engine: engine,
+      );
+
+      await provider.startMatch(matchId: match.id, playerNames: playerNames);
+
+      // نضبط Completer بعد بدء المباراة.
+      final saveCompleter = Completer<void>();
+
+      gameStateRepository.saveCompleter = saveCompleter;
+
+      final move = MoveToken(
+        tokenId: 'player-1-token-0',
+        steps: 1,
+        rollSequence: 1,
+      );
+
+      // نبدأ الحركة الأولى دون انتظار الحفظ.
+      final firstExecution = provider.executeMove(move);
+
+      expect(provider.isSavingSnapshot, isTrue);
+      expect(engine.executeMoveCallCount, 1);
+      expect(gameStateRepository.saveCallCount, 1);
+      expect(provider.session, isNotNull);
+      expect(provider.isLoading, isFalse);
+      expect(provider.isGameFinished, isFalse);
+      expect(provider.isSnapshotSaveBlocked, isFalse);
+      expect(engine.isFinished, isFalse);
+
+      // محاولة حركة ثانية أثناء الحفظ.
+      await provider.executeMove(move);
+
+      // يجب ألا ينفذ المحرك حركة أخرى.
+      expect(engine.executeMoveCallCount, 1);
+      expect(gameStateRepository.saveCallCount, 1);
+
+      // نسمح للحفظ الأول بالانتهاء.
+      saveCompleter.complete();
+
+      await firstExecution;
+
+      expect(provider.isSavingSnapshot, isFalse);
+      expect(provider.hasSnapshotSaveError, isFalse);
       expect(provider.error, isNull);
     });
 
