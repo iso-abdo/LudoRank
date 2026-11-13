@@ -575,6 +575,8 @@ void main() {
         expect(provider.isGameFinished, isFalse);
         expect(provider.isSnapshotSaveBlocked, isFalse);
         expect(engine.isFinished, isFalse);
+        expect(provider.isAutoMoveExecuting, isFalse);
+        expect(provider.pendingAutoMove, isNull);
 
         // تنفيذ الحركة الأولى.
         await provider.executeMove(move);
@@ -647,6 +649,8 @@ void main() {
       expect(provider.isGameFinished, isFalse);
       expect(provider.isSnapshotSaveBlocked, isFalse);
       expect(engine.isFinished, isFalse);
+      expect(provider.isAutoMoveExecuting, isFalse);
+      expect(provider.pendingAutoMove, isNull);
 
       // محاولة حركة ثانية أثناء الحفظ.
       await provider.executeMove(move);
