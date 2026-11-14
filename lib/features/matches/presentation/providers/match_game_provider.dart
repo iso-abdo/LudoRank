@@ -641,31 +641,51 @@ class MatchGameProvider extends ChangeNotifier {
     try {
       _error = null;
 
+      // 1. تنفيذ الحركة من خلال المحرك فقط.
       currentSession.engine.executeMove(move);
 
+      // 2. مسح اختيارات اللاعب والحركة المعلقة.
       _selectedTokenId = null;
       _selectedRollSequence = null;
       _pendingAutoMove = null;
-      _selectedTokenId = null;
-      _selectedRollSequence = null;
 
-      // Immediately update the game UI.
+      // 3. لو المباراة انتهت، نحفظ النتيجة النهائية.
+      // لا نحفظ Snapshot عادية لحالة منتهية.
+      if (currentSession.isFinished) {
+        notifyListeners();
+
+        if (_matchStatus != MatchStatus.finished) {
+          await _completeFinishedMatch();
+        }
+
+        return;
+      }
+
+      // 4. قفل اللعب أثناء حفظ Snapshot.
+      _isSavingSnapshot = true;
+      _snapshotSaveFailed = false;
+
       notifyListeners();
 
-      // ========================================================
-      // GAME FINISHED
-      // ========================================================
+      // 5. حفظ الحالة الجديدة بعد الحركة.
+      try {
+        await service.saveSnapshot(session: currentSession);
 
-      if (currentSession.isFinished && _matchStatus != MatchStatus.finished) {
-        await _completeFinishedMatch();
+        _isSavingSnapshot = false;
+        _snapshotSaveFailed = false;
+        _error = null;
+      } catch (e) {
+        _isSavingSnapshot = false;
+        _snapshotSaveFailed = true;
+        _error = 'تعذر حفظ حالة الحركة: $e';
       }
+
+      notifyListeners();
     } catch (e) {
       _error = e.toString();
-
       notifyListeners();
     }
   }
-
   // ============================================================
   // HANDLE ROLL TAP
   // ============================================================

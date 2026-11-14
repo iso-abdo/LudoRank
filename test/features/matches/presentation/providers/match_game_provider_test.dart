@@ -509,8 +509,13 @@ void main() {
     // ==========================================================
 
     test('executeMove saves snapshot after engine move', () async {
-      final engine = LudoGameEngine(initialState: createStartedState());
+      final engine = LudoGameEngine(
+        initialState: LudoGameState.initial(
+          players: createStartedState().players,
+        ),
+      );
 
+      engine.startGame();
       final session = MatchGameSession(
         match: match.copyWith(status: MatchStatus.playing),
         matchPlayers: matchPlayers,
@@ -522,7 +527,7 @@ void main() {
       await provider.startMatch(matchId: match.id, playerNames: playerNames);
 
       // نجهز رمية قانونية من خلال المحرك الحقيقي.
-      engine.registerDiceRoll(value: 6, sequence: 1);
+      engine.registerDiceRoll(value: 1, sequence: 1);
 
       final legalMoves = engine.getValidMoves();
 
