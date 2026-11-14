@@ -277,7 +277,14 @@ void main() {
         expect(provider.isPlaying, isFalse);
 
         // الخطأ محفوظ والتحميل انتهى.
-        expect(provider.error, contains('cannot resume'));
+        expect(provider.error, contains('تعذر استكمال المباراة'));
+        service.resumeMatchError = StateError(
+          'لا توجد Snapshot محفوظة للمباراة ${match.id}.',
+        );
+
+        await provider.resumeMatch(matchId: match.id);
+
+        expect(provider.error, isNot(contains('cannot resume')));
         expect(provider.isLoading, isFalse);
 
         // الاختيارات والحركات المؤقتة تم تنظيفها.
