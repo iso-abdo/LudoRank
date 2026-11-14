@@ -652,7 +652,7 @@ void main() {
       expect(provider.session, isNotNull);
       expect(provider.isLoading, isFalse);
       expect(provider.isGameFinished, isFalse);
-      expect(provider.isSnapshotSaveBlocked, isFalse);
+      expect(provider.isSnapshotSaveBlocked, isTrue);
       expect(engine.isFinished, isFalse);
       expect(provider.isAutoMoveExecuting, isFalse);
       expect(provider.pendingAutoMove, isNull);
