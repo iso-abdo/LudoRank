@@ -18,11 +18,13 @@ class MatchGamePage extends StatefulWidget {
 
   /// Key = playerId, value = name.
   final Map<String, String> playerNames;
+  final bool resumeExisting;
 
   const MatchGamePage({
     super.key,
     required this.matchId,
     required this.playerNames,
+    this.resumeExisting = false,
   });
 
   @override
@@ -35,11 +37,17 @@ class _MatchGamePageState extends State<MatchGamePage> {
   @override
   void initState() {
     super.initState();
+
     provider = sl<MatchGameProvider>();
-    provider.startMatch(
-      matchId: widget.matchId,
-      playerNames: widget.playerNames,
-    );
+
+    if (widget.resumeExisting) {
+      provider.resumeMatch(matchId: widget.matchId);
+    } else {
+      provider.startMatch(
+        matchId: widget.matchId,
+        playerNames: widget.playerNames,
+      );
+    }
   }
 
   @override
@@ -191,9 +199,17 @@ class _LiveMatchLayout extends StatelessWidget {
     final currentPlayer = provider.currentPlayer;
 
     if (players.isEmpty || currentPlayer == null) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2.5));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            provider.error ?? 'جارٍ تحميل المباراة...',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
+      );
     }
-
     final playersByColor = <LudoPlayerColor, LudoPlayer>{
       for (final player in players) player.color: player,
     };

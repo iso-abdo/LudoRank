@@ -355,7 +355,17 @@ class MatchGameProvider extends ChangeNotifier {
     } catch (e) {
       _session = null;
       _matchStatus = null;
-      _error = e.toString();
+      if (e is StateError &&
+          e.toString().contains('لا توجد Snapshot محفوظة للمباراة')) {
+        _error =
+            'لا يمكن استكمال هذه المباراة. لا توجد نسخة محفوظة من حالة اللعب، '
+            'لأن المباراة بدأت قبل تفعيل نظام الحفظ والاستعادة. '
+            'يمكنك بدء مباراة جديدة.';
+      } else {
+        _error =
+            'تعذر استكمال المباراة بسبب مشكلة في البيانات المحفوظة. '
+            'لم يتم حذف المباراة أو بيانات البطولة.';
+      }
     } finally {
       _setLoading(false);
     }
@@ -686,6 +696,7 @@ class MatchGameProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
   // ============================================================
   // HANDLE ROLL TAP
   // ============================================================

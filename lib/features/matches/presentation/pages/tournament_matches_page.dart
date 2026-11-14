@@ -156,18 +156,20 @@ class _TournamentMatchesPageState extends State<TournamentMatchesPage> {
     }
   }
 
-  Future<void> _openMatch(Match match) async {
-    if (match.status != MatchStatus.pending) {
-      if (!mounted) {
-        return;
-      }
+  Future<void> _openMatch(Match match, {bool resumeExisting = false}) async {
+    final expectedStatus = resumeExisting
+        ? MatchStatus.playing
+        : MatchStatus.pending;
+
+    if (match.status != expectedStatus) {
+      if (!mounted) return;
 
       final message = switch (match.status) {
         MatchStatus.playing =>
-          'المباراة بدأت بالفعل ولا يمكن استئنافها حاليًا.',
+          'المباراة بدأت بالفعل. استخدم زر استكمال المباراة.',
         MatchStatus.finished => 'هذه المباراة منتهية بالفعل.',
         MatchStatus.cancelled => 'هذه المباراة ملغاة.',
-        MatchStatus.pending => '',
+        MatchStatus.pending => 'المباراة لم تبدأ بعد.',
       };
 
       ScaffoldMessenger.of(context)
@@ -176,7 +178,6 @@ class _TournamentMatchesPageState extends State<TournamentMatchesPage> {
 
       return;
     }
-
     try {
       final matchPlayers = await matchPlayerRepository.getMatchPlayers(
         match.id,
@@ -211,11 +212,13 @@ class _TournamentMatchesPageState extends State<TournamentMatchesPage> {
       final result = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              MatchGamePage(matchId: match.id, playerNames: playerNames),
+          builder: (_) => MatchGamePage(
+            matchId: match.id,
+            playerNames: playerNames,
+            resumeExisting: resumeExisting,
+          ),
         ),
       );
-
       if (!mounted) {
         return;
       }
@@ -320,6 +323,9 @@ class _TournamentMatchesPageState extends State<TournamentMatchesPage> {
                         _openMatch(match);
                       }
                     },
+                    onResume: match.status == MatchStatus.playing
+                        ? () => _openMatch(match, resumeExisting: true)
+                        : null,
                   ),
                 ),
 
@@ -404,6 +410,7 @@ class _MatchCard extends StatelessWidget {
   final bool expanded;
   final bool loadingResult;
   final List<_FinishedPlayerResult> results;
+  final VoidCallback? onResume;
 
   const _MatchCard({
     required this.match,
@@ -411,6 +418,7 @@ class _MatchCard extends StatelessWidget {
     required this.expanded,
     required this.loadingResult,
     required this.results,
+    required this.onResume,
   });
 
   @override
@@ -490,6 +498,18 @@ class _MatchCard extends StatelessWidget {
               ),
             ),
           ),
+          if (match.status == MatchStatus.playing && onResume != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: OutlinedButton.icon(
+                  onPressed: onResume,
+                  icon: const Icon(Icons.play_arrow_rounded),
+                  label: const Text('استكمال المباراة'),
+                ),
+              ),
+            ),
 
           if (expanded) ...[
             const Divider(height: 1),
